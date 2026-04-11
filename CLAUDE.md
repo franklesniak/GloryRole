@@ -95,6 +95,14 @@ When a code review comment is received from GitHub Copilot, a human reviewer, or
 
 5. **Score and select.** Apply the rubric to every option. Present the results in a Markdown table. Select the option with the highest total score.
 
+   **Escalation path:** If the rubric cannot produce a clear winner — because the decision depends on owner preferences, project-level policy, or the top options are too close to differentiate objectively — escalate to the PR owner instead of selecting an option. Post a **standalone PR comment** (not a reply to the review thread) containing:
+   - A brief summary of the reviewer's concern and which file/line it applies to
+   - The options and scoring tables
+   - The specific question the owner needs to answer
+   - Instructions: *"Reply to this comment starting with `@claude` followed by your chosen option or direction."*
+
+   **PAUSE** processing of this comment until the owner responds. Continue processing other independent review comments in the meantime.
+
 6. **Post the evaluation.** Reply to the review comment thread with the options table, the scoring table, the selected option, and either a note that implementation will follow in step 7 or, if the fix was already applied, the commit SHA that implements it.
 
 7. **Implement the fix.** Apply the selected option, commit, and push.
