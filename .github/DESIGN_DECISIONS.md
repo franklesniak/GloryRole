@@ -64,7 +64,7 @@ This relative link has been tested and confirmed to work correctly in rendered P
 - GitHub Enterprise Server (GHES) compatibility varies by version.
 
 If you need the link to work in PR drafts, GHES, or external contexts, replace with:
-`https://github.com/OWNER/REPO/blob/HEAD/CONTRIBUTING.md` (remembering to replace OWNER/REPO with your actual org/repo name).
+`https://github.com/franklesniak/GloryRole/blob/HEAD/CONTRIBUTING.md`.
 
 ### Design Decision: Link Strategy in PR Template
 
