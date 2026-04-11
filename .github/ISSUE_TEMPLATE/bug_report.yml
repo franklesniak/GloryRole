@@ -21,7 +21,7 @@ title: "[Bug] "
 #   - Area labels: area:api, area:cli, area:docs
 labels:
   - bug
-  # - triage  # ACTION ITEM: Uncomment after creating the `triage` label in your repository
+  - triage
 # CUSTOMIZE: Uncomment and update to specify an issue type (defined at the organization level).
 # See: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms#top-level-syntax
 # type: Bug
@@ -89,13 +89,15 @@ body:
       description: >-
         What part of the project does this bug affect?
         Tip: For documentation typos/missing info, prefer the 📚 Documentation Issue template.
-      # CUSTOMIZE: Update these options to match your project's languages/components (remove unused entries).
       options:
-        - Python
+        - Ingestion (CSV, ActivityLog, LogAnalytics)
+        - Pipeline (canonicalize, deduplicate, aggregate, prune, read-handling)
+        - Vectorization / Normalization
+        - Clustering / Auto-K
+        - Role Generation / Export
         - PowerShell
         - Markdown / Documentation
         - GitHub Actions / CI
-        - Cross-language / Integration
         - Cross-cutting / Repo-wide
         - Other (describe/specify in Additional Context)
     validations:
@@ -238,9 +240,9 @@ body:
         List each on a separate line if multiple apply
       render: text
       placeholder: |
-        Python 3.13.1 (or your installed version)
         PowerShell 7.4.6 or Windows PowerShell 5.1
-        Markdown tooling/renderer (if relevant): e.g., Pandoc 3.1.2
+        Az module version (if applicable): e.g., Az 12.x
+        Operating system: e.g., Windows 11, Ubuntu 24.04, macOS 15
     validations:
       required: false
 
@@ -266,18 +268,11 @@ body:
         Paste the exact commands you used to install and run the project (include flags).
       render: text
       placeholder: |
-        # Python (using pyproject.toml)
-        python -m venv .venv
-        source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-        pip install -e .
-        python -m your_package
+        # PowerShell 7.x
+        pwsh -File .\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV -CsvPath .\samples\principal_action_counts.csv -OutputPath .\output
 
-        # Python (using requirements.txt)
-        pip install -r requirements.txt
-        python script.py --flag
-
-        # PowerShell
-        pwsh -File .\script.ps1 -Param Value
+        # Windows PowerShell 5.1
+        powershell -File .\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV -CsvPath .\samples\principal_action_counts.csv -OutputPath .\output
     validations:
       required: false
 

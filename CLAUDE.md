@@ -49,24 +49,10 @@ pre-commit run --all-files
 npm run lint:md
 ```
 
-### Python tests
-
-```bash
-pytest tests/ -v --cov --cov-report=term-missing
-```
-
 ### PowerShell tests
 
 ```powershell
 Invoke-Pester -Path tests/ -Output Detailed
-```
-
-### Terraform
-
-```bash
-terraform fmt -check -recursive
-tflint --recursive
-terraform test -verbose
 ```
 
 ## Language-Specific Instructions
@@ -79,6 +65,8 @@ This repository uses modular instruction files for language-specific coding stan
 | PowerShell | `.github/instructions/powershell.instructions.md` | `**/*.ps1` |
 | Python | `.github/instructions/python.instructions.md` | `**/*.py` |
 | Terraform | `.github/instructions/terraform.instructions.md` | `**/*.tf`, `**/*.tfvars`, `**/*.tftest.hcl` |
+
+**Note:** Python and Terraform instruction files are retained for future use when those languages are added to the repository.
 
 ## What Not to Do
 
@@ -107,6 +95,14 @@ When a code review comment is received from GitHub Copilot, a human reviewer, or
 
 5. **Score and select.** Apply the rubric to every option. Present the results in a Markdown table. Select the option with the highest total score.
 
+   **Escalation path:** If the rubric cannot produce a clear winner — because the decision depends on owner preferences, project-level policy, or the top options are too close to differentiate objectively — escalate to the PR owner instead of selecting an option. Post a **standalone PR comment** (not a reply to the review thread) containing:
+   - A brief summary of the reviewer's concern and which file/line it applies to
+   - The options and scoring tables
+   - The specific question the owner needs to answer
+   - Instructions: *"Reply to this comment starting with `@claude` followed by your chosen option or direction."*
+
+   **PAUSE** processing of this comment until the owner responds. Continue processing other independent review comments in the meantime.
+
 6. **Post the evaluation.** Reply to the review comment thread with the options table, the scoring table, the selected option, and either a note that implementation will follow in step 7 or, if the fix was already applied, the commit SHA that implements it.
 
 7. **Implement the fix.** Apply the selected option, commit, and push.
@@ -122,13 +118,14 @@ When a pull request is created or when the owner posts a PR comment containing `
 ### Loop procedure
 
 1. **Request a Copilot code review.** Use the `request_copilot_review` tool (or equivalent) to ask GitHub Copilot to review the PR.
-2. **Wait for the review.** Subscribe to PR activity and wait for the review to arrive. The review is complete when Copilot posts its **review summary** comment (the "Pull request overview" that states "generated N comments"). This summary is the authoritative signal — do **not** wait for individual comment webhooks when N is zero, because none will arrive.
-3. **Check for comments.** If the review contains **zero** actionable comments, the code is clean — **PAUSE** and post a PR comment:
+2. **Wait for the review.** Subscribe to PR activity and wait for the review to arrive. The review is complete when Copilot posts its **review summary** comment (the "Pull request overview" that states "generated N comments"). This summary is the authoritative signal — do **not** wait for individual comment webhooks when N is zero, because none will arrive. **Fallback:** If no review summary webhook arrives after requesting the review, proactively poll using `get_reviews` (and `get_review_comments`) to check whether the review has completed. Poll at **1-minute intervals** with a **10-minute timeout**. If the review has not arrived after 10 minutes, **PAUSE** the loop and post a PR comment explaining that the Copilot review did not arrive. Do not wait passively for a webhook that may never arrive — always confirm review completion before proceeding.
+3. **Check review coverage.** The review summary states how many files Copilot reviewed out of the total changed files (e.g., "Copilot reviewed 9 out of 9 changed files"). If Copilot did **not** review all changed files, post a PR comment noting the partial coverage so the PR owner is aware. Example: `Note: Copilot reviewed only 7 out of 9 changed files in round N. Files not reviewed by Copilot may benefit from additional manual or AI-assisted review.` Continue the loop normally regardless of coverage.
+4. **Check for comments.** If the review contains **zero** actionable comments, the code is clean — **PAUSE** and post a PR comment:
    `Review loop paused: Copilot review returned no comments. Post "@claude resume review loop" to continue.`
-4. **Process each comment.** Follow the "Handling Code Review Comments" protocol above (steps 1-9) for every comment in the review, **where tooling allows**. If the available tooling cannot perform step 9 automatically, you **MUST** still complete steps 1-8 and **MUST** ensure the step 9 completion work is handled before treating the comment as fully processed: remove any temporary `:eyes:` reaction per the protocol and resolve the review thread manually when appropriate.
-5. **Check for style guide recommendations.** If **any** comment produced a style guide update prompt (step 8), **PAUSE** and post a PR comment:
+5. **Process each comment.** Follow the "Handling Code Review Comments" protocol above (steps 1-9) for every comment in the review, **where tooling allows**. If the available tooling cannot perform step 9 automatically, you **MUST** still complete steps 1-8 and **MUST** ensure the step 9 completion work is handled before treating the comment as fully processed: remove any temporary `:eyes:` reaction per the protocol and resolve the review thread manually when appropriate.
+6. **Check for style guide recommendations.** If **any** comment produced a style guide update prompt (step 8), **PAUSE** and post a PR comment:
    `Review loop paused: style guide update(s) recommended — see review thread(s) above. Apply the style guide changes, then post "@claude resume review loop" to continue.`
-6. **Re-request review.** If no style guide updates were recommended, go to step 1. This applies regardless of whether code changes were made — even if all comments were addressed without code changes (e.g., concern noted but no action taken), re-requesting a review allows Copilot to find different issues on a fresh pass.
+7. **Re-request review.** If no style guide updates were recommended, go to step 1. This applies regardless of whether code changes were made — even if all comments were addressed without code changes (e.g., concern noted but no action taken), re-requesting a review allows Copilot to find different issues on a fresh pass.
 
 ### Safety limits
 
@@ -141,7 +138,3 @@ When a pull request is created or when the owner posts a PR comment containing `
 ### Resuming a paused loop
 
 When the PR owner posts a comment containing `@claude resume review loop`, resume the loop from step 1 (request a fresh Copilot review). The round counter and timeout reset on resume.
-
----
-
-> This file is part of the `franklesniak/copilot-repo-template` template. Customize or remove agent instruction files for platforms you do not use. See `OPTIONAL_CONFIGURATIONS.md` for details.
