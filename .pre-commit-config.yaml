@@ -16,10 +16,6 @@
 # Pre-commit configuration
 # Install:  pip install pre-commit && pre-commit install
 # Run:  pre-commit run --all-files
-#
-# Note: This file configures pre-commit hooks for all projects. It handles
-# Python formatting/linting and Markdown validation. Remove only if your
-# project does not use pre-commit at all.
 
 repos:
   # General hooks
@@ -31,14 +27,14 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
-  # Python formatting (remove if not using Python)
+  # Python formatting (for future Python code)
   - repo: https://github.com/psf/black
     rev: 26.1.0
     hooks:
       - id: black
         args: [--line-length=100]
 
-  # Python linting (remove if not using Python)
+  # Python linting (for future Python code)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.14
     hooks:
@@ -50,13 +46,3 @@ repos:
     rev: v0.20.0
     hooks:
       - id: markdownlint-cli2
-
-  # Terraform formatting and validation (remove if not using Terraform)
-  - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.105.0
-    hooks:
-      - id: terraform_fmt
-      - id: terraform_validate
-      - id: terraform_tflint
-        args:
-          - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl

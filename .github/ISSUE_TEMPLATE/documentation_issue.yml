@@ -19,7 +19,7 @@ title: "[Docs] "
 # Ensure these labels exist in your repository or create them before using this template.
 labels:
   - documentation
-  # - triage  # ACTION ITEM: Uncomment after creating the `triage` label in your repository
+  - triage
 body:
   - type: markdown
     attributes:

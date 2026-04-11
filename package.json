@@ -1,18 +1,21 @@
 {
-  "name": "copilot-repo-template",
+  "name": "gloryrole",
   "version": "1.0.0",
-  "description": "Template repository with Copilot instructions and code quality tooling",
+  "description": "Unsupervised role mining engine for cloud RBAC — derives least-privilege custom role definitions from activity logs",
   "private": true,
   "scripts": {
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
     "lint:md:nested": "node .github/scripts/lint-nested-markdown.js"
   },
   "keywords": [
-    "template",
-    "copilot",
-    "linting"
+    "powershell",
+    "rbac",
+    "role-mining",
+    "azure",
+    "security",
+    "least-privilege"
   ],
-  "author": "Frank Lesniak",
+  "author": "Frank Lesniak and Danny Stutz",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"

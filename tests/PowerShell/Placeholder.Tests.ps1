@@ -1,14 +1,7 @@
 # Placeholder.Tests.ps1
 #
-# This is a placeholder test file to demonstrate Pester test structure.
-# Replace this file with actual tests for your PowerShell code.
-#
-# See templates/powershell/Example.Tests.ps1 for a comprehensive example
-# of Pester 5.x test patterns including:
-#   - Testing functions with integer return codes
-#   - Testing reference parameters ([ref])
-#   - Testing boolean returns (Test-* functions)
-#   - Mocking external dependencies
+# This is a placeholder test file to verify the Pester test infrastructure works.
+# Replace this file with actual tests for GloryRole PowerShell code.
 #
 # Prerequisites:
 #   Install-Module -Name Pester -MinimumVersion 5.0 -Force
@@ -17,7 +10,7 @@
 #   Invoke-Pester -Path tests/PowerShell/ -Output Detailed
 
 Describe "Placeholder Tests" {
-    Context "Template repository setup" {
+    Context "Test infrastructure" {
         It "Should have Pester tests configured" {
             # This test exists to verify Pester is working correctly.
             # Replace with actual tests for your project.

@@ -49,24 +49,10 @@ pre-commit run --all-files
 npm run lint:md
 ```
 
-### Python tests
-
-```bash
-pytest tests/ -v --cov --cov-report=term-missing
-```
-
 ### PowerShell tests
 
 ```powershell
 Invoke-Pester -Path tests/ -Output Detailed
-```
-
-### Terraform
-
-```bash
-terraform fmt -check -recursive
-tflint --recursive
-terraform test -verbose
 ```
 
 ## Language-Specific Instructions
@@ -79,6 +65,8 @@ This repository uses modular instruction files for language-specific coding stan
 | PowerShell | `.github/instructions/powershell.instructions.md` | `**/*.ps1` |
 | Python | `.github/instructions/python.instructions.md` | `**/*.py` |
 | Terraform | `.github/instructions/terraform.instructions.md` | `**/*.tf`, `**/*.tfvars`, `**/*.tftest.hcl` |
+
+**Note:** Python and Terraform instruction files are retained for future use when those languages are added to the repository.
 
 ## What Not to Do
 
@@ -141,7 +129,3 @@ When a pull request is created or when the owner posts a PR comment containing `
 ### Resuming a paused loop
 
 When the PR owner posts a comment containing `@claude resume review loop`, resume the loop from step 1 (request a fresh Copilot review). The round counter and timeout reset on resume.
-
----
-
-> This file is part of the `franklesniak/copilot-repo-template` template. Customize or remove agent instruction files for platforms you do not use. See `OPTIONAL_CONFIGURATIONS.md` for details.

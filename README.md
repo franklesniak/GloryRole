@@ -1,249 +1,81 @@
-# Project Name
+# GloryRole
 
 > **Note:** This repository was created from [`franklesniak/copilot-repo-template`](https://github.com/franklesniak/copilot-repo-template).
 
 ## Description
 
-[Add your project description here]
+GloryRole is an unsupervised role mining engine written entirely in PowerShell. Instead of guessing at what cloud roles should look like, it derives them from evidence -- specifically, from what your identities *actually do* in your cloud environment. Feed it activity logs and it produces production-ready custom role definitions with only the permissions your people and service accounts truly need.
 
----
+## The Problem
 
-## Table of Contents
+Most cloud environments suffer from permission sprawl. Roles are hand-crafted based on job titles, copied from templates, or assigned as broad built-in roles because "it's easier." Over time, identities accumulate far more permissions than they actually use. Security teams know they should enforce least privilege, but they face a fundamental question: *what roles should we actually create?*
 
-- [Readme for the Copilot Repository Template](#readme-for-the-copilot-repository-template)
-  - [What This Template Provides](#what-this-template-provides)
-  - [Getting Started](#getting-started)
-  - [Repository Structure](#repository-structure)
-  - [Language Support](#language-support)
-  - [Linting Tools](#linting-tools)
-  - [Testing](#testing)
-  - [Code Quality](#code-quality)
-  - [License](#license)
+## How It Works
 
----
+GloryRole implements a complete end-to-end pipeline in ten stages:
 
-## Readme for the Copilot Repository Template
+1. **Ingest** -- Supports three modes: Azure Log Analytics (KQL summarization), `Get-AzActivityLog` (adaptive time-slicing), and local CSV. The adapter-based design means adding support for additional platforms (AWS CloudTrail, GCP Audit Logs, Active Directory security logs) requires only a new ingestion adapter.
+2. **Canonicalize and Deduplicate** -- Normalizes events into standard form. Resolves identities using a priority chain (ObjectId, AppId, Caller). Eliminates retry noise via composite-key deduplication.
+3. **Aggregate into Sparse Triples** -- Collapses cleaned events into `PrincipalKey|Action|Count` triples, the universal data contract for all downstream stages.
+4. **Quality Gate** -- Reports dataset health: distinct principals, actions, non-zero entries, and matrix density.
+5. **Prune Rare Actions** -- Removes infrequent actions using dual configurable thresholds. Retains both surviving and dropped triples for audit.
+6. **Handle Read Dominance** -- Three modes (Keep, DownWeight, Exclude) to prevent read operations from overwhelming the clustering signal.
+7. **Vectorize** -- Converts sparse triples into fixed-length numeric vectors using a stable, sorted feature index.
+8. **Normalize** -- Log1P transformation compresses dynamic range; L2 normalization scales vectors to unit length so clustering measures behavioral profile rather than activity volume.
+9. **Auto-K Clustering** -- Runs K-Means for every candidate K. Evaluates using five metrics (WCSS, WCSS second derivative, silhouette, Davies-Bouldin, Calinski-Harabasz). Weighted composite scoring selects the optimal K. Deterministic seeding (default: 42) and farthest-point empty cluster rescue ensure reproducible results.
+10. **Generate and Export** -- Each cluster becomes a candidate role with a valid Azure custom role definition JSON file.
 
-This is a template repository providing best-practice GitHub Copilot instructions and linting configurations for new projects.
+## Design Philosophy
 
-### What This Template Provides
+- **Evidence over opinion.** Roles are derived from observed behavior, not from job titles or guesswork.
+- **Auditability.** Every pipeline run produces a complete paper trail for governance reviews.
+- **Cross-version compatibility.** Runs on Windows PowerShell 5.1 and PowerShell 7.4+ across Windows, macOS, and Linux.
+- **Extensibility.** The adapter-based ingestion layer is platform-agnostic. Adding new cloud platforms requires only a new ingestion function that emits sparse triples.
+- **Comprehensively tested.** Every function has a corresponding Pester 5.x test file.
 
-This template includes:
+## Quick Start
 
-- **GitHub Copilot Instructions:** Comprehensive coding standards that guide AI-assisted development
-- **Multi-Agent Support:** Instruction files for Claude Code, OpenAI Codex CLI, and Gemini Code Assist (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`)
-- **Language-Specific Guidelines:** Modular instruction files for Markdown, PowerShell, and Python
-- **Linting Configurations:** Pre-configured settings for markdownlint and PSScriptAnalyzer
-- **Pre-commit Hooks:** Automated code quality checks before commits
+```powershell
+# From a local CSV sample
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
+    -CsvPath .\samples\principal_action_counts.csv `
+    -OutputPath .\output
 
-### Getting Started
+# From Azure Activity Log (requires Az module)
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode ActivityLog `
+    -SubscriptionIds @('your-sub-id') `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -OutputPath .\output
 
-Choose the guide that matches your situation:
-
-- **[Creating a New Repository](GETTING_STARTED_NEW_REPO.md)**: Step-by-step guide for creating a new repository from this template
-- **[Adding to an Existing Repository](GETTING_STARTED_EXISTING_REPO.md)**: Guide for adopting template features into an existing repository
-- **[Optional Configurations](OPTIONAL_CONFIGURATIONS.md)**: Advanced customization options after initial setup
-
-For template maintainers, see [TEMPLATE_MAINTENANCE.md](TEMPLATE_MAINTENANCE.md).
-
-### Repository Structure
-
-```text
-.github/
-├── CODEOWNERS                       # Code ownership for automatic PR review requests
-├── copilot-instructions.md          # Repo-wide constitution for all changes
-├── dependabot.yml                   # Automated dependency updates configuration
-├── instructions/                    # Language-specific coding standards
-│   ├── docs.instructions.md         # Markdown/documentation standards
-│   ├── powershell.instructions.md   # PowerShell coding standards
-│   └── python.instructions.md       # Python coding standards
-├── linting/                         # Linting tool configurations
-│   └── PSScriptAnalyzerSettings.psd1  # PowerShell linting settings
-├── scripts/                         # Helper scripts for CI/tooling
-└── workflows/                       # GitHub Actions workflows
-    ├── check-placeholders.yml       # Verifies OWNER/REPO placeholders are replaced
-    └── powershell-ci.yml            # PowerShell linting and testing CI (optional)
-    └── python-ci.yml                 # Python linting and testing CI (optional)
-
-src/
-└── copilot_repo_template/           # Example Python package (rename for your project)
-    ├── __init__.py
-    └── example.py
-
-tests/                               # Test directory
-├── __init__.py
-├── test_example.py                  # Python pytest tests
-└── PowerShell/                      # PowerShell Pester tests
-    └── Placeholder.Tests.ps1
-
-templates/                           # Reference templates for project setup
-├── python/                          # Python project templates
-└── powershell/                      # PowerShell test templates
-    └── Example.Tests.ps1            # Comprehensive Pester test example
-
-pyproject.toml                       # Python project configuration
-.markdownlint.jsonc                  # Markdown linting configuration
-.pre-commit-config.yaml              # Pre-commit hooks (Python focused)
-AGENTS.md                            # Agent instructions for OpenAI Codex CLI
-CLAUDE.md                            # Agent instructions for Claude Code
-GEMINI.md                            # Agent instructions for Gemini Code Assist
+# From Log Analytics (requires Az.OperationalInsights)
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
+    -WorkspaceId 'your-workspace-id' `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -OutputPath .\output
 ```
 
-#### Key Files Explained
+## Output Artifacts
 
-| File | Purpose |
+| File | Description |
 | --- | --- |
-| `.github/CODEOWNERS` | Defines code ownership for automatic PR review requests - replace `@OWNER` placeholder |
-| `.github/copilot-instructions.md` | The "constitution" for all code changes - defines safety rules, pre-commit discipline, and references language-specific instructions |
-| `.github/dependabot.yml` | Dependabot configuration for automated dependency updates - enabled by default |
-| `.github/instructions/*.md` | Language-specific coding standards applied based on file patterns |
-| `.github/linting/PSScriptAnalyzerSettings.psd1` | PSScriptAnalyzer settings enforcing OTBS formatting for PowerShell |
-| `.github/workflows/check-placeholders.yml` | CI workflow to verify OWNER/REPO and @OWNER placeholders are replaced after cloning |
-| `.github/workflows/powershell-ci.yml` | PowerShell linting and Pester testing CI workflow (optional - remove if not using PowerShell) |
-| `.github/workflows/python-ci.yml` | Python linting and testing CI workflow (optional - remove if not using Python) |
-| `.markdownlint.jsonc` | Markdown linting rules prioritizing auto-fixable checks |
-| `.pre-commit-config.yaml` | Pre-commit hooks for all projects (Python formatting, linting, Markdown) |
-| `AGENTS.md` | Agent instructions for OpenAI Codex CLI and GitHub Copilot coding agent |
-| `CLAUDE.md` | Agent instructions for Claude Code and GitHub Copilot coding agent |
-| `GEMINI.md` | Agent instructions for Gemini Code Assist and GitHub Copilot coding agent |
-| `pyproject.toml` | Python project configuration with dev dependencies |
-| `src/copilot_repo_template/` | Example Python package - rename for your project |
-| `tests/` | Test directory with pytest tests (Python) and Pester tests (PowerShell) |
-| `templates/powershell/Example.Tests.ps1` | Comprehensive Pester test template with examples |
+| `principal_action_counts.csv` | Post-prune, post-read-handling sparse triples |
+| `features.txt` | Ordered feature (action) index |
+| `quality.json` | Dataset quality metrics (principals, actions, density) |
+| `autoK_candidates.csv` | Every evaluated K with all metrics, ranks, and composite score |
+| `clusters.json` | Cluster-to-action mapping |
+| `role_cluster_<id>.json` | One Azure custom role definition per cluster |
 
-### Language Support
+## Who It's For
 
-| Language | Instruction File | File Pattern | CI Workflow | Description |
-| --- | --- | --- | --- | --- |
-| Markdown/Docs | `.github/instructions/docs.instructions.md` | `**/*.md` | `.github/workflows/markdownlint.yml` | Documentation writing standards |
-| PowerShell | `.github/instructions/powershell.instructions.md` | `**/*.ps1` | `.github/workflows/powershell-ci.yml` | PowerShell coding standards (OTBS, v1.0-v7.x) |
-| Python | `.github/instructions/python.instructions.md` | `**/*.py` | `.github/workflows/python-ci.yml` | Python coding standards (PEP 8, typing) |
-| Terraform | `.github/instructions/terraform.instructions.md` | `**/*.tf`, `**/*.tfvars`, `**/*.tftest.hcl`, etc. | `.github/workflows/terraform-ci.yml` | Terraform coding standards (HCL, modules) |
+- **Security engineers** implementing or tightening RBAC who need data-driven evidence for role definitions
+- **Cloud administrators** managing Azure environments with permission sprawl who want to right-size roles
+- **IAM teams** building governance programs who need audit artifacts to justify role changes
+- **PowerShell practitioners** interested in applied machine learning -- a real-world K-Means clustering pipeline built in pure PowerShell with no external ML dependencies
 
-### Linting Tools
+## Contributing
 
-This template organizes linting configurations in `.github/linting/` (for PSScriptAnalyzer) and the repository root (for markdownlint). Projects MAY reorganize these configurations to a different location (e.g., a project-specific `config/` directory) if preferred. If configurations are moved, update the paths referenced in CI workflows and `.github/copilot-instructions.md` accordingly.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
-#### Markdown Linting
-
-Configuration: `.markdownlint.jsonc`
-
-```bash
-# Check markdown files
-npm run lint:md
-
-# Auto-fix issues
-npx markdownlint-cli2 "**/*.md" "#node_modules" --fix
-```
-
-#### PowerShell Linting (PSScriptAnalyzer)
-
-Configuration: `.github/linting/PSScriptAnalyzerSettings.psd1`
-
-```powershell
-# Check PowerShell files
-Invoke-ScriptAnalyzer -Path .\script.ps1 -Settings .\.github\linting\PSScriptAnalyzerSettings.psd1
-
-# Auto-fix formatting issues
-Invoke-ScriptAnalyzer -Path .\script.ps1 -Settings .\.github\linting\PSScriptAnalyzerSettings.psd1 -Fix
-```
-
-#### Python Linting
-
-Configuration: `.pre-commit-config.yaml`
-
-```bash
-# Run all pre-commit hooks
-pre-commit run --all-files
-
-# Run specific hooks
-pre-commit run black --all-files
-pre-commit run ruff-check --all-files
-```
-
-#### Terraform Linting
-
-This repository includes Terraform linting via:
-
-- **terraform fmt:** Format checking and auto-formatting
-- **terraform validate:** Configuration validation
-- **TFLint:** Best practice linting with cloud provider plugins
-
-Configuration: `.tflint.hcl`
-
-```bash
-# Format check
-terraform fmt -check -recursive
-
-# Format fix
-terraform fmt -recursive
-
-# Validate (requires init)
-terraform init -backend=false && terraform validate
-
-# Lint
-tflint --init && tflint --recursive
-```
-
-### Testing
-
-#### Python Tests
-
-Python tests use pytest with coverage reporting.
-
-```bash
-# Run all Python tests
-pytest tests/ -v --cov --cov-report=term-missing
-
-# Run a specific test file
-pytest tests/test_example.py -v
-```
-
-#### PowerShell Tests
-
-PowerShell tests use Pester 5.x.
-
-```powershell
-# Install Pester if needed
-Install-Module -Name Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
-
-# Run all Pester tests
-Invoke-Pester -Path tests/ -Output Detailed
-
-# Run a specific test file
-Invoke-Pester -Path tests/PowerShell/Placeholder.Tests.ps1
-```
-
-CI runs PowerShell tests on Windows, macOS, and Linux to ensure cross-platform compatibility.
-
-See `templates/powershell/Example.Tests.ps1` for a comprehensive Pester test template.
-
-#### Terraform Tests
-
-Terraform tests use the native Terraform test framework (Terraform 1.6+).
-
-```bash
-# Run all Terraform tests
-terraform test -verbose
-
-# Run specific test file
-terraform test -filter=tests/unit.tftest.hcl
-```
-
-Tests are located in `modules/*/tests/` directories.
-
-See `templates/terraform/Example.tftest.hcl` for a comprehensive Terraform test template.
-
-### Code Quality
-
-This repository enforces code quality through:
-
-- **Markdown Linting:** Runs on pre-commit and in CI
-- **GitHub Copilot Instructions:** Guides AI-assisted development
-- **Pre-commit Hooks:** Catches issues before they reach CI
-- **PSScriptAnalyzer:** PowerShell static analysis with OTBS formatting
-- **TFLint:** Terraform linting with configurable rules and cloud provider plugins
-
-### License
+## License
 
 MIT License - See [LICENSE](LICENSE) for details.
