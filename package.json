@@ -1,0 +1,27 @@
+{
+  "name": "copilot-repo-template",
+  "version": "1.0.0",
+  "description": "Template repository with Copilot instructions and code quality tooling",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:md:nested": "node .github/scripts/lint-nested-markdown.js"
+  },
+  "keywords": [
+    "template",
+    "copilot",
+    "linting"
+  ],
+  "author": "Frank Lesniak",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "glob": "^13.0.6",
+    "jsonc-parser": "^3.3.1",
+    "markdown-it": "^14.1.1",
+    "markdownlint": "^0.40.0",
+    "markdownlint-cli2": "^0.22.0"
+  }
+}

@@ -1,0 +1,66 @@
+# pyproject.toml for the copilot-repo-template repository
+#
+# This file provides a minimal Python project configuration that allows the CI
+# workflows (.github/workflows/python-ci.yml) to run successfully.
+#
+# This is a TEMPLATE REPOSITORY. When you create a new repository from this
+# template, you should customize this file for your project. See
+# templates/python/pyproject.toml for a more comprehensive example with
+# additional tooling configuration (Black, Ruff, etc.).
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "copilot-repo-template"
+version = "0.1.0"
+description = "Template repository providing GitHub Copilot instructions and CI configurations"
+readme = "README.md"
+# Python Version Policy:
+# Always require a Python version that is currently receiving bugfixes.
+# Check https://devguide.python.org/versions/ for current version status.
+# Update this when upstream support changes (typically annually around October).
+requires-python = ">=3.13"
+license = "MIT"
+authors = [
+    { name = "Frank Lesniak" }
+]
+keywords = ["template", "copilot", "github"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Runtime dependencies
+dependencies = []
+
+# Development dependencies
+# These are the minimum required for CI workflows to pass.
+# The template in templates/python/pyproject.toml includes additional
+# tools like Black and Ruff for comprehensive development setups.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
+    "ruff>=0.9.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.mypy]
+# Update python_version when minimum Python version changes.
+# mypy uses a dotted version string (e.g., "3.13" for Python 3.13).
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+# Start permissive for template; projects can tighten as they mature
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

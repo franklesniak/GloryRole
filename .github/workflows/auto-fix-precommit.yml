@@ -1,0 +1,90 @@
+# Auto-fix pre-commit issues for Copilot Agent PRs
+#
+# This workflow automatically runs pre-commit hooks and commits any auto-fixes
+# for branches created by the Copilot Coding Agent. This ensures that PRs
+# created by the agent pass pre-commit CI checks without manual intervention.
+#
+# Design considerations:
+# - Only triggers on push to copilot/** branches to avoid interfering with human work
+# - Uses actor check (github.actor == 'copilot-swe-agent[bot]') to only run when
+#   the Copilot bot pushes code, preventing the workflow from running on its own
+#   commits (which would cause an infinite loop)
+# - Uses workflow concurrency to prevent race conditions when multiple pushes
+#   occur in quick succession
+# - Only commits if there are actual changes to avoid empty commits
+# - Uses github-actions[bot] identity for commits to clearly identify automated fixes
+#
+# OPTIONAL: This workflow is optional. If you prefer to manually commit pre-commit
+# fixes, you can safely delete this file. The standard CI workflow will still run
+# and report any issues that need to be fixed.
+
+name: Auto-fix pre-commit (Copilot branches)
+
+on:
+  push:
+    branches:
+      - "copilot/**"
+
+# Prevent multiple runs from racing with each other
+concurrency:
+  group: auto-fix-precommit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  auto-fix:
+    runs-on: ubuntu-latest
+    # Only run if the pusher is the Copilot bot (GitHub App)
+    # This prevents the workflow from running on its own commits
+    if: github.actor == 'copilot-swe-agent[bot]'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      # Install Terraform for pre-commit-terraform hooks (terraform_fmt, etc.)
+      # This is required because the pre-commit config includes Terraform hooks
+      # that need the Terraform binary to be available.
+      # Version Policy: Use the latest stable Terraform version for pre-commit.
+      # Review and update quarterly per TEMPLATE_MAINTENANCE.md.
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.4"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit hooks (auto-fix)
+        run: |
+          # Run pre-commit; exit code is ignored since we check for changes separately
+          # Exit code 0 = all passed
+          # Exit code 1 = hooks failed but may have fixed files
+          pre-commit run --all-files || true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push fixes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: Apply pre-commit auto-fixes [automated]"
+          git push

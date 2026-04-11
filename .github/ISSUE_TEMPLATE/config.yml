@@ -1,0 +1,100 @@
+# =============================================================================
+# ISSUE TEMPLATE CONFIG
+# =============================================================================
+# For detailed design decisions and customization options, see:
+# .github/DESIGN_DECISIONS.md > Issue Template Design Decisions > config.yml
+#
+# CUSTOMIZE: markers below indicate actionable customization points.
+# Look for `# CUSTOMIZE:` comments throughout this file.
+#
+# IMPORTANT: contact_links URLs MUST be absolute URLs (relative paths do not work).
+# You MUST replace OWNER/REPO with your actual org/repo or links will 404.
+# - GHES users: Replace github.com with your GHES host (e.g., github.company.com)
+# =============================================================================
+
+# CUSTOMIZE: Set to `true` (default) to allow users flexibility in creating issues
+# without a template. Set to `false` to require template usage—useful once you have
+# comprehensive templates covering all issue types and want structured data collection.
+# Consider setting to false once you have comprehensive templates and want structured intake.
+blank_issues_enabled: true
+
+contact_links:
+  # CUSTOMIZE: Update the URL below by replacing `OWNER/REPO` with your org/repo name.
+  # NOTE: blob/HEAD is used instead of blob/main to support repos with non-main default branches.
+  - name: 📝 Contributing Guide
+    url: https://github.com/OWNER/REPO/blob/HEAD/CONTRIBUTING.md
+    about: Read the contributing guide before opening an issue
+
+  # =============================================================================
+  # SECURITY LINK CONFIGURATION
+  # =============================================================================
+  # CUSTOMIZE: Update the URL below by replacing `OWNER/REPO` with your org/repo name.
+  #
+  # IMPORTANT: Private vulnerability reporting is ONLY available for PUBLIC repositories.
+  # If your repository is private:
+  # - This link will NOT provide a "Report a vulnerability" option to external users
+  # - You MUST provide an email contact in SECURITY.md for security reports
+  # - Consider removing or commenting out this link if it would confuse reporters
+  # See .github/DESIGN_DECISIONS.md for detailed guidance on private vs. public repos.
+  #
+  # Trade-off notes on Security link target options:
+  # - Option A: /security (used here) - Broad compatibility; general entry point that
+  #   usually exists. May not lead directly to submission flow if not configured.
+  # - Option B: /security/advisories/new - Best UX if enabled; direct private reporting UI.
+  #   Can 404 if advisories/private reporting aren't enabled (common in new repos).
+  # - Option C: blob/HEAD/SECURITY.md - Always works if the file exists; communicates policy
+  #   but is not a submission endpoint.
+  #
+  # Recommended: Keep /security as the default. After enabling private vulnerability
+  # reporting in your repository (public repos only), you can optionally change to
+  # /security/advisories/new.
+  #
+  # TO ENABLE PRIVATE VULNERABILITY REPORTING (PUBLIC REPOSITORIES ONLY):
+  # 1. Go to Settings → Security → Private vulnerability reporting
+  # 2. Enable the feature
+  # 3. Full documentation:
+  #    https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configuring-private-vulnerability-reporting-for-a-repository
+  # =============================================================================
+  - name: 🔒 Security Vulnerabilities
+    url: https://github.com/OWNER/REPO/security
+    about: Report security issues privately (do not open a public issue). Private vulnerability reporting is only available for public repositories.
+
+  # =============================================================================
+  # DISCUSSIONS LINK (OPTIONAL)
+  # =============================================================================
+  # Trade-off notes on Discussions link:
+  # - Kept commented out by default because many downstream repos don't enable Discussions.
+  # - If you know most downstream repos will enable Discussions, you can uncomment by default.
+  # - Enabling this redirects support questions away from issues, which improves triage.
+  #
+  # HOW TO ENABLE DISCUSSIONS:
+  # 1. Go to your repository Settings > General > Features
+  # 2. Check the "Discussions" checkbox to enable the feature
+  #    See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/enabling-or-disabling-github-discussions-for-a-repository
+  # 3. Uncomment the block below
+  # 4. Replace `OWNER/REPO` with your actual organization and repository name
+  # 5. Test the link in the issue template chooser to verify it works
+  #
+  # CUSTOMIZE: Uncomment the following block if your repository uses GitHub
+  # Discussions for Q&A.
+  # =============================================================================
+  # - name: 💬 Questions & Discussions
+  #   url: https://github.com/OWNER/REPO/discussions
+  #   about: Ask questions and discuss ideas (not for bug reports)
+
+  # =============================================================================
+  # SUPPORT / FAQ LINK (OPTIONAL)
+  # =============================================================================
+  # Use this link if your repository does NOT enable GitHub Discussions but you
+  # want to redirect support questions away from issues.
+  #
+  # ACTION ITEM: If you don't enable Discussions (see above), consider:
+  # 1. Adding a "## Support" section to your README.md
+  # 2. Uncommenting and updating the URL below to point to that section
+  #
+  # The URL assumes your README has a #support anchor. Update the URL if your
+  # support section has a different anchor or is in a different location.
+  # =============================================================================
+  # - name: ❓ Support / FAQ
+  #   url: https://github.com/OWNER/REPO#support
+  #   about: Common questions, FAQs, and support guidance

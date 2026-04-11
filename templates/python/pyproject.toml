@@ -1,0 +1,79 @@
+# Sample pyproject.toml for Python projects
+# This file demonstrates how to configure Python tooling to align with the coding standards
+# in .github/instructions/python.instructions.md
+#
+# Copy this file to your project root and customize the [project] section.
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "your-project-name"
+version = "0.1.0"
+description = "Project description"
+readme = "README.md"
+# Python Version Policy:
+# Always require a Python version that is currently receiving bugfixes.
+# Check https://devguide.python.org/versions/ for current version status.
+# Update this when upstream support changes (typically annually around October).
+requires-python = ">=3.13"
+license = "MIT"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+keywords = []
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Runtime dependencies
+dependencies = []
+
+# Development dependencies
+# Note: pre-commit is intentionally NOT included here.
+# Install pre-commit globally via: pip install pre-commit
+# See CONTRIBUTING.md for details.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.9.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+]
+
+[tool.black]
+line-length = 100
+# Update target-version when minimum Python version changes.
+# Black uses a list of "pyXYZ" strings (e.g., ["py313"] for Python 3.13).
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 100
+# Note: Ruff automatically infers target-version from [project].requires-python
+# Only set target-version here if you need to override the inferred value.
+# If set, use the format: target-version = "py313" (single string, not a list).
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501"]  # line too long handled by black
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+# Update python_version when minimum Python version changes.
+# mypy uses a dotted version string (e.g., "3.13" for Python 3.13).
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+# Start permissive, tighten later as project matures
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

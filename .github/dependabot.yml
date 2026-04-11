@@ -1,0 +1,67 @@
+# Dependabot Configuration
+#
+# Purpose: Automatically monitor and create PRs for dependency updates
+#
+# This configuration monitors:
+#   - npm (package.json) - Node.js dependencies for dev tooling
+#   - pip (pyproject.toml) - Python dependencies
+#   - GitHub Actions (workflows) - Action version updates
+#
+# Update schedule: Weekly (reduces PR noise while maintaining currency)
+#
+# Grouping strategy: Minor and patch updates are grouped to reduce PR volume.
+# Major updates create individual PRs since they may contain breaking changes.
+#
+# TEMPLATE NOTE: This is enabled by default because security-conscious defaults
+# are appropriate for template repositories. To disable Dependabot, delete this
+# file. To customize, see: https://docs.github.com/en/code-security/dependabot
+
+version: 2
+updates:
+  # npm dependencies (package.json)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 10
+
+  # Python dependencies (pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      pip-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions (workflows)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+    open-pull-requests-limit: 10
