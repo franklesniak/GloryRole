@@ -23,8 +23,8 @@ This installs Node.js dependencies for markdown linting scripts. Git hooks are m
 
 This repository uses pre-commit for git hooks. Configured hooks include:
 
-- **Formatting**: Black (Python), trailing whitespace, end-of-file fixer
-- **Linting**: Ruff (Python), markdownlint (Markdown), YAML validation
+- **Formatting**: Trailing whitespace removal, end-of-file fixer
+- **Linting**: markdownlint (Markdown), YAML validation
 - **Safety**: Large file detection
 
 If you need to bypass hooks temporarily (not recommended):
@@ -61,9 +61,8 @@ pipx install pre-commit
 #### Why Not a Dev Dependency?
 
 - `pre-commit` is a **development tool**, not a project runtime or test dependency
-- It manages its own isolated environments for hooks (including Python tools like Black and Ruff)
+- It manages its own isolated environments for hooks
 - Installing it globally or via `pipx` keeps it separate from project dependencies
-- This is the standard practice in the Python community
 - CI workflows install `pre-commit` separately in their own steps
 
 ### 4. Install Pre-commit Hooks
@@ -98,8 +97,7 @@ pre-commit run
 
 Pre-commit hooks are NOT optional. They enforce:
 
-- Code formatting (Black for Python, markdownlint for Markdown)
-- Linting (Ruff for Python)
+- Code formatting (markdownlint for Markdown, whitespace cleanup)
 - Trailing whitespace removal
 - End-of-file fixes
 - YAML validation
