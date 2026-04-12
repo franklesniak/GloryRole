@@ -82,6 +82,19 @@ Run the Pester test suite:
 Invoke-Pester -Path ./tests/PowerShell -Output Detailed
 ```
 
+## Build
+
+Generate the bundled module artifact:
+
+```powershell
+./build/Build-Module.ps1
+```
+
+This produces:
+
+- `out/GloryRole/GloryRole.psm1`
+- `out/GloryRole/GloryRole.psd1`
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
