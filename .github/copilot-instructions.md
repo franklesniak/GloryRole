@@ -1,12 +1,13 @@
 # Repository Copilot Instructions (Repo-Wide Constitution)
 
-**Version:** 1.1.20260112.0
+**Version:** 1.2.20260412.0
 
 These instructions are authoritative for all changes in this repository.
 
 ## Source of Truth
 
 > Read the project [README.md](../README.md) before making changes.
+> If the README content is already present in your current agent context, or you already read it earlier in the current task, you MAY rely on that content and MUST NOT re-read the file from disk solely to satisfy this directive. You SHOULD re-read the repository copy only when you need to verify the current on-disk contents or resolve ambiguity.
 > If any instruction here conflicts with the README, **the README wins**.
 
 ## Non-negotiable Safety and Security Rules
@@ -136,6 +137,8 @@ This repository uses modular instruction files for language-specific standards:
 | Terraform | `.github/instructions/terraform.instructions.md` | `**/*.tf`, `**/*.tfvars`, `**/*.tftest.hcl` |
 
 **Note:** The PowerShell instructions include comprehensive guidance on Pester testing. Python and Terraform instruction files are retained for future use when those languages are added to the repository.
+
+If an applicable instruction file is already present in the agent's current context, that satisfies the requirement to read it before modifying matching files. Re-read the file from disk only when you need to verify the repository copy and current on-disk contents, or when the instruction file was not already provided in context.
 
 ## Agent Instruction Files
 
