@@ -61,7 +61,7 @@ function ConvertTo-VectorRow {
     # [pscustomobject] Vector row objects with PrincipalKey, Vector, and
     # TotalActions properties.
     # .NOTES
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260412.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

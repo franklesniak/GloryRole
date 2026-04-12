@@ -56,7 +56,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.0.20260410.0
+    # Version: 2.0.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

@@ -61,7 +61,7 @@ function Measure-PrincipalActionCountQuality {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
