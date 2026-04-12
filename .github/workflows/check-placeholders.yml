@@ -17,32 +17,31 @@
 # =============================================================================
 # HOW THIS WORKFLOW OPERATES
 # =============================================================================
-# This workflow runs AUTOMATICALLY in all repositories created from this
-# template. It is automatically DISABLED in the template repository itself
-# to avoid spurious failures.
+# This workflow is configured for MANUAL invocation only via workflow_dispatch.
+# Automatic triggers (push, pull_request) have been removed because all
+# OWNER/REPO placeholder replacements for this repository have been completed
+# and verified.
 #
-# Implementation:
+# The workflow is retained for optional manual invocation (e.g., after large
+# re-templating operations or to verify placeholder hygiene on demand).
+#
+# The job-level condition still skips execution in the template repository:
 #   if: github.repository != 'franklesniak/copilot-repo-template'
-#
-# This means:
-#   - ✅ Zero configuration required for adopters
-#   - ✅ Workflow activates automatically on first push/PR
-#   - ✅ Template maintainers don't get spurious failures
-#
-# NO CONFIGURATION REQUIRED - the workflow runs automatically on:
-#   - Pull requests to any branch
-#   - Pushes to any branch
-#   - Manual workflow_dispatch triggers
 #
 # =============================================================================
 # HISTORICAL CONTEXT
 # =============================================================================
-# Previous versions of this template required setting a `TEMPLATE_INITIALIZED`
-# repository variable to enable this workflow. That approach was replaced with
-# automatic detection to:
-#   - Reduce adoption friction (no configuration step to remember)
-#   - Eliminate the "forgot to configure" failure mode
-#   - Provide better out-of-box experience for template adopters
+# In the original template repository, this workflow ran automatically on push
+# and pull_request events with zero configuration required for adopters. It was
+# automatically disabled in the template repository itself via the job-level
+# condition above.
+#
+# Previous versions of the template also required setting a
+# `TEMPLATE_INITIALIZED` repository variable to enable this workflow. That
+# approach was replaced with automatic detection to reduce adoption friction.
+#
+# Once all placeholders in this repository were replaced, automatic triggers
+# were removed to avoid unnecessary CI runs on every push and PR.
 # =============================================================================
 
 name: Check Placeholders
