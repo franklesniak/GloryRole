@@ -95,7 +95,7 @@ function Invoke-AutoKSelection {
     # This function supports positional parameters:
     #   Position 0: VectorRows
     #
-    # Version: 2.1.20260410.0
+    # Version: 2.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

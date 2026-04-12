@@ -68,7 +68,7 @@ function Remove-RareAction {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 1.1.20260410.1
+    # Version: 1.2.20260412.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

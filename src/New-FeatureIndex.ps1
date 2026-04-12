@@ -48,7 +48,7 @@ function New-FeatureIndex {
     # [pscustomobject] An object with FeatureNames (sorted action array)
     # and FeatureIndex (action-to-index hashtable).
     # .NOTES
-    # Version: 2.0.20260410.0
+    # Version: 2.0.20260412.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

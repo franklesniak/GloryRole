@@ -64,7 +64,7 @@ function Get-AzActivityAdminEvent {
     #   Position 1: End
     #   Position 2: SubscriptionIds
     #
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

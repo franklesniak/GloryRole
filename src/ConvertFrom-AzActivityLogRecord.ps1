@@ -41,7 +41,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

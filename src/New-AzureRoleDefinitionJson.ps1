@@ -46,7 +46,7 @@ function New-AzureRoleDefinitionJson {
     #   Position 2: Actions
     #   Position 3: AssignableScopes
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260412.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

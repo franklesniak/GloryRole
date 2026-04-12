@@ -51,7 +51,7 @@ function ConvertTo-TfIdfCount {
     # weighted counts.
     # Returns no objects when the input contains no principals (empty input).
     # .NOTES
-    # Version: 1.2.20260410.1
+    # Version: 1.3.20260412.0
     #
     # This function supports positional parameters:
     #   Position 0: Counts
