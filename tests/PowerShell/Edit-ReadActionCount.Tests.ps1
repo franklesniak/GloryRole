@@ -1,5 +1,6 @@
 BeforeAll {
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $repoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'Edit-ReadActionCount.ps1')
 }
 

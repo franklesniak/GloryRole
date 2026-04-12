@@ -4,7 +4,8 @@ BeforeAll {
         param ($WorkspaceId, $Query)
     }
     # Avoid relative-path segments per style guide checklist item
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $repoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-NormalizedAction.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Import-PrincipalActionCountFromLogAnalytics.ps1')
 }

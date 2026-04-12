@@ -1,5 +1,6 @@
 BeforeAll {
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $repoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'Get-SquaredEuclideanDistance.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Get-DaviesBouldinIndex.ps1')
 }

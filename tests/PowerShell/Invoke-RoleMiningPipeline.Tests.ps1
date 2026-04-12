@@ -1,8 +1,10 @@
 BeforeAll {
-    # Avoid relative-path segments per style guide checklist item
-    $strParentPath = Split-Path -Path $PSScriptRoot -Parent
-    $script:strScriptPath = Join-Path -Path (Join-Path -Path $strParentPath -ChildPath 'src') -ChildPath 'Invoke-RoleMiningPipeline.ps1'
-    $script:strCsvPath = Join-Path -Path (Join-Path -Path $strParentPath -ChildPath 'samples') -ChildPath 'principal_action_counts.csv'
+    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $srcRoot = Join-Path -Path $repoRoot -ChildPath 'src'
+    $samplesRoot = Join-Path -Path $repoRoot -ChildPath 'samples'
+
+    $script:strScriptPath = Join-Path -Path $srcRoot -ChildPath 'Invoke-RoleMiningPipeline.ps1'
+    $script:strCsvPath = Join-Path -Path $samplesRoot -ChildPath 'principal_action_counts.csv'
 }
 
 Describe "Invoke-RoleMiningPipeline" {
