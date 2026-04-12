@@ -64,7 +64,7 @@ function Invoke-KMeansClustering {
     #   Position 2: MaxIterations
     #   Position 3: Seed
     #
-    # Version: 1.2.20260410.0
+    # Version: 1.2.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
