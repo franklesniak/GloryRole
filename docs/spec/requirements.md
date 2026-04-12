@@ -106,7 +106,7 @@ Dense vector representation for clustering input.
 
 - **REQ-ING-003:** The system MUST support ingesting sparse triples from a
   local CSV file.
-  - **Rationale:** Deterministic demo support at the Summit.
+  - **Rationale:** Deterministic demo and CI testing support.
   - **Verification:** Unit test with sample CSV.
 
 ### Canonicalization
@@ -225,6 +225,5 @@ The orchestration entry point MUST execute the following stages in order:
 
 ## Open Questions
 
-- **OQ-1:** Tool name — currently `GloryRole`. Owner: Frank Lesniak.
 - **OQ-2:** Whether to include the optional AI naming assist in the initial
   release. Owner: Frank Lesniak, Danny Stutz.

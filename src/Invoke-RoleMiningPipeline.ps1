@@ -1,5 +1,5 @@
 # .SYNOPSIS
-# RoleMiner orchestration entry point.
+# GloryRole orchestration entry point.
 #
 # .DESCRIPTION
 # Executes the full role-mining pipeline: ingest activity data, quality
@@ -83,7 +83,7 @@
 # is @('/').
 #
 # .PARAMETER RoleNamePrefix
-# Prefix for generated role names. Default is 'RoleMiner-Cluster'.
+# Prefix for generated role names. Default is 'GloryRole-Cluster'.
 #
 # .INPUTS
 # None. This script does not accept pipeline input.
@@ -102,21 +102,21 @@
 #     exported
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/conference-talk-development/2026/PSHSummit/role-mining/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
 # # Runs the pipeline in CSV mode. The returned object contains
 # # RecommendedK, Candidates, ClusterActions, Quality, and OutputPath
 # # properties summarizing the role-mining results.
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/conference-talk-development/2026/PSHSummit/role-mining/src/Invoke-RoleMiningPipeline.ps1') -InputMode ActivityLog -SubscriptionIds @('00000000-0000-0000-0000-000000000001') -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode ActivityLog -SubscriptionIds @('00000000-0000-0000-0000-000000000001') -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
 # # Runs the pipeline in ActivityLog mode. Queries the Azure Activity
 # # Log for the specified subscription over the last 30 days and
 # # processes the results through the full pipeline.
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/conference-talk-development/2026/PSHSummit/role-mining/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
 # # Runs the pipeline in LogAnalytics mode. Queries the specified Log
 # # Analytics workspace for activity data over the last 30 days and
@@ -175,7 +175,7 @@ param (
     [int]$Seed = 42,
 
     [string[]]$AssignableScopes = @('/'),
-    [string]$RoleNamePrefix = 'RoleMiner-Cluster'
+    [string]$RoleNamePrefix = 'GloryRole-Cluster'
 )
 
 Set-StrictMode -Version Latest

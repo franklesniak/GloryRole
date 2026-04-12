@@ -7,7 +7,7 @@ function Import-PrincipalActionCountFromCsv {
     # Reads a CSV file containing PrincipalKey, Action, and Count columns
     # and returns PrincipalActionCount sparse triples. Actions are
     # normalized during import. This is the recommended ingestion mode for
-    # deterministic Summit demos.
+    # deterministic demos and CI testing.
     # .PARAMETER Path
     # The path to the CSV file containing sparse triples.
     # .EXAMPLE
