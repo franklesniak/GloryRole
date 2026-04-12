@@ -1,6 +1,6 @@
 # Agent Instructions for OpenAI Codex CLI
 
-**Version:** 1.1.20260411.0
+**Version:** 1.1.20260412.0
 
 This file provides project-specific instructions for OpenAI Codex CLI and compatible
 AI coding agents operating in this repository. These instructions ensure that agents
@@ -11,7 +11,7 @@ contributors.
 
 The authoritative source of truth for all repository rules is
 **`.github/copilot-instructions.md`** (the repo-wide constitution). All rules
-defined there apply without exception. **Read that file before making any changes unless it is already present in your current agent context; if it is already present, you may rely on the injected copy and only re-read from disk when you need to verify the repository version.**
+defined there apply without exception. **Read that file before making any changes unless it is already present in your current agent context; if it is already present, you may rely on the injected copy and only re-read from disk when you need to verify the repository copy and current on-disk contents.**
 
 This file provides an inline summary of the most critical rules so that agents
 receive essential guidance without requiring an additional file read.
@@ -72,7 +72,7 @@ This repository uses modular instruction files for language-specific coding
 standards. **Read the relevant instruction file before modifying files that match
 its pattern unless it is already present in your current agent context; if it is
 already present, you may rely on the injected copy and only re-read from disk
-when you need to verify the repository version.**
+when you need to verify the repository copy and current on-disk contents.**
 
 | Language | Instruction File | Applies To |
 | --- | --- | --- |
