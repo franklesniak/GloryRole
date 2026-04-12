@@ -130,7 +130,7 @@ Describe "Get-ActionStatFromCount" {
             )
 
             # Act
-            $arrResult = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
+            $null = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
 
             # Assert
             $err.Count | Should -BeGreaterOrEqual 1
@@ -143,7 +143,7 @@ Describe "Get-ActionStatFromCount" {
             )
 
             # Act
-            $arrResult = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
+            $null = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
 
             # Assert
             $err.Count | Should -BeGreaterOrEqual 1

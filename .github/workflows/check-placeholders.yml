@@ -47,9 +47,11 @@
 
 name: Check Placeholders
 
+# Automatic triggers have been removed because OWNER/REPO placeholder
+# replacement for this repository has been completed and verified. The
+# workflow is retained here for reference and for optional manual invocation
+# via workflow_dispatch (e.g., after large re-templating operations).
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:

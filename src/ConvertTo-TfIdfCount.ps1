@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 
 function ConvertTo-TfIdfCount {
     # .SYNOPSIS
@@ -70,6 +70,7 @@ function ConvertTo-TfIdfCount {
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts
     )
 

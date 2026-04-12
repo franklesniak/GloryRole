@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 
 function Invoke-AutoKSelection {
     # .SYNOPSIS
@@ -162,15 +162,15 @@ function Invoke-AutoKSelection {
                     -ErrorAction Stop
 
                 [void]($listStats.Add([pscustomobject]@{
-                    K = $intKValue
-                    SSE = [double]$objKmResult.SSE
-                    Silhouette = [double]$dblSilhouette
-                    DaviesBouldin = [double]$dblDaviesBouldin
-                    CalinskiHarabasz = [double]$dblCalinskiHarabasz
-                    WCSSFirstDeriv = $null
-                    WCSSSecondDeriv = $null
-                    Model = $objKmResult
-                }))
+                            K = $intKValue
+                            SSE = [double]$objKmResult.SSE
+                            Silhouette = [double]$dblSilhouette
+                            DaviesBouldin = [double]$dblDaviesBouldin
+                            CalinskiHarabasz = [double]$dblCalinskiHarabasz
+                            WCSSFirstDeriv = $null
+                            WCSSSecondDeriv = $null
+                            Model = $objKmResult
+                        }))
             } catch {
                 Write-Debug ("Invoke-AutoKSelection: K={0} evaluation failed: {1}" -f $intKValue, $(if ($_.Exception.Message) { $_.Exception.Message } else { $_.ToString() }))
                 throw
@@ -365,8 +365,8 @@ function Invoke-AutoKSelection {
         Write-Verbose ("Selected K={0} with composite rank {1:F4}" -f $objBest.K, $objBest.CompositeRank)
 
         $arrCandidates = @($listStats |
-            Sort-Object -Property K |
-            Select-Object -Property K, SSE, Silhouette, DaviesBouldin, CalinskiHarabasz,
+                Sort-Object -Property K |
+                Select-Object -Property K, SSE, Silhouette, DaviesBouldin, CalinskiHarabasz,
                 WCSSSecondDeriv, WCSSRank, WCSSSecondDerivRank, SilhouetteRank,
                 DaviesBouldinRank, CalinskiHarabaszRank, CompositeRank)
 

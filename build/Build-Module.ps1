@@ -92,6 +92,6 @@ if (Test-Path -Path $samplesPath) {
 
 # Validate the manifest loads
 $manifest = Test-ModuleManifest -Path $psd1Destination
-Write-Host "Built module: $($manifest.Name) v$($manifest.Version)"
-Write-Host "  $psm1Path"
-Write-Host "  $psd1Destination"
+Write-Information -MessageData "Built module: $($manifest.Name) v$($manifest.Version)" -InformationAction Continue
+Write-Information -MessageData "  $psm1Path" -InformationAction Continue
+Write-Information -MessageData "  $psd1Destination" -InformationAction Continue

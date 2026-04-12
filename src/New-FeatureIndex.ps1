@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 
 function New-FeatureIndex {
     # .SYNOPSIS
@@ -61,6 +61,9 @@ function New-FeatureIndex {
     # This function supports positional parameters:
     #   Position 0: PrincipalActionCounts
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "New-" verb constructs an in-memory index object; no external or system state is modified, so ShouldProcess support is not applicable.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (
@@ -73,8 +76,8 @@ function New-FeatureIndex {
             Write-Verbose -Message ("Extracting unique features from {0} sparse triples..." -f $PrincipalActionCounts.Count)
 
             $arrFeatures = @($PrincipalActionCounts |
-                Select-Object -ExpandProperty Action |
-                Sort-Object -Unique)
+                    Select-Object -ExpandProperty Action |
+                    Sort-Object -Unique)
 
             Write-Debug -Message ("Feature index internal state: {0} input counts, {1} unique features so far." -f $PrincipalActionCounts.Count, $arrFeatures.Count)
 

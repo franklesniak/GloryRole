@@ -70,10 +70,14 @@ function Remove-RareAction {
     #
     # Version: 1.1.20260410.1
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "Remove-" verb filters an in-memory collection and returns a new result object; it does not mutate any external or system state that would warrant ShouldProcess support.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts,
 
         [int]$MinDistinctPrincipals = 2,

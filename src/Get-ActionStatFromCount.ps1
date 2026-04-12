@@ -53,6 +53,7 @@ function Get-ActionStatFromCount {
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts
     )
 
