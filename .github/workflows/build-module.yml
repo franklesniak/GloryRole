@@ -1,0 +1,38 @@
+name: Build Module
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build GloryRole Module
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build module
+        shell: pwsh
+        run: ./build/Build-Module.ps1
+
+      - name: Validate module loads
+        shell: pwsh
+        run: |
+          $manifest = Test-ModuleManifest -Path out/GloryRole/GloryRole.psd1
+          Write-Host "Module: $($manifest.Name) v$($manifest.Version)"
+          Write-Host "Exported functions: $($manifest.ExportedFunctions.Count)"
+
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GloryRole-module
+          path: out/GloryRole/
+          retention-days: 30

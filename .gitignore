@@ -5,7 +5,15 @@ node_modules/
 .env
 dist/
 out/
+output/
 .cache/
+
+# Test artifacts
+testResults.xml
+
+# Temp/logs
+*.tmp
+*.log
 
 # Pre-commit
 .pre-commit-cache/
