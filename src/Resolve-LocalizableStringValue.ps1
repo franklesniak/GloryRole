@@ -38,8 +38,17 @@ function Resolve-LocalizableStringValue {
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
-    # [string] The resolved text value. Returns $null when the input is
-    # $null or is an object that exposes neither .Value nor .LocalizedValue.
+    # [string] The resolved text value. Returns $null in any of the
+    # following cases, so callers can distinguish "absent" from "present
+    # but empty":
+    #   - The input is $null.
+    #   - The input is an object that exposes neither .Value nor
+    #     .LocalizedValue.
+    #   - The input is an object whose .Value and .LocalizedValue
+    #     properties both exist but have a $null underlying value.
+    # Returns the empty string '' (not $null) when the input is itself
+    # an empty [string], because that case is a present-but-empty value
+    # rather than an absent one.
     # .NOTES
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
@@ -54,7 +63,7 @@ function Resolve-LocalizableStringValue {
     # This function supports positional parameters:
     #   Position 0: InputObject
     #
-    # Version: 1.0.20260413.0
+    # Version: 1.0.20260413.1
 
     [CmdletBinding()]
     [OutputType([string])]
