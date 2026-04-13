@@ -35,10 +35,10 @@ function New-FeatureIndex {
     # )
     # $objIndex = New-FeatureIndex -PrincipalActionCounts $arrCounts
     # # $objIndex.FeatureNames.Count
-    # # # Returns 2 (not 3), because 'read' appears under both principals
-    # # # but is deduplicated to a single feature.
+    # # Returns 2 (not 3), because 'read' appears under both principals
+    # # but is deduplicated to a single feature.
     # # $objIndex.FeatureIndex
-    # # # @{ 'read' = 0; 'write' = 1 }
+    # # @{ 'read' = 0; 'write' = 1 }
     #
     # # Demonstrates deduplication: even though three input objects exist,
     # # the feature index contains only the two unique action names.
