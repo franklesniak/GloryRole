@@ -48,4 +48,3 @@ immediately. The full shared rule set remains in the canonical file above.
   - Add new major dependencies without clear justification.
   - Invent behavior when requirements are ambiguous; use an explicit Open Question.
   - Create separate formatting-only or lint-only commits.
-

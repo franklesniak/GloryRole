@@ -21,9 +21,9 @@ function Get-ApproximateSilhouetteScore {
     # Random seed for reproducible sampling. Default is 42.
     # .EXAMPLE
     # $dblScore = Get-ApproximateSilhouetteScore -VectorRows $arrRows -KMeansResult $objKm
-    # # # Returns a value between -1.0 and 1.0
-    # # # Computes the approximate silhouette score using default SampleSize
-    # # # (200) and Seed (42).
+    # # Returns a value between -1.0 and 1.0
+    # # Computes the approximate silhouette score using default SampleSize
+    # # (200) and Seed (42).
     # .EXAMPLE
     # $arrRows = @(
     #     [pscustomobject]@{ PrincipalKey = 'a1'; Vector = [double[]]@(1.0, 2.0) }
@@ -33,10 +33,10 @@ function Get-ApproximateSilhouetteScore {
     #     Assignments = @{ 'a1' = 0 }
     # }
     # $dblScore = Get-ApproximateSilhouetteScore -VectorRows $arrRows -KMeansResult $objKm
-    # # # Returns: 0.0
-    # # # When 2 or fewer data points are provided, the function's early-exit
-    # # # guard returns 0.0 because a meaningful silhouette computation
-    # # # requires at least 3 points.
+    # # Returns: 0.0
+    # # When 2 or fewer data points are provided, the function's early-exit
+    # # guard returns 0.0 because a meaningful silhouette computation
+    # # requires at least 3 points.
     # .EXAMPLE
     # $arrRows = @(
     #     [pscustomobject]@{ PrincipalKey = 'a1'; Vector = [double[]]@(0.0, 0.0) }
@@ -51,10 +51,10 @@ function Get-ApproximateSilhouetteScore {
     #     Assignments = @{ 'a1' = 0; 'a2' = 0; 'a3' = 0; 'b1' = 1; 'b2' = 1; 'b3' = 1 }
     # }
     # $dblScore = Get-ApproximateSilhouetteScore -VectorRows $arrRows -KMeansResult $objKm -SampleSize 6 -Seed 123
-    # # # Returns a score close to 1.0 for well-separated clusters.
-    # # # The -SampleSize parameter controls the number of points sampled for
-    # # # computation (here all 6 points). The -Seed parameter ensures
-    # # # reproducible sampling so repeated calls return the same result.
+    # # Returns a score close to 1.0 for well-separated clusters.
+    # # The -SampleSize parameter controls the number of points sampled for
+    # # computation (here all 6 points). The -Seed parameter ensures
+    # # reproducible sampling so repeated calls return the same result.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS

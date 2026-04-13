@@ -1,6 +1,7 @@
 BeforeAll {
     # Avoid relative-path segments per style guide checklist item
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'Get-ActionStatFromCount.ps1')
 }
 
@@ -129,7 +130,7 @@ Describe "Get-ActionStatFromCount" {
             )
 
             # Act
-            $arrResult = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
+            $null = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
 
             # Assert
             $err.Count | Should -BeGreaterOrEqual 1
@@ -142,7 +143,7 @@ Describe "Get-ActionStatFromCount" {
             )
 
             # Act
-            $arrResult = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
+            $null = @(Get-ActionStatFromCount -Counts $arrCounts -ErrorVariable err -ErrorAction SilentlyContinue)
 
             # Assert
             $err.Count | Should -BeGreaterOrEqual 1

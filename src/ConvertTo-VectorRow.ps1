@@ -26,13 +26,13 @@ function ConvertTo-VectorRow {
     # $objIndex = New-FeatureIndex -PrincipalActionCounts $arrCounts
     # $arrRows = @(ConvertTo-VectorRow -Counts $arrCounts -FeatureIndexObject $objIndex)
     # # $arrRows.Count
-    # # # Returns 1
+    # # Returns 1
     # # $arrRows[0].Vector.Length
-    # # # Returns 1 (matches the single feature in the index)
+    # # Returns 1 (matches the single feature in the index)
     # # $arrRows[0].Vector[0]
-    # # # Returns 7.0
+    # # Returns 7.0
     # # $arrRows[0].TotalActions
-    # # # Returns 7.0
+    # # Returns 7.0
     #
     # # Demonstrates minimal valid input: a single principal with a single
     # # action count. The vector dimension matches the feature count (1),
@@ -47,10 +47,10 @@ function ConvertTo-VectorRow {
     # $arrRows = @(ConvertTo-VectorRow -Counts $arrCounts -FeatureIndexObject $objIndex)
     # $objUser2 = $arrRows | Where-Object { $_.PrincipalKey -eq 'user2' }
     # # $objUser2.Vector
-    # # # Returns @(1.0, 0.0) — 'read' is at index 0 with count 1.0,
-    # # # 'write' is at index 1 with count 0.0 (zero-filled).
+    # # Returns @(1.0, 0.0) -- 'read' is at index 0 with count 1.0,
+    # # 'write' is at index 1 with count 0.0 (zero-filled).
     # # $objUser2.TotalActions
-    # # # Returns 1.0
+    # # Returns 1.0
     #
     # # Demonstrates zero-fill behavior for missing actions. User2 has
     # # only the 'read' action, so the 'write' position is filled with
@@ -61,7 +61,7 @@ function ConvertTo-VectorRow {
     # [pscustomobject] Vector row objects with PrincipalKey, Vector, and
     # TotalActions properties.
     # .NOTES
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260413.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

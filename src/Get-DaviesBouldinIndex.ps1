@@ -25,9 +25,9 @@ function Get-DaviesBouldinIndex {
     #     SSE = 0.0
     # }
     # $dblDb = Get-DaviesBouldinIndex -VectorRows $arrRows -KMeansResult $objSingleCluster
-    # # # Returns 0.0 because the Davies-Bouldin index is undefined for
-    # # # fewer than two clusters. When K < 2, the function returns 0.0
-    # # # without computing the metric.
+    # # Returns 0.0 because the Davies-Bouldin index is undefined for
+    # # fewer than two clusters. When K < 2, the function returns 0.0
+    # # without computing the metric.
     # .EXAMPLE
     # $objCoincident = [pscustomobject]@{
     #     K = 2
@@ -36,9 +36,9 @@ function Get-DaviesBouldinIndex {
     #     SSE = 0.5
     # }
     # $dblDb = Get-DaviesBouldinIndex -VectorRows $arrRows -KMeansResult $objCoincident
-    # # # Returns [double]::PositiveInfinity because the two cluster
-    # # # centroids are identical (coincident). Dividing the sum of
-    # # # scatter values by a zero inter-centroid distance yields infinity.
+    # # Returns [double]::PositiveInfinity because the two cluster
+    # # centroids are identical (coincident). Dividing the sum of
+    # # scatter values by a zero inter-centroid distance yields infinity.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS

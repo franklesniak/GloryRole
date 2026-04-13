@@ -29,10 +29,10 @@ function Get-ClusterActionSet {
     # # )
     # # $hashAssignments = @{ 'userA' = 0 }
     # $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
-    # # # 'unknownUser' is not in $hashAssignments, so it is skipped.
-    # # # $arrResult.Count = 1
-    # # # $arrResult[0].ClusterId = 0
-    # # # $arrResult[0].Actions = @('read')
+    # # 'unknownUser' is not in $hashAssignments, so it is skipped.
+    # # $arrResult.Count = 1
+    # # $arrResult[0].ClusterId = 0
+    # # $arrResult[0].Actions = @('read')
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -56,7 +56,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.0.20260410.0
+    # Version: 2.0.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -99,7 +99,7 @@ function Get-ClusterActionSet {
         } catch {
             $strErrorMessage = $null
             if ($null -ne $_ -and $null -ne $_.Exception -and
-                    -not [string]::IsNullOrEmpty($_.Exception.Message)) {
+                -not [string]::IsNullOrEmpty($_.Exception.Message)) {
                 $strErrorMessage = $_.Exception.Message
             } else {
                 $strErrorMessage = ($_ | Out-String)

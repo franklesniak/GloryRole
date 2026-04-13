@@ -26,12 +26,12 @@ function Invoke-KMeansClustering {
     # .EXAMPLE
     # $objResult = Invoke-KMeansClustering -VectorRows $arrRows -K 3 -MaxIterations 100 -Seed 7
     # # Returns a [pscustomobject] with the following properties:
-    # # $objResult.K — the number of clusters requested (3)
-    # # $objResult.Assignments — a [hashtable] mapping each PrincipalKey
+    # # $objResult.K -- the number of clusters requested (3)
+    # # $objResult.Assignments -- a [hashtable] mapping each PrincipalKey
     # #     (string) to its zero-based cluster index (integer)
-    # # $objResult.Centroids — a [System.Collections.Generic.List[double[]]]
+    # # $objResult.Centroids -- a [System.Collections.Generic.List[double[]]]
     # #     containing the centroid vectors for each cluster
-    # # $objResult.SSE — a [double] representing the sum of squared errors
+    # # $objResult.SSE -- a [double] representing the sum of squared errors
     # #     across all clusters
     # .INPUTS
     # None. You cannot pipe objects to this function.
@@ -64,7 +64,7 @@ function Invoke-KMeansClustering {
     #   Position 2: MaxIterations
     #   Position 3: Seed
     #
-    # Version: 1.2.20260410.0
+    # Version: 1.2.20260413.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

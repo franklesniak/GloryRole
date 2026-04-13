@@ -42,8 +42,11 @@ function Remove-DuplicateCanonicalEvent {
     # This function supports positional parameters:
     #   Position 0: Events
     #
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260412.0
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "Remove-" verb filters an in-memory event collection and streams the deduplicated objects to the pipeline; it does not mutate any external or system state that would warrant ShouldProcess support.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (

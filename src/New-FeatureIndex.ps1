@@ -35,10 +35,10 @@ function New-FeatureIndex {
     # )
     # $objIndex = New-FeatureIndex -PrincipalActionCounts $arrCounts
     # # $objIndex.FeatureNames.Count
-    # # # Returns 2 (not 3), because 'read' appears under both principals
-    # # # but is deduplicated to a single feature.
+    # # Returns 2 (not 3), because 'read' appears under both principals
+    # # but is deduplicated to a single feature.
     # # $objIndex.FeatureIndex
-    # # # @{ 'read' = 0; 'write' = 1 }
+    # # @{ 'read' = 0; 'write' = 1 }
     #
     # # Demonstrates deduplication: even though three input objects exist,
     # # the feature index contains only the two unique action names.
@@ -48,7 +48,7 @@ function New-FeatureIndex {
     # [pscustomobject] An object with FeatureNames (sorted action array)
     # and FeatureIndex (action-to-index hashtable).
     # .NOTES
-    # Version: 2.0.20260410.0
+    # Version: 2.0.20260412.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -61,6 +61,9 @@ function New-FeatureIndex {
     # This function supports positional parameters:
     #   Position 0: PrincipalActionCounts
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "New-" verb constructs an in-memory index object; no external or system state is modified, so ShouldProcess support is not applicable.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (
@@ -73,8 +76,8 @@ function New-FeatureIndex {
             Write-Verbose -Message ("Extracting unique features from {0} sparse triples..." -f $PrincipalActionCounts.Count)
 
             $arrFeatures = @($PrincipalActionCounts |
-                Select-Object -ExpandProperty Action |
-                Sort-Object -Unique)
+                    Select-Object -ExpandProperty Action |
+                    Sort-Object -Unique)
 
             Write-Debug -Message ("Feature index internal state: {0} input counts, {1} unique features so far." -f $PrincipalActionCounts.Count, $arrFeatures.Count)
 

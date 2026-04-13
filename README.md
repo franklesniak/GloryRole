@@ -1,7 +1,5 @@
 # GloryRole
 
-> **Note:** This repository was created from [`franklesniak/copilot-repo-template`](https://github.com/franklesniak/copilot-repo-template).
-
 ## Description
 
 GloryRole is an unsupervised role mining engine written entirely in PowerShell. Instead of guessing at what cloud roles should look like, it derives them from evidence -- specifically, from what your identities *actually do* in your cloud environment. Feed it activity logs and it produces production-ready custom role definitions with only the permissions your people and service accounts truly need.
@@ -71,6 +69,31 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 - **Cloud administrators** managing Azure environments with permission sprawl who want to right-size roles
 - **IAM teams** building governance programs who need audit artifacts to justify role changes
 - **PowerShell practitioners** interested in applied machine learning -- a real-world K-Means clustering pipeline built in pure PowerShell with no external ML dependencies
+
+## Documentation
+
+- [Specification](docs/spec/requirements.md) — Requirements, data contracts, and design
+
+## Testing
+
+Run the Pester test suite:
+
+```powershell
+Invoke-Pester -Path ./tests/PowerShell -Output Detailed
+```
+
+## Build
+
+Generate the bundled module artifact:
+
+```powershell
+./build/Build-Module.ps1
+```
+
+This produces:
+
+- `out/GloryRole/GloryRole.psm1`
+- `out/GloryRole/GloryRole.psd1`
 
 ## Contributing
 

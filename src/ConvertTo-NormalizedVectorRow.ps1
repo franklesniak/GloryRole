@@ -33,16 +33,16 @@ function ConvertTo-NormalizedVectorRow {
     # $objRow2 = [pscustomobject]@{ PrincipalKey = 'user2'; Vector = @(0.0, 1.0) }
     # $arrResult = @(ConvertTo-NormalizedVectorRow -VectorRows @($objRow1, $objRow2))
     # # $arrResult.Count = 2
-    # # $arrResult[0].Vector[0] ≈ 0.7168 (Log1P then L2-normalized)
-    # # $arrResult[0].Vector[1] ≈ 0.6973
+    # # $arrResult[0].Vector[0] ~= 0.7168 (Log1P then L2-normalized)
+    # # $arrResult[0].Vector[1] ~= 0.6973
     # # Both Log1P and L2 normalization are applied by default. The
     # # result vectors have unit length (L2 norm = 1.0).
     # .EXAMPLE
     # $objRow = [pscustomobject]@{ PrincipalKey = 'user1'; Vector = @(0.0, 1.0, 9.0) }
     # $arrResult = @(ConvertTo-NormalizedVectorRow -VectorRows @($objRow) -L2 $false)
     # # $arrResult[0].Vector[0] = 0.0       (Log1P(0) = 0)
-    # # $arrResult[0].Vector[1] ≈ 0.6931    (Log1P(1) = ln(2))
-    # # $arrResult[0].Vector[2] ≈ 2.3026    (Log1P(9) = ln(10))
+    # # $arrResult[0].Vector[1] ~= 0.6931    (Log1P(1) = ln(2))
+    # # $arrResult[0].Vector[2] ~= 2.3026    (Log1P(9) = ln(10))
     # # Only Log1P transformation is applied. Each output element equals
     # # [Math]::Log(1 + x) for the corresponding input element.
     # .EXAMPLE
@@ -58,7 +58,7 @@ function ConvertTo-NormalizedVectorRow {
     # [pscustomobject] The same vector row objects with transformed
     # vectors.
     # .NOTES
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260413.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

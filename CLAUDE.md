@@ -101,4 +101,3 @@ When a pull request is created or when the owner posts a PR comment containing `
 ### Resuming a paused loop
 
 When the PR owner posts a comment containing `@claude resume review loop`, resume the loop from step 1 (request a fresh Copilot review). The round counter and timeout reset on resume.
-

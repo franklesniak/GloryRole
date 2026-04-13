@@ -1,6 +1,7 @@
 BeforeAll {
     # Avoid relative-path segments per style guide checklist item
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
 
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertFrom-ClaimsJson.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Resolve-PrincipalKey.ps1')
@@ -8,7 +9,17 @@ BeforeAll {
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertFrom-AzActivityLogRecord.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Get-AzActivityAdminEvent.ps1')
 
+    # Stub functions that mimic the real Az module cmdlet signatures so Pester
+    # can Mock them without importing Az.Accounts / Az.Monitor in CI. The
+    # parameters exist to match the real cmdlets' interfaces (callers set them),
+    # and the bodies intentionally do nothing.
     function Set-AzContext {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSUseShouldProcessForStateChangingFunctions', '',
+            Justification = 'Test stub mimicking the Az.Accounts cmdlet signature; no real state change occurs.')]
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'Parameter exists to mirror the stubbed cmdlet signature so Pester Mocks bind correctly.')]
         [CmdletBinding()]
         param(
             [string]$SubscriptionId
@@ -16,6 +27,9 @@ BeforeAll {
     }
 
     function Get-AzActivityLog {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'Parameters exist to mirror the stubbed cmdlet signature so Pester Mocks bind correctly.')]
         [CmdletBinding()]
         param(
             [datetime]$StartTime,
@@ -143,7 +157,7 @@ Describe "Get-AzActivityAdminEvent" {
             Mock Get-AzActivityLog { return @() }
 
             # Act
-            $arrResult = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25)
+            $null = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25)
 
             # Assert
             Should -Invoke Set-AzContext -Times 2 -Exactly
@@ -189,11 +203,15 @@ Describe "Get-AzActivityAdminEvent" {
     Context "When Get-AzActivityLog fails" {
         It "Emits a Write-Warning and continues to the next time segment" {
             # Arrange
+            # Use a deterministic 48-hour window so the 24-hour slicing logic
+            # produces exactly two segments. Deriving $dtEnd from $dtStart
+            # avoids the sub-second drift introduced by two separate Get-Date
+            # calls, which would otherwise create a third tiny slice.
             $dtStart = (Get-Date).AddDays(-2)
-            $dtEnd = Get-Date
+            $dtEnd = $dtStart.AddDays(2)
             $arrSubscriptionIds = @('sub-1')
 
-            $intCallCount = 0
+            $script:intCallCount = 0
             Mock Set-AzContext { }
             Mock Get-AzActivityLog {
                 $script:intCallCount++
@@ -204,7 +222,7 @@ Describe "Get-AzActivityAdminEvent" {
             }
 
             # Act
-            $arrResult = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 24 -WarningAction SilentlyContinue)
+            $null = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 24 -WarningAction SilentlyContinue)
 
             # Assert
             Should -Invoke Get-AzActivityLog -Times 2 -Exactly
@@ -232,7 +250,7 @@ Describe "Get-AzActivityAdminEvent" {
                 CorrelationId = 'corr-1'
             }
 
-            $intCallCount = 0
+            $script:intCallCount = 0
             Mock Set-AzContext { }
             Mock Get-AzActivityLog {
                 $script:intCallCount++
@@ -264,7 +282,7 @@ Describe "Get-AzActivityAdminEvent" {
             Mock Get-AzActivityLog { return @() }
 
             # Act
-            $arrResult = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25 -DetailedOutput)
+            $null = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25 -DetailedOutput)
 
             # Assert
             Should -Invoke Get-AzActivityLog -Times 1 -Exactly -ParameterFilter { $DetailedOutput -eq $true }

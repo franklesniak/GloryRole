@@ -46,8 +46,11 @@ function New-AzureRoleDefinitionJson {
     #   Position 2: Actions
     #   Position 3: AssignableScopes
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260412.0
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "New-" verb constructs an in-memory JSON string; no external or system state is modified, so ShouldProcess support is not applicable.')]
     [CmdletBinding()]
     [OutputType([string])]
     param (

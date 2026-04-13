@@ -68,12 +68,16 @@ function Remove-RareAction {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 1.1.20260410.1
+    # Version: 1.2.20260412.0
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "Remove-" verb filters an in-memory collection and returns a new result object; it does not mutate any external or system state that would warrant ShouldProcess support.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts,
 
         [int]$MinDistinctPrincipals = 2,

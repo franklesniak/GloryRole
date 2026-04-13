@@ -7,7 +7,7 @@ function Import-PrincipalActionCountFromCsv {
     # Reads a CSV file containing PrincipalKey, Action, and Count columns
     # and returns PrincipalActionCount sparse triples. Actions are
     # normalized during import. This is the recommended ingestion mode for
-    # deterministic Summit demos.
+    # deterministic demos and CI testing.
     # .PARAMETER Path
     # The path to the CSV file containing sparse triples.
     # .EXAMPLE
@@ -44,7 +44,7 @@ function Import-PrincipalActionCountFromCsv {
     # This function supports positional parameters:
     #   Position 0: Path
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -81,7 +81,7 @@ function Import-PrincipalActionCountFromCsv {
         } catch {
             $strErrorMessage = $null
             if ($null -ne $_ -and $null -ne $_.Exception -and
-                    -not [string]::IsNullOrEmpty($_.Exception.Message)) {
+                -not [string]::IsNullOrEmpty($_.Exception.Message)) {
                 $strErrorMessage = $_.Exception.Message
             } else {
                 $strErrorMessage = ($_ | Out-String)

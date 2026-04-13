@@ -22,7 +22,7 @@ function ConvertTo-TfIdfCount {
     # )
     # $arrWeighted = @(ConvertTo-TfIdfCount -Counts $arrCounts)
     # $arrWeighted[0].Count
-    # # # Expected output: 3
+    # # Expected output: 3
     # # With a single principal, N = 1 and df = 1, so
     # # IDF = log((1 + 1) / (1 + 1)) + 1 = log(1) + 1 = 1.0.
     # # The output Count equals the raw input Count (3.0 * 1.0 = 3.0).
@@ -40,8 +40,8 @@ function ConvertTo-TfIdfCount {
     # #   user-a read Count = 2.0 * 1.0 = 2.0
     # #   user-b read Count = 5.0 * 1.0 = 5.0
     # # 'delete' is performed by only user-a (df = 1), so
-    # #   IDF = log((1 + 2) / (1 + 1)) + 1 = log(1.5) + 1 ≈ 1.4055
-    # #   user-a delete Count = 1.0 * 1.4055 ≈ 1.4055
+    # #   IDF = log((1 + 2) / (1 + 1)) + 1 = log(1.5) + 1 ~= 1.4055
+    # #   user-a delete Count = 1.0 * 1.4055 ~= 1.4055
     # # TF-IDF down-weights common actions (read) and up-weights
     # # distinctive actions (delete).
     # .INPUTS
@@ -51,7 +51,7 @@ function ConvertTo-TfIdfCount {
     # weighted counts.
     # Returns no objects when the input contains no principals (empty input).
     # .NOTES
-    # Version: 1.2.20260410.1
+    # Version: 1.3.20260413.0
     #
     # This function supports positional parameters:
     #   Position 0: Counts
@@ -70,6 +70,7 @@ function ConvertTo-TfIdfCount {
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts
     )
 

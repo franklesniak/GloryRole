@@ -1,10 +1,18 @@
 BeforeAll {
+    # Stub function that mimics the real Az.OperationalInsights cmdlet so Pester
+    # can Mock it without importing Az.OperationalInsights in CI. The
+    # parameters exist to match the real cmdlet's interface (callers set them),
+    # and the body intentionally does nothing.
     function Invoke-AzOperationalInsightsQuery {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'Parameters exist to mirror the stubbed cmdlet signature so Pester Mocks bind correctly.')]
         [CmdletBinding()]
         param ($WorkspaceId, $Query)
     }
     # Avoid relative-path segments per style guide checklist item
-    $strSrcPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-NormalizedAction.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Import-PrincipalActionCountFromLogAnalytics.ps1')
 }

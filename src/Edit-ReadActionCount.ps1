@@ -60,12 +60,13 @@ function Edit-ReadActionCount {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 2.0.20260410.2
+    # Version: 2.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts,
 
         [ValidateSet('Keep', 'DownWeight', 'Exclude')]

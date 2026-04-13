@@ -64,7 +64,7 @@ function Get-AzActivityAdminEvent {
     #   Position 1: End
     #   Position 2: SubscriptionIds
     #
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260412.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -110,10 +110,10 @@ function Get-AzActivityAdminEvent {
 
                 $objStack = New-Object System.Collections.Generic.Stack[pscustomobject]
                 [void]($objStack.Push([pscustomobject]@{
-                    S = $dateCursor
-                    E = $dateSliceEnd
-                    Minutes = ($dateSliceEnd - $dateCursor).TotalMinutes
-                }))
+                            S = $dateCursor
+                            E = $dateSliceEnd
+                            Minutes = ($dateSliceEnd - $dateCursor).TotalMinutes
+                        }))
 
                 while ($objStack.Count -gt 0) {
                     $objSegment = $objStack.Pop()
@@ -145,15 +145,15 @@ function Get-AzActivityAdminEvent {
                     if ($arrRaw.Count -ge $MaxRecordHint -and $objSegment.Minutes -gt $MinSliceMinutes) {
                         $dateMid = $objSegment.S.AddMinutes($objSegment.Minutes / 2)
                         [void]($objStack.Push([pscustomobject]@{
-                            S = $dateMid
-                            E = $objSegment.E
-                            Minutes = ($objSegment.E - $dateMid).TotalMinutes
-                        }))
+                                    S = $dateMid
+                                    E = $objSegment.E
+                                    Minutes = ($objSegment.E - $dateMid).TotalMinutes
+                                }))
                         [void]($objStack.Push([pscustomobject]@{
-                            S = $objSegment.S
-                            E = $dateMid
-                            Minutes = ($dateMid - $objSegment.S).TotalMinutes
-                        }))
+                                    S = $objSegment.S
+                                    E = $dateMid
+                                    Minutes = ($dateMid - $objSegment.S).TotalMinutes
+                                }))
                         continue
                     }
 
