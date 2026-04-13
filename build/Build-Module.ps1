@@ -53,6 +53,9 @@ $builder = New-Object System.Text.StringBuilder
 
 foreach ($file in $sourceFiles) {
     $content = Get-Content -Path $file.FullName -Raw
+    # Strip any leading UTF-8 BOM (U+FEFF) so the Set-StrictMode regex
+    # below matches reliably regardless of source file encoding.
+    $content = $content.TrimStart([char]0xFEFF)
     # Strip Set-StrictMode lines from individual files (already in the header)
     $content = $content -replace '(?m)^\s*Set-StrictMode\s+-Version\s+\S+\s*$', ''
     [void]$builder.AppendLine("#region $($file.Name)")
