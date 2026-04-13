@@ -225,5 +225,5 @@ The orchestration entry point MUST execute the following stages in order:
 
 ## Open Questions
 
-- **OQ-2:** Whether to include the optional AI naming assist in the initial
+- **OQ-1:** Whether to include the optional AI naming assist in the initial
   release. Owner: Frank Lesniak, Danny Stutz.

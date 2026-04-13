@@ -4,7 +4,7 @@
     GUID              = 'b1b25c49-16ae-4c61-a09a-b4bd2d4fe0a0'
     Author            = 'Frank Lesniak and Danny Stutz'
     CompanyName       = 'Community'
-    Copyright         = '(c) 2026 Frank Lesniak and Danny Stutz. All rights reserved.'
+    Copyright         = 'Copyright (c) 2026 Frank Lesniak and Danny Stutz'
     Description       = 'An unsupervised role mining engine written in PowerShell. Feed it cloud activity logs and it figures out who does what, groups similar principals via K-Means clustering, and generates least-privilege custom role definitions.'
     PowerShellVersion = '5.1'
 

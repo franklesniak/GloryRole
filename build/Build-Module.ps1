@@ -21,8 +21,8 @@ $resolvedSourcePath = (Resolve-Path -Path $SourcePath).Path
 
 $moduleOutputPath = Join-Path -Path $OutputRoot -ChildPath $ModuleName
 
-if (Test-Path -Path $moduleOutputPath) {
-    Remove-Item -Path $moduleOutputPath -Recurse -Force
+if (Test-Path -LiteralPath $moduleOutputPath) {
+    Remove-Item -LiteralPath $moduleOutputPath -Recurse -Force
 }
 
 New-Item -Path $moduleOutputPath -ItemType Directory -Force | Out-Null
@@ -80,6 +80,8 @@ if (Test-Path -Path $psd1Source) {
 $pipelineScript = Join-Path -Path $resolvedSourcePath -ChildPath 'Invoke-RoleMiningPipeline.ps1'
 if (Test-Path -Path $pipelineScript) {
     Copy-Item -Path $pipelineScript -Destination $moduleOutputPath
+} else {
+    throw "Pipeline entry-point script not found at $pipelineScript"
 }
 
 # Copy LICENSE
