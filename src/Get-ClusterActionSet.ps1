@@ -29,10 +29,10 @@ function Get-ClusterActionSet {
     # # )
     # # $hashAssignments = @{ 'userA' = 0 }
     # $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
-    # # # 'unknownUser' is not in $hashAssignments, so it is skipped.
-    # # # $arrResult.Count = 1
-    # # # $arrResult[0].ClusterId = 0
-    # # # $arrResult[0].Actions = @('read')
+    # # 'unknownUser' is not in $hashAssignments, so it is skipped.
+    # # $arrResult.Count = 1
+    # # $arrResult[0].ClusterId = 0
+    # # $arrResult[0].Actions = @('read')
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS

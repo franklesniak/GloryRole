@@ -32,7 +32,7 @@ New-Item -Path $moduleOutputPath -ItemType Directory -Force | Out-Null
 # in a function block). Including it in the .psm1 would execute the param
 # block and pipeline body at import time. It will be refactored into a
 # function in a future phase; until then it is copied separately.
-$sourceFiles = Get-ChildItem -Path $resolvedSourcePath -Filter '*.ps1' -File |
+$sourceFiles = Get-ChildItem -LiteralPath $resolvedSourcePath -Filter '*.ps1' -File |
     Where-Object { $_.Name -ne 'Invoke-RoleMiningPipeline.ps1' } |
     Sort-Object -Property Name
 
@@ -52,7 +52,7 @@ $builder = New-Object System.Text.StringBuilder
 [void]$builder.AppendLine()
 
 foreach ($file in $sourceFiles) {
-    $content = Get-Content -Path $file.FullName -Raw
+    $content = Get-Content -LiteralPath $file.FullName -Raw
     # Strip any leading UTF-8 BOM (U+FEFF) so the Set-StrictMode regex
     # below matches reliably regardless of source file encoding.
     $content = $content.TrimStart([char]0xFEFF)

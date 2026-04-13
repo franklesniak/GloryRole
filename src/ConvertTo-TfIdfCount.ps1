@@ -22,7 +22,7 @@ function ConvertTo-TfIdfCount {
     # )
     # $arrWeighted = @(ConvertTo-TfIdfCount -Counts $arrCounts)
     # $arrWeighted[0].Count
-    # # # Expected output: 3
+    # # Expected output: 3
     # # With a single principal, N = 1 and df = 1, so
     # # IDF = log((1 + 1) / (1 + 1)) + 1 = log(1) + 1 = 1.0.
     # # The output Count equals the raw input Count (3.0 * 1.0 = 3.0).

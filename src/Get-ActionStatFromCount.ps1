@@ -21,9 +21,9 @@ function Get-ActionStatFromCount {
     # # $arrSingleStat[0].Action = 'microsoft.storage/storageaccounts/read'
     # # $arrSingleStat[0].TotalCount = 5.0
     # # $arrSingleStat[0].DistinctPrincipals = 1
-    # # # Demonstrates minimal usage with a single action from a single
-    # # # principal. Both TotalCount and DistinctPrincipals reflect the
-    # # # single input row.
+    # # Demonstrates minimal usage with a single action from a single
+    # # principal. Both TotalCount and DistinctPrincipals reflect the
+    # # single input row.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
