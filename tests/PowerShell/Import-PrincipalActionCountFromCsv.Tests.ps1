@@ -1,6 +1,6 @@
 BeforeAll {
-    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-    $strSrcPath = Join-Path -Path $repoRoot -ChildPath 'src'
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-NormalizedAction.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Import-PrincipalActionCountFromCsv.ps1')
 }
@@ -9,7 +9,7 @@ Describe "Import-PrincipalActionCountFromCsv" {
     Context "When given a valid CSV file" {
         It "Imports sparse triples correctly" {
             # Arrange
-            $strPath = Join-Path -Path $repoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
+            $strPath = Join-Path -Path $strRepoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
 
             # Act
             $arrResult = @(Import-PrincipalActionCountFromCsv -Path $strPath)
@@ -23,7 +23,7 @@ Describe "Import-PrincipalActionCountFromCsv" {
 
         It "Normalizes actions to lowercase" {
             # Arrange
-            $strPath = Join-Path -Path $repoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
+            $strPath = Join-Path -Path $strRepoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
 
             # Act
             $arrResult = @(Import-PrincipalActionCountFromCsv -Path $strPath)
@@ -38,7 +38,7 @@ Describe "Import-PrincipalActionCountFromCsv" {
     Context "When verifying output contract" {
         It "Returns objects with exactly PrincipalKey, Action, and Count properties" {
             # Arrange
-            $strPath = Join-Path -Path $repoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
+            $strPath = Join-Path -Path $strRepoRoot -ChildPath (Join-Path -Path 'samples' -ChildPath 'principal_action_counts.csv')
 
             # Act
             $arrResult = @(Import-PrincipalActionCountFromCsv -Path $strPath)

@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [string]$SourcePath = (Join-Path -Path $PSScriptRoot -ChildPath '..\src'),
+    [string]$SourcePath = (Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'src'),
 
     [Parameter()]
-    [string]$OutputRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..\out'),
+    [string]$OutputRoot = (Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'out'),
 
     [Parameter()]
     [string]$ModuleName = 'GloryRole'
@@ -13,11 +13,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$resolvedSourcePath = (Resolve-Path -Path $SourcePath).Path
-
-if (-not (Test-Path -Path $resolvedSourcePath)) {
-    throw "Source path not found: $resolvedSourcePath"
+if (-not (Test-Path -Path $SourcePath)) {
+    throw "Source path not found: $SourcePath"
 }
+
+$resolvedSourcePath = (Resolve-Path -Path $SourcePath).Path
 
 $moduleOutputPath = Join-Path -Path $OutputRoot -ChildPath $ModuleName
 
@@ -64,7 +64,8 @@ foreach ($file in $sourceFiles) {
     [void]$builder.AppendLine()
 }
 
-Set-Content -Path $psm1Path -Value $builder.ToString() -NoNewline
+$objUtf8NoBomEncoding = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($psm1Path, $builder.ToString(), $objUtf8NoBomEncoding)
 
 # Copy the committed module manifest
 $psd1Source = Join-Path -Path $resolvedSourcePath -ChildPath "$ModuleName.psd1"

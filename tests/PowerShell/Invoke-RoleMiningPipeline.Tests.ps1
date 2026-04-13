@@ -1,10 +1,10 @@
 BeforeAll {
-    $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-    $srcRoot = Join-Path -Path $repoRoot -ChildPath 'src'
-    $samplesRoot = Join-Path -Path $repoRoot -ChildPath 'samples'
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcRoot = Join-Path -Path $strRepoRoot -ChildPath 'src'
+    $strSamplesRoot = Join-Path -Path $strRepoRoot -ChildPath 'samples'
 
-    $script:strScriptPath = Join-Path -Path $srcRoot -ChildPath 'Invoke-RoleMiningPipeline.ps1'
-    $script:strCsvPath = Join-Path -Path $samplesRoot -ChildPath 'principal_action_counts.csv'
+    $script:strScriptPath = Join-Path -Path $strSrcRoot -ChildPath 'Invoke-RoleMiningPipeline.ps1'
+    $script:strCsvPath = Join-Path -Path $strSamplesRoot -ChildPath 'principal_action_counts.csv'
 }
 
 Describe "Invoke-RoleMiningPipeline" {
