@@ -70,30 +70,30 @@ $objUtf8NoBomEncoding = New-Object System.Text.UTF8Encoding($false)
 # Copy the committed module manifest
 $psd1Source = Join-Path -Path $resolvedSourcePath -ChildPath "$ModuleName.psd1"
 $psd1Destination = Join-Path -Path $moduleOutputPath -ChildPath "$ModuleName.psd1"
-if (Test-Path -Path $psd1Source) {
-    Copy-Item -Path $psd1Source -Destination $psd1Destination
+if (Test-Path -LiteralPath $psd1Source) {
+    Copy-Item -LiteralPath $psd1Source -Destination $psd1Destination
 } else {
     throw "Module manifest not found at $psd1Source"
 }
 
 # Copy the pipeline entry-point script as a standalone tool
 $pipelineScript = Join-Path -Path $resolvedSourcePath -ChildPath 'Invoke-RoleMiningPipeline.ps1'
-if (Test-Path -Path $pipelineScript) {
-    Copy-Item -Path $pipelineScript -Destination $moduleOutputPath
+if (Test-Path -LiteralPath $pipelineScript) {
+    Copy-Item -LiteralPath $pipelineScript -Destination $moduleOutputPath
 } else {
     throw "Pipeline entry-point script not found at $pipelineScript"
 }
 
 # Copy LICENSE
 $licensePath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'LICENSE'
-if (Test-Path -Path $licensePath) {
-    Copy-Item -Path $licensePath -Destination $moduleOutputPath
+if (Test-Path -LiteralPath $licensePath) {
+    Copy-Item -LiteralPath $licensePath -Destination $moduleOutputPath
 }
 
 # Copy samples
 $samplesPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'samples'
-if (Test-Path -Path $samplesPath) {
-    Copy-Item -Path $samplesPath -Destination $moduleOutputPath -Recurse
+if (Test-Path -LiteralPath $samplesPath) {
+    Copy-Item -LiteralPath $samplesPath -Destination $moduleOutputPath -Recurse
 }
 
 # Validate the manifest loads
