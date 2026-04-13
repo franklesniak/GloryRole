@@ -37,6 +37,7 @@
         'New-FeatureIndex'
         'Remove-DuplicateCanonicalEvent'
         'Remove-RareAction'
+        'Resolve-LocalizableStringValue'
         'Resolve-PrincipalKey'
     )
 

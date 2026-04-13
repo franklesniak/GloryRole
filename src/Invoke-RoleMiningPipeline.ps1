@@ -138,7 +138,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.2.20260410.0
+# Version: 1.3.20260413.0
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -187,6 +187,7 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Resolve-PrincipalKey.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-StableSha256Hex.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertFrom-ClaimsJson.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'Resolve-LocalizableStringValue.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertFrom-AzActivityLogRecord.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-AzActivityAdminEvent.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromLogAnalytics.ps1')

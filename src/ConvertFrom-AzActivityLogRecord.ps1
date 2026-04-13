@@ -32,8 +32,9 @@ function ConvertFrom-AzActivityLogRecord {
     # - The principal cannot be resolved (no ObjectId, AppId, or Caller).
     # - The action string is null or whitespace after normalization.
     # .NOTES
-    # Requires ConvertFrom-ClaimsJson, Resolve-PrincipalKey, and
-    # ConvertTo-NormalizedAction to be loaded.
+    # Requires ConvertFrom-ClaimsJson, Resolve-PrincipalKey,
+    # Resolve-LocalizableStringValue, and ConvertTo-NormalizedAction to be
+    # loaded.
     #
     # Supported on Windows PowerShell 5.1 (.NET Framework 4.6.2+) and
     # PowerShell 7.4.x / 7.5.x / 7.6.x (Windows, macOS, Linux).
@@ -41,7 +42,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.1.20260412.0
+    # Version: 1.2.20260413.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -105,8 +106,20 @@ function ConvertFrom-AzActivityLogRecord {
             $strActionRaw = $null
             if ($null -ne $Record.Authorization -and $null -ne $Record.Authorization.Action) {
                 $strActionRaw = [string]$Record.Authorization.Action
-            } elseif ($null -ne $Record.OperationName -and $null -ne $Record.OperationName.Value) {
-                $strActionRaw = [string]$Record.OperationName.Value
+            } else {
+                # Az.Monitor <=6 returned OperationName as a PSLocalizedString
+                # whose .Value was an RBAC action id (e.g.
+                # 'Microsoft.Compute/virtualMachines/read'). Az.Monitor 7+
+                # returns OperationName as a plain [string] holding the
+                # friendly display name (e.g. 'Delete role assignment').
+                # Resolve the shape first, then only accept it as a
+                # fallback action when it resembles an RBAC action id; an
+                # unqualified display name would pollute the clustering
+                # pipeline with non-actions.
+                $strOperationName = Resolve-LocalizableStringValue -InputObject $Record.OperationName
+                if (-not [string]::IsNullOrWhiteSpace($strOperationName) -and $strOperationName.Contains('/')) {
+                    $strActionRaw = $strOperationName
+                }
             }
 
             $strAction = ConvertTo-NormalizedAction -Action $strActionRaw
@@ -123,6 +136,10 @@ function ConvertFrom-AzActivityLogRecord {
             if ($boolVerbose) {
                 Write-Verbose "Emitting CanonicalAdminEvent object."
             }
+            # Status is a PSLocalizedString in older Az.Monitor (needs
+            # .Value) and a plain [string] in Az.Monitor 7+. Normalize both.
+            $strStatus = Resolve-LocalizableStringValue -InputObject $Record.Status
+
             [pscustomobject]@{
                 PSTypeName = 'CanonicalAdminEvent'
                 TimeGenerated = $Record.EventTimestamp
@@ -130,7 +147,7 @@ function ConvertFrom-AzActivityLogRecord {
                 PrincipalKey = [string]$objPrincipal.Key
                 PrincipalType = [string]$objPrincipal.Type
                 Action = $strAction
-                Status = $Record.Status.Value
+                Status = $strStatus
                 ResourceId = $Record.ResourceId
                 CorrelationId = $Record.CorrelationId
                 Caller = $Record.Caller

@@ -5,6 +5,7 @@ BeforeAll {
 
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertFrom-ClaimsJson.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Resolve-PrincipalKey.ps1')
+    . (Join-Path -Path $strSrcPath -ChildPath 'Resolve-LocalizableStringValue.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-NormalizedAction.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertFrom-AzActivityLogRecord.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'Get-AzActivityAdminEvent.ps1')
