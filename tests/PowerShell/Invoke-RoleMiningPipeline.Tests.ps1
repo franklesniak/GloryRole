@@ -195,6 +195,11 @@ Describe "Invoke-RoleMiningPipeline" {
             # their thresholds are.
             $objException.Exception.Message | Should -Match 'principal'
             $objException.Exception.Message | Should -Match 'action'
+            # Every action in the fixture is unique to a single principal,
+            # so the message should include the "no shared activity" hint
+            # that guides users toward widening data collection rather
+            # than just lowering thresholds.
+            $objException.Exception.Message | Should -Match 'No action was performed by more than one principal'
         }
     }
 

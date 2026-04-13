@@ -42,7 +42,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.2.20260413.0
+    # Version: 1.3.20260413.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -70,20 +70,65 @@ function ConvertFrom-AzActivityLogRecord {
                 if ($boolVerbose) {
                     Write-Verbose "Claims parsed successfully."
                 }
-                # Under Set-StrictMode -Version Latest, accessing a missing
-                # property on a pscustomobject throws. Each claim below may be
-                # absent from the JSON, so we probe PSObject.Properties first.
-                if ($null -ne $objClaims.PSObject -and $null -ne $objClaims.PSObject.Properties) {
-                    $strObjectIdClaim = 'http://schemas.microsoft.com/identity/claims/objectidentifier'
-                    if ($objClaims.PSObject.Properties[$strObjectIdClaim]) {
-                        $strObjectId = $objClaims.$strObjectIdClaim
+
+                $strObjectIdClaim = 'http://schemas.microsoft.com/identity/claims/objectidentifier'
+                $strUpnClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
+                $strAppIdClaimAlt = 'http://schemas.microsoft.com/identity/claims/applicationid'
+
+                # Claims can arrive in several shapes depending on the
+                # Az.Monitor version and whether PowerShell flattened an
+                # enumerable at the parameter-binding boundary:
+                # 1. pscustomobject with claim URIs as property names
+                #    (Az.Monitor <=6 after ConvertFrom-Json).
+                # 2. IDictionary (Hashtable, Dictionary<K,V>) when Az.Monitor
+                #    7+ exposes the Claims property as a structured map.
+                # 3. A single DictionaryEntry / PSDictionaryElement when
+                #    PowerShell flattens a one-entry IEnumerable<KeyValuePair>
+                #    during property access or parameter binding.
+                # Handle each shape so real claim values are not silently
+                # discarded (which would force every event to fall back to
+                # Caller-based, 'Unknown'-typed principal resolution).
+                if ($objClaims -is [System.Collections.IDictionary]) {
+                    if ($objClaims.Contains($strObjectIdClaim)) {
+                        $strObjectId = [string]$objClaims[$strObjectIdClaim]
                     }
-                    $strUpnClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
-                    if ($objClaims.PSObject.Properties[$strUpnClaim]) {
-                        $strUpn = $objClaims.$strUpnClaim
+                    if ($objClaims.Contains($strUpnClaim)) {
+                        $strUpn = [string]$objClaims[$strUpnClaim]
                     }
-                    if ($objClaims.PSObject.Properties['appid']) {
-                        $strAppId = $objClaims.appid
+                    if ($objClaims.Contains('appid')) {
+                        $strAppId = [string]$objClaims['appid']
+                    } elseif ($objClaims.Contains($strAppIdClaimAlt)) {
+                        $strAppId = [string]$objClaims[$strAppIdClaimAlt]
+                    }
+                } elseif ($null -ne $objClaims.PSObject -and $null -ne $objClaims.PSObject.Properties) {
+                    $arrPropNames = @($objClaims.PSObject.Properties | ForEach-Object { $_.Name })
+                    $boolLooksLikeSingleEntry = ($arrPropNames -contains 'Key') -and ($arrPropNames -contains 'Value') -and ($arrPropNames.Count -le 3)
+
+                    if ($boolLooksLikeSingleEntry) {
+                        # PSDictionaryElement exposes Key, Value, and Name;
+                        # DictionaryEntry exposes Key, Value. Either way we
+                        # can harvest exactly one claim from this shape.
+                        $strEntryKey = [string]$objClaims.Key
+                        $strEntryValue = [string]$objClaims.Value
+                        if ($strEntryKey -eq $strObjectIdClaim) {
+                            $strObjectId = $strEntryValue
+                        } elseif ($strEntryKey -eq $strUpnClaim) {
+                            $strUpn = $strEntryValue
+                        } elseif ($strEntryKey -eq 'appid' -or $strEntryKey -eq $strAppIdClaimAlt) {
+                            $strAppId = $strEntryValue
+                        }
+                    } else {
+                        if ($objClaims.PSObject.Properties[$strObjectIdClaim]) {
+                            $strObjectId = [string]$objClaims.$strObjectIdClaim
+                        }
+                        if ($objClaims.PSObject.Properties[$strUpnClaim]) {
+                            $strUpn = [string]$objClaims.$strUpnClaim
+                        }
+                        if ($objClaims.PSObject.Properties['appid']) {
+                            $strAppId = [string]$objClaims.appid
+                        } elseif ($objClaims.PSObject.Properties[$strAppIdClaimAlt]) {
+                            $strAppId = [string]$objClaims.$strAppIdClaimAlt
+                        }
                     }
                 }
             } else {

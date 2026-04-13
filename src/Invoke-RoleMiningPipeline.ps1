@@ -138,7 +138,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.4.20260413.0
+# Version: 1.4.20260413.1
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -369,6 +369,15 @@ try {
             "The most-covered action was seen by {5} distinct principal(s); the highest total count for any single action was {6}. " +
             "Lower -MinDistinctPrincipals and/or -MinTotalCount (or widen the time range / add subscriptions), then retry. Re-run with -Verbose for per-stage diagnostics.") `
             -f $intInputTripleCount, $objQuality.Principals, $objQuality.Actions, $MinDistinctPrincipals, $MinTotalCount, $intMaxDistinctPrincipals, $dblMaxTotalCount
+
+        # When no action is shared by more than one principal, the dataset
+        # lacks the overlap that clustering exploits. Call this out
+        # explicitly because it typically indicates a thin test environment
+        # or a too-narrow time window, not a configuration problem that
+        # lowering thresholds alone can fix.
+        if ($intMaxDistinctPrincipals -le 1) {
+            $strPruneHint = $strPruneHint + " NOTE: No action was performed by more than one principal, so principals have no shared activity. Clustering requires shared actions; consider widening the time range, adding more subscriptions, or using a production environment with real admin activity."
+        }
 
         throw $strPruneHint
     }
