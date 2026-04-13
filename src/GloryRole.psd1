@@ -8,7 +8,7 @@
     Description       = 'An unsupervised role mining engine written in PowerShell. Feed it cloud activity logs and it figures out who does what, groups similar principals via K-Means clustering, and generates least-privilege custom role definitions.'
     PowerShellVersion = '5.1'
 
-    # Functions to export — these are the 27 function files in src/
+    # Functions to export — these are the 28 function files in src/
     # (excludes Invoke-RoleMiningPipeline.ps1 which is a script entry point)
     FunctionsToExport = @(
         'ConvertFrom-AzActivityLogRecord'

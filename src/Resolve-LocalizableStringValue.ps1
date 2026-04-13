@@ -63,7 +63,7 @@ function Resolve-LocalizableStringValue {
     # This function supports positional parameters:
     #   Position 0: InputObject
     #
-    # Version: 1.0.20260413.1
+    # Version: 1.0.20260413.2
 
     [CmdletBinding()]
     [OutputType([string])]
@@ -81,10 +81,10 @@ function Resolve-LocalizableStringValue {
                 return [string]$InputObject
             }
 
-            # Guard PSObject access so non-PSObject primitive/value types
-            # fall through to the $null return rather than throwing under
-            # Set-StrictMode -Version Latest.
-            if ($null -ne $InputObject.PSObject -and $null -ne $InputObject.PSObject.Properties) {
+            # Probe for Value/LocalizedValue properties before reading them
+            # so inputs that do not expose either member fall through to the
+            # $null return instead of throwing under Set-StrictMode -Version Latest.
+            if ($null -ne $InputObject.PSObject.Properties) {
                 if ($InputObject.PSObject.Properties['Value']) {
                     $objInner = $InputObject.Value
                     if ($null -ne $objInner) {

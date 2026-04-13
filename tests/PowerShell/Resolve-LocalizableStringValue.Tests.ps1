@@ -69,6 +69,23 @@ Describe "Resolve-LocalizableStringValue" {
         }
     }
 
+    Context "When the input is a PSObject whose LocalizedValue is null" {
+        It "Returns null when LocalizedValue exists but its underlying value is `$null" {
+            # Arrange
+            # This locks in the $null-vs-empty-string contract for the
+            # LocalizedValue fallback path: a present-but-null property
+            # must resolve to $null rather than the empty string produced
+            # by a naive [string]$null cast.
+            $objInput = [pscustomobject]@{ LocalizedValue = $null }
+
+            # Act
+            $strResult = Resolve-LocalizableStringValue -InputObject $objInput
+
+            # Assert
+            $strResult | Should -Be $null
+        }
+    }
+
     Context "When the input is a PSObject whose Value is null" {
         It "Returns null rather than the empty string from a null cast" {
             # Arrange
