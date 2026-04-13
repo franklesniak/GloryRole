@@ -47,7 +47,7 @@ function ConvertTo-VectorRow {
     # $arrRows = @(ConvertTo-VectorRow -Counts $arrCounts -FeatureIndexObject $objIndex)
     # $objUser2 = $arrRows | Where-Object { $_.PrincipalKey -eq 'user2' }
     # # $objUser2.Vector
-    # # # Returns @(1.0, 0.0) — 'read' is at index 0 with count 1.0,
+    # # # Returns @(1.0, 0.0) -- 'read' is at index 0 with count 1.0,
     # # # 'write' is at index 1 with count 0.0 (zero-filled).
     # # $objUser2.TotalActions
     # # # Returns 1.0
@@ -61,7 +61,7 @@ function ConvertTo-VectorRow {
     # [pscustomobject] Vector row objects with PrincipalKey, Vector, and
     # TotalActions properties.
     # .NOTES
-    # Version: 1.1.20260412.0
+    # Version: 1.1.20260413.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

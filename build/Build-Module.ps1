@@ -53,6 +53,9 @@ $builder = New-Object System.Text.StringBuilder
 
 foreach ($file in $sourceFiles) {
     $content = Get-Content -Path $file.FullName -Raw
+    # Strip any leading UTF-8 BOM (U+FEFF) so the Set-StrictMode regex
+    # below matches reliably regardless of source file encoding.
+    $content = $content.TrimStart([char]0xFEFF)
     # Strip Set-StrictMode lines from individual files (already in the header)
     $content = $content -replace '(?m)^\s*Set-StrictMode\s+-Version\s+\S+\s*$', ''
     [void]$builder.AppendLine("#region $($file.Name)")
@@ -92,6 +95,6 @@ if (Test-Path -Path $samplesPath) {
 
 # Validate the manifest loads
 $manifest = Test-ModuleManifest -Path $psd1Destination
-Write-Host "Built module: $($manifest.Name) v$($manifest.Version)"
-Write-Host "  $psm1Path"
-Write-Host "  $psd1Destination"
+Write-Information -MessageData "Built module: $($manifest.Name) v$($manifest.Version)" -InformationAction Continue
+Write-Information -MessageData "  $psm1Path" -InformationAction Continue
+Write-Information -MessageData "  $psd1Destination" -InformationAction Continue

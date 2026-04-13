@@ -48,6 +48,9 @@ function Import-PrincipalActionCountFromLogAnalytics {
     #
     # Version: 1.1.20260412.0
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseSingularNouns', '',
+        Justification = '"LogAnalytics" here is the proper name of the Azure Log Analytics service, not a plural noun; renaming would obscure the function''s target service.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (

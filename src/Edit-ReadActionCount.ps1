@@ -66,6 +66,7 @@ function Edit-ReadActionCount {
     [OutputType([pscustomobject])]
     param (
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Counts,
 
         [ValidateSet('Keep', 'DownWeight', 'Exclude')]

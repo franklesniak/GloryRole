@@ -62,20 +62,33 @@ function ConvertFrom-AzActivityLogRecord {
 
             $objClaims = ConvertFrom-ClaimsJson -Claims $Record.Claims
 
+            $strObjectId = $null
+            $strUpn = $null
+            $strAppId = $null
             if ($null -ne $objClaims) {
                 if ($boolVerbose) {
                     Write-Verbose "Claims parsed successfully."
                 }
-                $strObjectId = $objClaims.'http://schemas.microsoft.com/identity/claims/objectidentifier'
-                $strUpn = $objClaims.'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
-                $strAppId = $objClaims.appid
+                # Under Set-StrictMode -Version Latest, accessing a missing
+                # property on a pscustomobject throws. Each claim below may be
+                # absent from the JSON, so we probe PSObject.Properties first.
+                if ($null -ne $objClaims.PSObject -and $null -ne $objClaims.PSObject.Properties) {
+                    $strObjectIdClaim = 'http://schemas.microsoft.com/identity/claims/objectidentifier'
+                    if ($objClaims.PSObject.Properties[$strObjectIdClaim]) {
+                        $strObjectId = $objClaims.$strObjectIdClaim
+                    }
+                    $strUpnClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
+                    if ($objClaims.PSObject.Properties[$strUpnClaim]) {
+                        $strUpn = $objClaims.$strUpnClaim
+                    }
+                    if ($objClaims.PSObject.Properties['appid']) {
+                        $strAppId = $objClaims.appid
+                    }
+                }
             } else {
                 if ($boolVerbose) {
                     Write-Verbose "Claims are null; skipping claims extraction."
                 }
-                $strObjectId = $null
-                $strUpn = $null
-                $strAppId = $null
             }
 
             $objPrincipal = Resolve-PrincipalKey -ObjectId $strObjectId -AppId $strAppId -Caller $Record.Caller

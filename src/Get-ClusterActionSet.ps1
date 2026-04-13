@@ -99,7 +99,7 @@ function Get-ClusterActionSet {
         } catch {
             $strErrorMessage = $null
             if ($null -ne $_ -and $null -ne $_.Exception -and
-                    -not [string]::IsNullOrEmpty($_.Exception.Message)) {
+                -not [string]::IsNullOrEmpty($_.Exception.Message)) {
                 $strErrorMessage = $_.Exception.Message
             } else {
                 $strErrorMessage = ($_ | Out-String)

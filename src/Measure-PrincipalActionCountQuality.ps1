@@ -88,14 +88,14 @@ function Measure-PrincipalActionCountQuality {
             Write-Debug ("Principals: {0}, Actions: {1}, NonZeroEntries: {2}, Density: {3}" -f $intPrincipalCount, $intActionCount, $intNonZeroEntries, $dblDensity)
 
             $arrTopActions = @($Counts |
-                Group-Object -Property Action |
-                Sort-Object -Property Count -Descending |
-                Select-Object -First 10 -Property Name, Count)
+                    Group-Object -Property Action |
+                    Sort-Object -Property Count -Descending |
+                    Select-Object -First 10 -Property Name, Count)
 
             $arrTopPrincipals = @($Counts |
-                Group-Object -Property PrincipalKey |
-                Sort-Object -Property Count -Descending |
-                Select-Object -First 10 -Property Name, Count)
+                    Group-Object -Property PrincipalKey |
+                    Sort-Object -Property Count -Descending |
+                    Select-Object -First 10 -Property Name, Count)
 
             [pscustomobject]@{
                 Principals = $intPrincipalCount
