@@ -64,7 +64,7 @@ function Get-AzActivityAdminEvent {
     #   Position 1: End
     #   Position 2: SubscriptionIds
     #
-    # Version: 1.1.20260412.0
+    # Version: 1.2.20260413.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -88,10 +88,18 @@ function Get-AzActivityAdminEvent {
         foreach ($strSubscriptionId in $SubscriptionIds) {
             Write-Verbose ("Processing subscription: {0}" -f $strSubscriptionId)
 
+            # Az.Accounts emits "Unable to acquire token for tenant '' with
+            # error 'SharedTokenCacheCredential authentication failed'"
+            # warnings while probing the credential chain, even when a later
+            # credential type (e.g., Azure CLI or Interactive Browser)
+            # successfully acquires a token. These warnings alarm users but
+            # do not indicate a real failure: genuine auth failures still
+            # throw a terminating error that we catch below. Suppress the
+            # probing warnings so only real problems surface to the user.
             $objVerbosePreferenceAtStartOfBlock = $VerbosePreference
             try {
                 $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
-                [void](Set-AzContext -SubscriptionId $strSubscriptionId -ErrorAction Stop)
+                [void](Set-AzContext -SubscriptionId $strSubscriptionId -ErrorAction Stop -WarningAction SilentlyContinue)
                 $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
             } catch {
                 Write-Debug ("Set-AzContext failed for subscription: {0}" -f $_.Exception.Message)

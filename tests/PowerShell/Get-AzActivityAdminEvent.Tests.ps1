@@ -165,6 +165,53 @@ Describe "Get-AzActivityAdminEvent" {
         }
     }
 
+    Context "When Set-AzContext emits benign probing warnings" {
+        It "Suppresses Set-AzContext warnings from surfacing to the caller" {
+            # Arrange
+            # Simulate the Az.Accounts SharedTokenCacheCredential chain
+            # behavior: Set-AzContext emits Write-Warning during credential
+            # probing but eventually succeeds. The caller should not see
+            # these warnings because Get-AzActivityAdminEvent passes
+            # -WarningAction SilentlyContinue to Set-AzContext. The test
+            # does NOT pass -WarningAction on the outer call, so if the
+            # suppression inside the function were missing, the mock's
+            # Write-Warning would bubble up into -WarningVariable.
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $arrSubscriptionIds = @('sub-1')
+
+            Mock Set-AzContext {
+                Write-Warning "Unable to acquire token for tenant '' with error 'SharedTokenCacheCredential authentication failed: '"
+            }
+            Mock Get-AzActivityLog { return @() }
+
+            # Act: collect warnings surfaced from within the function.
+            $arrWarnings = @()
+            $null = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25 -WarningVariable arrWarnings)
+
+            # Assert
+            $arrWarnings.Count | Should -Be 0
+        }
+
+        It "Still calls Set-AzContext even when it would emit warnings" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $arrSubscriptionIds = @('sub-1', 'sub-2', 'sub-3')
+
+            Mock Set-AzContext {
+                Write-Warning "Unable to acquire token for tenant '' with error 'SharedTokenCacheCredential authentication failed: '"
+            }
+            Mock Get-AzActivityLog { return @() }
+
+            # Act
+            $null = @(Get-AzActivityAdminEvent -Start $dtStart -End $dtEnd -SubscriptionIds $arrSubscriptionIds -InitialSliceHours 25)
+
+            # Assert
+            Should -Invoke Set-AzContext -Times 3 -Exactly
+        }
+    }
+
     Context "When Set-AzContext fails" {
         It "Emits a Write-Error and continues to the next subscription" {
             # Arrange
