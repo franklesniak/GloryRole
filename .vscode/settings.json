@@ -1,3 +1,6 @@
 {
-    "window.title": "GloryRole"
+    "window.title": "GloryRole",
+    "[powershell]": {
+        "files.encoding": "utf8"
+    }
 }
