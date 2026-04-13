@@ -32,9 +32,11 @@ New-Item -Path $moduleOutputPath -ItemType Directory -Force | Out-Null
 # in a function block). Including it in the .psm1 would execute the param
 # block and pipeline body at import time. It will be refactored into a
 # function in a future phase; until then it is copied separately.
-$sourceFiles = Get-ChildItem -LiteralPath $resolvedSourcePath -Filter '*.ps1' -File |
-    Where-Object { $_.Name -ne 'Invoke-RoleMiningPipeline.ps1' } |
-    Sort-Object -Property Name
+$sourceFiles = @(
+    Get-ChildItem -LiteralPath $resolvedSourcePath -Filter '*.ps1' -File |
+        Where-Object { $_.Name -ne 'Invoke-RoleMiningPipeline.ps1' } |
+        Sort-Object -Property Name
+)
 
 if ($sourceFiles.Count -eq 0) {
     throw "No source scripts were found in $resolvedSourcePath"
