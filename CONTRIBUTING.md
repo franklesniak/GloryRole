@@ -19,12 +19,22 @@ npm install
 
 This installs Node.js dependencies for markdown linting scripts. Git hooks are managed by pre-commit (see step 4 below).
 
+### Repository Layout
+
+| Directory | Purpose |
+| --- | --- |
+| `src/` | PowerShell function files and module manifest (`GloryRole.psd1`) |
+| `tests/PowerShell/` | Pester 5.x test files |
+| `build/` | Build script (`Build-Module.ps1`) |
+| `samples/` | Sample data for demo and testing |
+| `docs/` | Specification and design documentation |
+
 ### Git Hooks
 
 This repository uses pre-commit for git hooks. Configured hooks include:
 
-- **Formatting**: Black (Python), trailing whitespace, end-of-file fixer
-- **Linting**: Ruff (Python), markdownlint (Markdown), YAML validation
+- **Formatting**: Trailing whitespace removal, end-of-file fixer
+- **Linting**: markdownlint (Markdown), YAML validation
 - **Safety**: Large file detection
 
 If you need to bypass hooks temporarily (not recommended):
@@ -61,9 +71,8 @@ pipx install pre-commit
 #### Why Not a Dev Dependency?
 
 - `pre-commit` is a **development tool**, not a project runtime or test dependency
-- It manages its own isolated environments for hooks (including Python tools like Black and Ruff)
+- It manages its own isolated environments for hooks
 - Installing it globally or via `pipx` keeps it separate from project dependencies
-- This is the standard practice in the Python community
 - CI workflows install `pre-commit` separately in their own steps
 
 ### 4. Install Pre-commit Hooks
@@ -98,8 +107,7 @@ pre-commit run
 
 Pre-commit hooks are NOT optional. They enforce:
 
-- Code formatting (Black for Python, markdownlint for Markdown)
-- Linting (Ruff for Python)
+- Code formatting (markdownlint for Markdown, whitespace cleanup)
 - Trailing whitespace removal
 - End-of-file fixes
 - YAML validation
@@ -139,6 +147,7 @@ This repository includes several GitHub Actions workflows that run automatically
 | --- | --- | --- |
 | Markdown Lint | `.github/workflows/markdownlint.yml` | Validates markdown formatting |
 | PowerShell CI | `.github/workflows/powershell-ci.yml` | Runs PSScriptAnalyzer and Pester tests on PowerShell files |
+| Build Module | `.github/workflows/build-module.yml` | Builds the GloryRole module artifact |
 | Auto-fix Pre-commit | `.github/workflows/auto-fix-precommit.yml` | Automatically commits pre-commit fixes on PRs (optional) |
 
 The **Auto-fix Pre-commit** workflow is particularly useful for AI-assisted development (e.g., GitHub Copilot Coding Agent) as it automatically commits formatting fixes to PR branches.
@@ -155,7 +164,15 @@ git checkout -b your-feature-branch
 
 Follow the coding standards for the language(s) you're working with.
 
-### 3. Run Pre-commit Hooks
+### 3. Build the Module
+
+```powershell
+./build/Build-Module.ps1
+```
+
+This produces the bundled module in `out/GloryRole/`.
+
+### 4. Run Pre-commit Hooks
 
 ```bash
 pre-commit run --all-files
@@ -163,7 +180,7 @@ pre-commit run --all-files
 
 Fix any issues that are reported.
 
-### 4. Run Tests
+### 5. Run Tests
 
 Before submitting a pull request, ensure all tests pass locally.
 
@@ -182,7 +199,7 @@ Invoke-Pester -Path tests/ -Output Detailed
 - **PowerShell:** New functions should include Pester tests in `tests/PowerShell/`
 - All tests must pass on the CI matrix (Ubuntu, Windows, macOS)
 
-### 5. Commit Your Changes
+### 6. Commit Your Changes
 
 ```bash
 git add .
@@ -191,13 +208,13 @@ git commit -m "Your descriptive commit message"
 
 Pre-commit hooks will run automatically. If they make changes, review them and commit again.
 
-### 6. Push Your Branch
+### 7. Push Your Branch
 
 ```bash
 git push origin your-feature-branch
 ```
 
-### 7. Open a Pull Request
+### 8. Open a Pull Request
 
 Open a PR on GitHub and fill out the PR template checklist.
 

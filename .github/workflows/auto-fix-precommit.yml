@@ -46,20 +46,10 @@ jobs:
           ref: ${{ github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
+      - name: Set up Python for pre-commit
         uses: actions/setup-python@v6
         with:
           python-version: "3.x"
-
-      # Install Terraform for pre-commit-terraform hooks (terraform_fmt, etc.)
-      # This is required because the pre-commit config includes Terraform hooks
-      # that need the Terraform binary to be available.
-      # Version Policy: Use the latest stable Terraform version for pre-commit.
-      # Review and update quarterly per TEMPLATE_MAINTENANCE.md.
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: "1.14.4"
 
       - name: Install pre-commit
         run: pip install pre-commit

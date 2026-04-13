@@ -1,23 +1,19 @@
 # Dependencies
 node_modules/
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
+# Local environment and build artifacts
 .env
-*.egg-info/
 dist/
-build/
-.eggs/
-.pytest_cache/
+out/
+output/
 .cache/
-.coverage
-coverage.xml
-htmlcov/
-.mypy_cache/
+
+# Test artifacts
+testResults.xml
+
+# Temp/logs
+*.tmp
+*.log
 
 # Pre-commit
 .pre-commit-cache/

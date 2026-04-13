@@ -6,8 +6,8 @@ These instructions are authoritative for all changes in this repository.
 
 ## Source of Truth
 
-> Read the project [README.md](../README.md) before making changes.
-> If any instruction here conflicts with the README, **the README wins**.
+- Read **`docs/spec/requirements.md`** before making changes.
+- If any instruction here conflicts with the spec, **the spec wins**.
 
 ## Non-negotiable Safety and Security Rules
 
@@ -27,7 +27,7 @@ These instructions are authoritative for all changes in this repository.
 
 ## Pre-commit Discipline (CRITICAL)
 
-**ALWAYS run pre-commit checks before committing code.**
+**⚠️ ALWAYS run pre-commit checks before committing code.**
 
 Pre-commit hooks are NOT optional. They enforce:
 
@@ -54,7 +54,7 @@ Pre-commit hooks are NOT optional. They enforce:
 
 ### For GitHub Copilot Coding Agent (Automated PRs)
 
-**CRITICAL: You are an automated agent creating PRs. You MUST follow this workflow:**
+**⚠️ CRITICAL: You are an automated agent creating PRs. You MUST follow this workflow:**
 
 When creating automated PRs, you **MUST**:
 
@@ -88,7 +88,7 @@ This repository includes an auto-fix workflow (`.github/workflows/auto-fix-preco
 
 - This is a **safety net**, not a substitute for running pre-commit locally
 - Agents should still try to run pre-commit checks before pushing when possible
-- The workflow only applies to `copilot/**` branches -- human branches are not affected
+- The workflow only applies to `copilot/**` branches—human branches are not affected
 - Manual intervention may still be required for issues that cannot be auto-fixed
 
 ## Determinism and Correctness Rules
@@ -121,8 +121,8 @@ For each PR-sized change:
 - Do not weaken security constraints to "make it work."
 - Do not add new major dependencies without clear justification in the PR description.
 - Do not implement "Copilot agent fixes" or rely on non-public APIs for lint correction.
-- Do not silently invent behavior when specs or requirements are ambiguous -- open an issue or add an explicit "Open Question" instead.
-- Do not create separate "fix formatting" or "fix linting" commits -- include all auto-fixes in the same commit as your changes.
+- Do not silently invent behavior when specs or requirements are ambiguous—open an issue or add an explicit "Open Question" instead.
+- Do not create separate "fix formatting" or "fix linting" commits—include all auto-fixes in the same commit as your changes.
 
 ## Language-Specific Instructions
 
@@ -132,10 +132,8 @@ This repository uses modular instruction files for language-specific standards:
 | --- | --- | --- |
 | Markdown/Docs | `.github/instructions/docs.instructions.md` | `**/*.md` |
 | PowerShell | `.github/instructions/powershell.instructions.md` | `**/*.ps1` |
-| Python | `.github/instructions/python.instructions.md` | `**/*.py` |
-| Terraform | `.github/instructions/terraform.instructions.md` | `**/*.tf`, `**/*.tfvars`, `**/*.tftest.hcl` |
 
-**Note:** The PowerShell instructions include comprehensive guidance on Pester testing. Python and Terraform instruction files are retained for future use when those languages are added to the repository.
+**Note:** The PowerShell instructions include comprehensive guidance on Pester testing.
 
 ## Agent Instruction Files
 
@@ -147,9 +145,9 @@ This repository includes agent instruction files at the repository root to suppo
 | `AGENTS.md` | OpenAI Codex CLI, GitHub Copilot coding agent |
 | `GEMINI.md` | Gemini Code Assist, GitHub Copilot coding agent |
 
-`.github/copilot-instructions.md` remains the **canonical source of truth** for all repository rules. The agent instruction files are synchronized summaries that provide essential guidance to their respective platforms.
+`.github/copilot-instructions.md` remains the **canonical source of truth** for all repository rules. The root agent instruction files are thin entry points: each keeps a minimal inline summary of the highest-priority shared rules for reliability and may add platform-specific guidance that does not conflict with this file.
 
-When modifying rules in `.github/copilot-instructions.md`, the corresponding content in all three agent files must also be updated to maintain consistency.
+When modifying high-priority shared guidance in `.github/copilot-instructions.md` (for example, canonical file location, safety rules, pre-commit expectations, validation commands, or language-instruction references), update the minimal summaries in any remaining agent files as needed. Avoid copying large shared sections into the entry point files.
 
 ## Linting Configurations
 
