@@ -387,81 +387,101 @@ Describe "ConvertFrom-AzActivityLogRecord" {
         }
     }
 
-    Context "When Claims is a single DictionaryEntry (PSDictionaryElement flatten)" {
-        It "Extracts the claim from a DictionaryEntry with the ObjectId key" {
+    Context "When Claims is a PSDictionaryElement-style wrapper (Az.Monitor 7+)" {
+        It "Unwraps .Content and resolves the principal by ObjectId" {
             # Arrange
-            # Reproduces the Az.Monitor 7+ path where PowerShell flattens a
-            # one-entry IEnumerable<KeyValuePair> at parameter binding,
-            # leaving Claims as a single DictionaryEntry. Previously this
-            # shape silently discarded all claim values, forcing every
-            # event to fall back to Caller-based "Unknown" resolution.
-            $objEntry = New-Object System.Collections.DictionaryEntry(
-                'http://schemas.microsoft.com/identity/claims/objectidentifier',
-                'oid-entry-1'
-            )
+            # Az.Monitor 7+ returns Record.Claims as a
+            # Microsoft.Azure.Commands.Insights.OutputClasses.PSDictionaryElement
+            # instance whose .Content property is a Dictionary<string,string>
+            # of claim URI -> value. The wrapper is NOT itself an IDictionary
+            # and exposes NO claim URIs as PSObject properties, so reading
+            # Record.Claims directly silently discards every claim. The
+            # conversion has to unwrap .Content before probing for known
+            # claim URIs. Verified against a live Az.Monitor 7.0.0 record.
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['http://schemas.microsoft.com/identity/claims/objectidentifier'] = 'oid-psde-1'
+            $htContent['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'] = 'psde-user@example.com'
+            $htContent['appid'] = 'app-psde-1'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
             $objRecord = [pscustomobject]@{
                 Category = 'Administrative'
-                Claims = $objEntry
+                Claims = $objWrapper
                 Authorization = [pscustomobject]@{ Action = 'Microsoft.Authorization/roleAssignments/write' }
                 OperationName = $null
-                Caller = 'some-caller'
+                Caller = 'psde-user@example.com'
                 EventTimestamp = (Get-Date)
-                SubscriptionId = 'sub-entry'
+                SubscriptionId = 'sub-psde'
                 Status = 'Succeeded'
-                ResourceId = '/subscriptions/sub-entry'
-                CorrelationId = 'corr-entry-1'
+                ResourceId = '/subscriptions/sub-psde'
+                CorrelationId = 'corr-psde-1'
             }
 
             # Act
             $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
 
             # Assert
-            $objResult.PrincipalKey | Should -Be 'oid-entry-1'
+            $objResult.PrincipalKey | Should -Be 'oid-psde-1'
             $objResult.PrincipalType | Should -Be 'User'
+            $objResult.PrincipalUPN | Should -Be 'psde-user@example.com'
+            $objResult.AppId | Should -Be 'app-psde-1'
         }
 
-        It "Extracts AppId from a DictionaryEntry with the appid key" {
+        It "Resolves by AppId when .Content has only appid (service-principal-only claims)" {
             # Arrange
-            $objEntry = New-Object System.Collections.DictionaryEntry('appid', 'app-entry-1')
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['appid'] = 'app-psde-svc-1'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
             $objRecord = [pscustomobject]@{
                 Category = 'Administrative'
-                Claims = $objEntry
+                Claims = $objWrapper
                 Authorization = [pscustomobject]@{ Action = 'Microsoft.Storage/storageAccounts/listKeys/action' }
                 OperationName = $null
-                Caller = 'some-caller'
+                Caller = 'some-service-caller'
                 EventTimestamp = (Get-Date)
-                SubscriptionId = 'sub-entry-app'
+                SubscriptionId = 'sub-psde-svc'
                 Status = 'Succeeded'
-                ResourceId = '/subscriptions/sub-entry-app'
-                CorrelationId = 'corr-entry-app'
+                ResourceId = '/subscriptions/sub-psde-svc'
+                CorrelationId = 'corr-psde-svc'
             }
 
             # Act
             $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
 
             # Assert
-            $objResult.PrincipalKey | Should -Be 'app-entry-1'
+            $objResult.PrincipalKey | Should -Be 'app-psde-svc-1'
             $objResult.PrincipalType | Should -Be 'ServicePrincipal'
-            $objResult.AppId | Should -Be 'app-entry-1'
+            $objResult.AppId | Should -Be 'app-psde-svc-1'
         }
 
-        It "Falls back to Caller when the DictionaryEntry key is unknown" {
+        It "Falls back to Caller when .Content exists but carries no known identity claims" {
             # Arrange
-            # When the single flattened entry is not one of the claim names
-            # we recognize, Caller-based resolution remains the correct
-            # fallback. This confirms the fix is additive, not destructive.
-            $objEntry = New-Object System.Collections.DictionaryEntry('some-unrelated-claim', 'value')
+            # Mirrors the real-world case where a record's claims bag
+            # contains only audit fields (aud, iss, iat, nbf, etc.) and no
+            # principal-identifying claim. The extractor must not invent a
+            # principal from those fields; Caller is the right fallback.
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['aud'] = 'https://management.core.windows.net/'
+            $htContent['iss'] = 'https://sts.windows.net/tenant/'
+            $htContent['iat'] = '1771356480'
+            $htContent['nbf'] = '1771356480'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
             $objRecord = [pscustomobject]@{
                 Category = 'Administrative'
-                Claims = $objEntry
+                Claims = $objWrapper
                 Authorization = [pscustomobject]@{ Action = 'Microsoft.Resources/subscriptions/read' }
                 OperationName = $null
                 Caller = 'caller-fallback@example.com'
                 EventTimestamp = (Get-Date)
-                SubscriptionId = 'sub-fallback'
+                SubscriptionId = 'sub-psde-fallback'
                 Status = 'Succeeded'
-                ResourceId = '/subscriptions/sub-fallback'
-                CorrelationId = 'corr-fallback'
+                ResourceId = '/subscriptions/sub-psde-fallback'
+                CorrelationId = 'corr-psde-fallback'
             }
 
             # Act

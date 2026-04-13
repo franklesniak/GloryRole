@@ -42,7 +42,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.3.20260413.0
+    # Version: 1.4.20260413.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -75,19 +75,33 @@ function ConvertFrom-AzActivityLogRecord {
                 $strUpnClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'
                 $strAppIdClaimAlt = 'http://schemas.microsoft.com/identity/claims/applicationid'
 
-                # Claims can arrive in several shapes depending on the
-                # Az.Monitor version and whether PowerShell flattened an
-                # enumerable at the parameter-binding boundary:
-                # 1. pscustomobject with claim URIs as property names
-                #    (Az.Monitor <=6 after ConvertFrom-Json).
-                # 2. IDictionary (Hashtable, Dictionary<K,V>) when Az.Monitor
-                #    7+ exposes the Claims property as a structured map.
-                # 3. A single DictionaryEntry / PSDictionaryElement when
-                #    PowerShell flattens a one-entry IEnumerable<KeyValuePair>
-                #    during property access or parameter binding.
-                # Handle each shape so real claim values are not silently
-                # discarded (which would force every event to fall back to
-                # Caller-based, 'Unknown'-typed principal resolution).
+                # Az.Monitor 7+ returns Record.Claims as
+                # Microsoft.Azure.Commands.Insights.OutputClasses.PSDictionaryElement,
+                # which is NOT itself an IDictionary and does NOT expose
+                # claim URIs as PSObject properties. Its real payload sits
+                # on a .Content property typed as
+                # Dictionary<string,string>. Unwrap that first so the
+                # downstream dictionary path can read claim values by the
+                # usual URI keys.
+                if (-not ($objClaims -is [System.Collections.IDictionary]) -and
+                    $null -ne $objClaims.PSObject -and
+                    $objClaims.PSObject.Properties['Content']) {
+                    $objCandidateContent = $objClaims.Content
+                    if ($objCandidateContent -is [System.Collections.IDictionary]) {
+                        if ($boolVerbose) {
+                            Write-Verbose "Unwrapping PSDictionaryElement.Content to inner IDictionary."
+                        }
+                        $objClaims = $objCandidateContent
+                    }
+                }
+
+                # After unwrapping (or if Claims was already a dictionary),
+                # the Az.Monitor 7+ payload is a
+                # Dictionary<string,string> keyed by the SAML-style claim
+                # URIs. Az.Monitor <=6 (after ConvertFrom-Json on the JSON
+                # string form) instead gives a pscustomobject whose
+                # property names are those same URIs. Handle both so the
+                # same URI constants work across versions.
                 if ($objClaims -is [System.Collections.IDictionary]) {
                     if ($objClaims.Contains($strObjectIdClaim)) {
                         $strObjectId = [string]$objClaims[$strObjectIdClaim]
@@ -101,34 +115,16 @@ function ConvertFrom-AzActivityLogRecord {
                         $strAppId = [string]$objClaims[$strAppIdClaimAlt]
                     }
                 } elseif ($null -ne $objClaims.PSObject -and $null -ne $objClaims.PSObject.Properties) {
-                    $arrPropNames = @($objClaims.PSObject.Properties | ForEach-Object { $_.Name })
-                    $boolLooksLikeSingleEntry = ($arrPropNames -contains 'Key') -and ($arrPropNames -contains 'Value') -and ($arrPropNames.Count -le 3)
-
-                    if ($boolLooksLikeSingleEntry) {
-                        # PSDictionaryElement exposes Key, Value, and Name;
-                        # DictionaryEntry exposes Key, Value. Either way we
-                        # can harvest exactly one claim from this shape.
-                        $strEntryKey = [string]$objClaims.Key
-                        $strEntryValue = [string]$objClaims.Value
-                        if ($strEntryKey -eq $strObjectIdClaim) {
-                            $strObjectId = $strEntryValue
-                        } elseif ($strEntryKey -eq $strUpnClaim) {
-                            $strUpn = $strEntryValue
-                        } elseif ($strEntryKey -eq 'appid' -or $strEntryKey -eq $strAppIdClaimAlt) {
-                            $strAppId = $strEntryValue
-                        }
-                    } else {
-                        if ($objClaims.PSObject.Properties[$strObjectIdClaim]) {
-                            $strObjectId = [string]$objClaims.$strObjectIdClaim
-                        }
-                        if ($objClaims.PSObject.Properties[$strUpnClaim]) {
-                            $strUpn = [string]$objClaims.$strUpnClaim
-                        }
-                        if ($objClaims.PSObject.Properties['appid']) {
-                            $strAppId = [string]$objClaims.appid
-                        } elseif ($objClaims.PSObject.Properties[$strAppIdClaimAlt]) {
-                            $strAppId = [string]$objClaims.$strAppIdClaimAlt
-                        }
+                    if ($objClaims.PSObject.Properties[$strObjectIdClaim]) {
+                        $strObjectId = [string]$objClaims.$strObjectIdClaim
+                    }
+                    if ($objClaims.PSObject.Properties[$strUpnClaim]) {
+                        $strUpn = [string]$objClaims.$strUpnClaim
+                    }
+                    if ($objClaims.PSObject.Properties['appid']) {
+                        $strAppId = [string]$objClaims.appid
+                    } elseif ($objClaims.PSObject.Properties[$strAppIdClaimAlt]) {
+                        $strAppId = [string]$objClaims.$strAppIdClaimAlt
                     }
                 }
             } else {
