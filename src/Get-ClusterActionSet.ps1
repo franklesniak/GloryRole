@@ -2,17 +2,20 @@ Set-StrictMode -Version Latest
 
 function Get-ClusterActionSet {
     # .SYNOPSIS
-    # Extracts the set of unique actions per cluster from principal-action
-    # counts and cluster assignments.
+    # Extracts the set of unique actions and principals per cluster from
+    # principal-action counts and cluster assignments.
     # .DESCRIPTION
-    # Maps each cluster to its constituent actions by looking up each
-    # principal's cluster assignment and collecting the distinct actions
-    # performed by principals in that cluster. Uses the original (pre-
-    # vectorization) sparse triples to ensure RBAC fidelity. The output
-    # represents the aggregated permission set for each cluster, suitable
-    # for constructing Azure custom role definitions. Principals present
+    # Maps each cluster to its constituent actions and principals by
+    # looking up each principal's cluster assignment and collecting the
+    # distinct actions performed by principals in that cluster. Uses the
+    # original (pre-vectorization) sparse triples to ensure RBAC fidelity.
+    # The output represents the aggregated permission set and contributing
+    # principals for each cluster, suitable for constructing Azure custom
+    # role definitions and downstream role assignment. Principals present
     # in Counts but absent from AssignmentsMap are skipped (a Debug
-    # message is emitted for each skipped principal).
+    # message is emitted for each such skipped count record, so a
+    # principal that appears on multiple rows can produce multiple
+    # messages).
     # .PARAMETER Counts
     # An array of PrincipalActionCount sparse triples.
     # .PARAMETER AssignmentsMap
@@ -22,6 +25,7 @@ function Get-ClusterActionSet {
     # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments)
     # # $arrClusterActions[0].ClusterId = 0
     # # $arrClusterActions[0].Actions = @('microsoft.compute/virtualmachines/read', ...)
+    # # $arrClusterActions[0].Principals = @('user1@contoso.com', 'spn-abcde')
     # .EXAMPLE
     # $arrCounts = @(
     # #     [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
@@ -33,6 +37,7 @@ function Get-ClusterActionSet {
     # # $arrResult.Count = 1
     # # $arrResult[0].ClusterId = 0
     # # $arrResult[0].Actions = @('read')
+    # # $arrResult[0].Principals = @('userA')
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -41,6 +46,8 @@ function Get-ClusterActionSet {
     #     map.
     #   - Actions ([string[]]) - A sorted array of unique action strings
     #     belonging to principals assigned to this cluster.
+    #   - Principals ([string[]]) - A sorted array of unique principal
+    #     keys (users and service principals) assigned to this cluster.
     # .NOTES
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
@@ -56,7 +63,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.0.20260412.0
+    # Version: 2.1.20260414.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -75,6 +82,7 @@ function Get-ClusterActionSet {
             Write-Verbose ("Processing {0} count records against {1} cluster assignments." -f $intCountRecords, $intAssignmentCount)
 
             $hashActionsByCluster = @{}
+            $hashPrincipalsByCluster = @{}
 
             foreach ($objRow in $Counts) {
                 $strPrincipal = [string]$objRow.PrincipalKey
@@ -86,14 +94,17 @@ function Get-ClusterActionSet {
 
                 if (-not $hashActionsByCluster.ContainsKey($intClusterId)) {
                     $hashActionsByCluster[$intClusterId] = @{}
+                    $hashPrincipalsByCluster[$intClusterId] = @{}
                 }
                 $hashActionsByCluster[$intClusterId][[string]$objRow.Action] = $true
+                $hashPrincipalsByCluster[$intClusterId][$strPrincipal] = $true
             }
 
             foreach ($intClusterId in ($hashActionsByCluster.Keys | Sort-Object)) {
                 [pscustomobject]@{
                     ClusterId = $intClusterId
                     Actions = [string[]]@($hashActionsByCluster[$intClusterId].Keys | Sort-Object)
+                    Principals = [string[]]@($hashPrincipalsByCluster[$intClusterId].Keys | Sort-Object)
                 }
             }
         } catch {

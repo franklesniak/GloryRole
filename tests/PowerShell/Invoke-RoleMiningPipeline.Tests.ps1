@@ -86,6 +86,16 @@ Describe "Invoke-RoleMiningPipeline" {
             (Test-Path -Path $strFilePath) | Should -BeTrue
         }
 
+        It "Each ClusterActions entry includes a Principals array" {
+            # Assert
+            $script:objResult.ClusterActions | Should -Not -BeNullOrEmpty
+            foreach ($objCluster in $script:objResult.ClusterActions) {
+                $objCluster.PSObject.Properties.Name | Should -Contain 'Principals'
+                $objCluster.Principals | Should -Not -BeNullOrEmpty
+                ($objCluster.Principals -is [string[]]) | Should -BeTrue
+            }
+        }
+
         It "Exports at least one role_cluster_*.json file to the output directory" {
             # Act
             $arrRoleFiles = @(Get-ChildItem -Path $script:strOutputPath -Filter 'role_cluster_*.json')
