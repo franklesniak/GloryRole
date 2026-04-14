@@ -187,10 +187,12 @@ Describe "Get-ClusterActionSet" {
             # Assert
             $arrResult.Count | Should -Be 2
             $arrResult[0].ClusterId | Should -Be 0
+            $arrResult[0].Principals | Should -Not -BeNullOrEmpty
             $arrResult[0].Principals.Count | Should -Be 2
             $arrResult[0].Principals | Should -Contain 'userA'
             $arrResult[0].Principals | Should -Contain 'userC'
             $arrResult[1].ClusterId | Should -Be 1
+            $arrResult[1].Principals | Should -Not -BeNullOrEmpty
             $arrResult[1].Principals.Count | Should -Be 1
             $arrResult[1].Principals[0] | Should -Be 'userB'
         }
@@ -226,6 +228,7 @@ Describe "Get-ClusterActionSet" {
             $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
 
             # Assert
+            $arrResult.Count | Should -Be 1
             $arrResult[0].ClusterId | Should -BeOfType [int]
             ($arrResult[0].Actions -is [string[]]) | Should -BeTrue
             ($arrResult[0].Principals -is [string[]]) | Should -BeTrue
