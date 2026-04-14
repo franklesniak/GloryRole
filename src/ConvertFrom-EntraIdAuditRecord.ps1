@@ -8,7 +8,8 @@ function ConvertFrom-EntraIdAuditRecord {
     # Transforms a single record from Get-MgAuditLogDirectoryAudit into
     # the CanonicalEntraIdEvent contract. Filters to successful results
     # only. Returns $null if the record does not qualify (failure result,
-    # missing principal, or missing activity).
+    # missing principal, missing activity, or missing/unparseable
+    # ActivityDateTime).
     #
     # The initiatedBy field is resolved using the precedence:
     # User.Id > App.AppId > App.DisplayName. Records with no resolvable
@@ -42,6 +43,8 @@ function ConvertFrom-EntraIdAuditRecord {
     # - The principal cannot be resolved (no User.Id, App.AppId, or
     #   App.DisplayName).
     # - The action string is null or whitespace after mapping.
+    # - ActivityDateTime is missing or cannot be normalized to a UTC
+    #   [datetime].
     # .NOTES
     # Requires ConvertTo-EntraIdResourceAction and
     # ConvertTo-NormalizedAction to be loaded.
@@ -52,7 +55,7 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.0.20260414.0
+    # Version: 1.1.20260414.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -143,6 +146,47 @@ function ConvertFrom-EntraIdAuditRecord {
             $dateTimeGenerated = $null
             if ($null -ne $Record.ActivityDateTime) {
                 $dateTimeGenerated = $Record.ActivityDateTime
+            }
+
+            $dateTimeGenerated = $null
+            if ($null -eq $Record.ActivityDateTime) {
+                if ($boolVerbose) {
+                    Write-Verbose "Dropping record because ActivityDateTime is missing."
+                }
+
+                return $null
+            }
+
+            if ($Record.ActivityDateTime -is [datetimeoffset]) {
+                $dateTimeGenerated = $Record.ActivityDateTime.UtcDateTime
+            } elseif ($Record.ActivityDateTime -is [datetime]) {
+                $dateTimeGenerated = $Record.ActivityDateTime.ToUniversalTime()
+            } else {
+                $strActivityDateTime = [string]$Record.ActivityDateTime
+                if ([string]::IsNullOrWhiteSpace($strActivityDateTime)) {
+                    if ($boolVerbose) {
+                        Write-Verbose "Dropping record because ActivityDateTime is empty."
+                    }
+
+                    return $null
+                }
+
+                $objParsedActivityDateTimeOffset = [datetimeoffset]::MinValue
+                $boolParsedActivityDateTime = [datetimeoffset]::TryParse(
+                    $strActivityDateTime,
+                    [System.Globalization.CultureInfo]::InvariantCulture,
+                    [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal,
+                    [ref]$objParsedActivityDateTimeOffset
+                )
+                if (-not $boolParsedActivityDateTime) {
+                    if ($boolVerbose) {
+                        Write-Verbose "Dropping record because ActivityDateTime could not be parsed."
+                    }
+
+                    return $null
+                }
+
+                $dateTimeGenerated = $objParsedActivityDateTimeOffset.UtcDateTime
             }
 
             $strCorrelationId = $null
