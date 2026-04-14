@@ -127,8 +127,90 @@ Describe "Get-ClusterActionSet" {
         }
     }
 
+    Context "Principals output" {
+        It "Returns sorted principals for a single cluster" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'write'; Count = 2 }
+            )
+            $hashAssignments = @{
+                'userA' = 0
+                'userB' = 0
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].Principals.Count | Should -Be 2
+            $arrResult[0].Principals[0] | Should -Be 'userA'
+            $arrResult[0].Principals[1] | Should -Be 'userB'
+        }
+
+        It "Returns deduplicated principals when a principal has multiple actions" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'write'; Count = 3 }
+            )
+            $hashAssignments = @{ 'userA' = 0 }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert
+            $arrResult[0].Principals.Count | Should -Be 1
+            $arrResult[0].Principals[0] | Should -Be 'userA'
+        }
+
+        It "Assigns principals to the correct clusters" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'write'; Count = 2 }
+                [pscustomobject]@{ PrincipalKey = 'userC'; Action = 'delete'; Count = 1 }
+            )
+            $hashAssignments = @{
+                'userA' = 0
+                'userB' = 1
+                'userC' = 0
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert
+            $arrResult.Count | Should -Be 2
+            $arrResult[0].ClusterId | Should -Be 0
+            $arrResult[0].Principals.Count | Should -Be 2
+            $arrResult[0].Principals | Should -Contain 'userA'
+            $arrResult[0].Principals | Should -Contain 'userC'
+            $arrResult[1].ClusterId | Should -Be 1
+            $arrResult[1].Principals.Count | Should -Be 1
+            $arrResult[1].Principals[0] | Should -Be 'userB'
+        }
+
+        It "Excludes skipped principals from Principals output" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'unknownUser'; Action = 'write'; Count = 2 }
+            )
+            $hashAssignments = @{ 'userA' = 0 }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert
+            $arrResult[0].Principals.Count | Should -Be 1
+            $arrResult[0].Principals[0] | Should -Be 'userA'
+        }
+    }
+
     Context "Output property types" {
-        It "ClusterId is [int] and Actions is [string[]]" {
+        It "ClusterId is [int], Actions is [string[]], and Principals is [string[]]" {
             # Arrange
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
@@ -141,6 +223,7 @@ Describe "Get-ClusterActionSet" {
             # Assert
             $arrResult[0].ClusterId | Should -BeOfType [int]
             ($arrResult[0].Actions -is [string[]]) | Should -BeTrue
+            ($arrResult[0].Principals -is [string[]]) | Should -BeTrue
         }
     }
 

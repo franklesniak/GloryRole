@@ -95,7 +95,9 @@
 #   - Candidates ([object[]]): Array of candidate objects with metrics
 #     for each evaluated K value
 #   - ClusterActions ([object[]]): Array of cluster action sets, one per
-#     cluster, each containing a ClusterId and an Actions array
+#     cluster, each containing a ClusterId, an Actions array, and a
+#     Principals array listing the contributing users and service
+#     principals
 #   - Quality ([pscustomobject]): Quality metrics for the ingested data
 #     (Principals, Actions, NonZeroEntries, Density)
 #   - OutputPath ([string]): The directory path where artifacts were
