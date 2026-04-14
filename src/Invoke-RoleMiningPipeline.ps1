@@ -138,7 +138,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.4.20260413.1
+# Version: 1.4.20260413.2
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -364,11 +364,12 @@ try {
             }
         }
 
-        $strPruneHint = ("All actions were pruned. Input to stage 3 had {0} triple(s) covering {1} principal(s) and {2} distinct action(s). " +
+        $strPruneHintFormat = "All actions were pruned. Input to stage 3 had {0} triple(s) covering {1} principal(s) and {2} distinct action(s). " +
             "No action met BOTH thresholds (MinDistinctPrincipals={3}, MinTotalCount={4}). " +
             "The most-covered action was seen by {5} distinct principal(s); the highest total count for any single action was {6}. " +
-            "Lower -MinDistinctPrincipals and/or -MinTotalCount (or widen the time range / add subscriptions), then retry. Re-run with -Verbose for per-stage diagnostics.") `
-            -f $intInputTripleCount, $objQuality.Principals, $objQuality.Actions, $MinDistinctPrincipals, $MinTotalCount, $intMaxDistinctPrincipals, $dblMaxTotalCount
+            "Lower -MinDistinctPrincipals and/or -MinTotalCount (or widen the time range / add subscriptions), then retry. Re-run with -Verbose for per-stage diagnostics."
+        $strPruneHint = $strPruneHintFormat -f $intInputTripleCount, $objQuality.Principals, $objQuality.Actions,
+            $MinDistinctPrincipals, $MinTotalCount, $intMaxDistinctPrincipals, $dblMaxTotalCount
 
         # When no action is shared by more than one principal, the dataset
         # lacks the overlap that clustering exploits. Call this out
