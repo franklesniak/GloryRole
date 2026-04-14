@@ -163,7 +163,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 'user-b,microsoft.storage/storageaccounts/read,1'
                 'user-b,microsoft.storage/storageaccounts/write,2'
             )
-            Set-Content -Path $script:strPruneAllCsvPath -Value $arrRows
+            Set-Content -LiteralPath $script:strPruneAllCsvPath -Value $arrRows -Encoding UTF8
             $script:strPruneAllOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
         }
 
