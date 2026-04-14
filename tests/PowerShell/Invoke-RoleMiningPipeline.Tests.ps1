@@ -88,6 +88,7 @@ Describe "Invoke-RoleMiningPipeline" {
 
         It "Each ClusterActions entry includes a Principals array" {
             # Assert
+            $script:objResult.ClusterActions | Should -Not -BeNullOrEmpty
             foreach ($objCluster in $script:objResult.ClusterActions) {
                 $objCluster.PSObject.Properties.Name | Should -Contain 'Principals'
                 $objCluster.Principals | Should -Not -BeNullOrEmpty
