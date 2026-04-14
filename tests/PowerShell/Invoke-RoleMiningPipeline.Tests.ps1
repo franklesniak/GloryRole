@@ -90,8 +90,8 @@ Describe "Invoke-RoleMiningPipeline" {
             # Assert
             foreach ($objCluster in $script:objResult.ClusterActions) {
                 $objCluster.PSObject.Properties.Name | Should -Contain 'Principals'
-                ($objCluster.Principals -is [string[]]) -or ($objCluster.Principals -is [object[]]) | Should -BeTrue
-                $objCluster.Principals.Count | Should -BeGreaterThan 0
+                $objCluster.Principals | Should -Not -BeNullOrEmpty
+                ($objCluster.Principals -is [string[]]) | Should -BeTrue
             }
         }
 
