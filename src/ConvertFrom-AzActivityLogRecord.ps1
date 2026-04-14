@@ -42,7 +42,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.4.20260413.1
+    # Version: 1.4.20260413.2
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -103,14 +103,34 @@ function ConvertFrom-AzActivityLogRecord {
                 # property names are those same URIs. Handle both so the
                 # same URI constants work across versions.
                 if ($objClaims -is [System.Collections.IDictionary]) {
-                    # Dictionary<TKey,TValue> implements IDictionary
-                    # explicitly, so $dict.Contains('key') fails method
-                    # resolution ("Cannot find an overload for Contains
-                    # and the argument count: 1") because the only
-                    # publicly visible Contains overload on the runtime
-                    # type takes a KeyValuePair, not a key. Iterating
-                    # .Keys with -contains works uniformly for generic
-                    # Dictionary<K,V>, Hashtable, and OrderedDictionary.
+                    # Dictionary<TKey,TValue> implements
+                    # IDictionary.Contains(object) *explicitly*, so
+                    # $dict.Contains('key') fails method resolution
+                    # ("Cannot find an overload for Contains and the
+                    # argument count: 1") because the only publicly
+                    # visible Contains overload on the runtime type
+                    # takes a KeyValuePair<TKey,TValue>.
+                    #
+                    # Tempting alternatives that ALSO fail on PS 7.6:
+                    #   $d = [IDictionary]$dict; $d.Contains('key')
+                    #   function f([IDictionary]$d) { $d.Contains('key') }
+                    # Both fall back to runtime-type dispatch once the
+                    # cast is bound to a variable or parameter.
+                    #
+                    # Only an *inline* cast expression preserves the
+                    # interface dispatch:
+                    #   ([IDictionary]$dict).Contains('key')  # works
+                    # but it would need to appear 4x in this branch and
+                    # the "don't assign the cast" invariant is subtle
+                    # enough to silently regress under refactoring.
+                    #
+                    # Materializing .Keys once and using -contains is
+                    # idiomatic PowerShell, O(N) where N is typically
+                    # 30-40 claim keys per record (not a bottleneck),
+                    # works uniformly for Dictionary<K,V>, Hashtable,
+                    # and OrderedDictionary, and has no dispatch-rule
+                    # footgun. Verified empirically against a live
+                    # Az.Monitor 7.0.0 Dictionary[string,string].
                     $arrClaimKeys = @($objClaims.Keys)
                     if ($arrClaimKeys -contains $strObjectIdClaim) {
                         $strObjectId = [string]$objClaims[$strObjectIdClaim]
