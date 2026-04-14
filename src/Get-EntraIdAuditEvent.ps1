@@ -15,10 +15,18 @@ function Get-EntraIdAuditEvent {
     # Pagination is handled automatically by requesting all pages from
     # the Graph API. The function uses -All to retrieve complete results.
     #
-    # This function does NOT throw on individual record conversion
-    # failures. If ConvertFrom-EntraIdAuditRecord returns $null for a
-    # record, the record is silently skipped. Callers that need to halt
-    # on any failure should use -ErrorAction Stop.
+    # Two distinct failure modes apply to individual records:
+    # - **Intentional skips.** Records that do not meet the
+    #   canonicalization criteria (e.g., non-success result, missing
+    #   principal, unmapped activity) cause
+    #   ConvertFrom-EntraIdAuditRecord to return $null. These records
+    #   are silently skipped and counted in the verbose "Records
+    #   skipped" tally. This behavior is NOT controlled by
+    #   -ErrorAction; skips are the normal non-error path.
+    # - **Exceptions.** Terminating errors from Microsoft Graph
+    #   (e.g., connection failures, authorization failures) or from
+    #   ConvertFrom-EntraIdAuditRecord are always propagated to the
+    #   caller, regardless of -ErrorAction setting.
     # .PARAMETER Start
     # The start of the time range to query.
     # .PARAMETER End
@@ -55,7 +63,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.0.20260414.0
+    # Version: 1.0.20260414.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -79,14 +87,25 @@ function Get-EntraIdAuditEvent {
 
             $strFilter = ("activityDateTime ge {0} and activityDateTime le {1} and result eq 'success'" -f $strStartUtc, $strEndUtc)
 
-            # Add category filter if specified
+            # Add category filter if specified. Category values are
+            # embedded as OData string literals, which delimit strings
+            # with single quotes and escape a literal single quote by
+            # doubling it (e.g., O'Brien -> 'O''Brien'). Skip null or
+            # whitespace-only entries so they don't create invalid
+            # `category eq ''` clauses.
             if ($null -ne $FilterCategory -and $FilterCategory.Count -gt 0) {
                 $arrCategoryFilters = @()
                 foreach ($strCat in $FilterCategory) {
-                    $arrCategoryFilters += ("category eq '{0}'" -f $strCat)
+                    if ([string]::IsNullOrWhiteSpace($strCat)) {
+                        continue
+                    }
+                    $strEscapedCat = $strCat.Replace("'", "''")
+                    $arrCategoryFilters += ("category eq '{0}'" -f $strEscapedCat)
                 }
-                $strCategoryFilter = $arrCategoryFilters -join ' or '
-                $strFilter = ("{0} and ({1})" -f $strFilter, $strCategoryFilter)
+                if ($arrCategoryFilters.Count -gt 0) {
+                    $strCategoryFilter = $arrCategoryFilters -join ' or '
+                    $strFilter = ("{0} and ({1})" -f $strFilter, $strCategoryFilter)
+                }
             }
 
             Write-Debug ("OData filter: {0}" -f $strFilter)

@@ -26,7 +26,7 @@ Describe "Get-EntraIdRoleDisplayName" {
     }
 
     Context "When ResourceActions contains single resource type" {
-        It "Generates User Manager for user-only actions" {
+        It "Generates User Administrator for user-only actions" {
             # Arrange
             $arrActions = @(
                 'microsoft.directory/users/create'
@@ -39,7 +39,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Be 'GloryRole-User Administrator'
+            $strResult | Should -Be 'GloryRole-User Administrator-0'
         }
 
         It "Generates Group Manager for group-only update actions" {
@@ -53,7 +53,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 1
 
             # Assert
-            $strResult | Should -Be 'GloryRole-Group Manager'
+            $strResult | Should -Be 'GloryRole-Group Manager-1'
         }
 
         It "Generates Device Administrator for device CRUD actions" {
@@ -68,7 +68,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 2
 
             # Assert
-            $strResult | Should -Be 'GloryRole-Device Administrator'
+            $strResult | Should -Be 'GloryRole-Device Administrator-2'
         }
     }
 
@@ -88,7 +88,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Be 'GloryRole-User & Group Administrator'
+            $strResult | Should -Be 'GloryRole-User & Group Administrator-0'
         }
 
         It "Generates combined name for application and service principal" {
@@ -104,7 +104,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Be 'GloryRole-Application & Service Principal Administrator'
+            $strResult | Should -Be 'GloryRole-Application & Service Principal Administrator-0'
         }
 
         It "Limits to top 3 resource types" {
@@ -138,7 +138,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Administrator$'
+            $strResult | Should -Match 'Administrator-\d+$'
         }
 
         It "Uses Manager when only update is present" {
@@ -152,7 +152,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Manager$'
+            $strResult | Should -Match 'Manager-\d+$'
         }
 
         It "Uses Administrator for allTasks actions" {
@@ -165,7 +165,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Administrator$'
+            $strResult | Should -Match 'Administrator-\d+$'
         }
     }
 
@@ -195,7 +195,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 5
 
             # Assert
-            $strResult | Should -Be 'GloryRole-Role Assignment Manager'
+            $strResult | Should -Be 'GloryRole-Role Assignment Manager-5'
         }
     }
 
@@ -212,7 +212,28 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Be 'GloryRole-Conditional Access Administrator'
+            $strResult | Should -Be 'GloryRole-Conditional Access Administrator-0'
+        }
+    }
+
+    Context "ClusterId uniqueness guarantee" {
+        It "Produces different display names for different clusters with identical actions" {
+            # Arrange - two clusters with identical resource-action sets
+            $arrActions = @(
+                'microsoft.directory/users/basic/update'
+                'microsoft.directory/users/password/update'
+            )
+
+            # Act
+            $strName0 = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
+            $strName1 = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 1
+
+            # Assert - names differ by the trailing ClusterId, so bulk
+            # creation in Entra ID (which requires unique displayName
+            # per tenant) will not collide.
+            $strName0 | Should -Not -Be $strName1
+            $strName0 | Should -Be 'GloryRole-User Manager-0'
+            $strName1 | Should -Be 'GloryRole-User Manager-1'
         }
     }
 
@@ -241,7 +262,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Be 'GloryRole-User Manager'
+            $strResult | Should -Be 'GloryRole-User Manager-0'
         }
     }
 }

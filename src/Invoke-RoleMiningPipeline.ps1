@@ -53,8 +53,12 @@
 # 'RoleManagement'). When omitted, all categories are returned.
 #
 # .PARAMETER EntraIdRoleNamePrefix
-# Prefix for generated Entra ID role names. Default is
-# 'GloryRole-EntraCluster'.
+# Prefix for generated Entra ID role names. Default is 'GloryRole'.
+# Get-EntraIdRoleDisplayName appends either a descriptive suffix
+# ("-{ResourceName} {Suffix}-{ClusterId}") or, when no descriptive
+# name can be generated, a fallback suffix ("-EntraCluster-{ClusterId}"),
+# so the default produces names like "GloryRole-User Manager-0" or
+# "GloryRole-EntraCluster-0".
 #
 # .PARAMETER MinDistinctPrincipals
 # Pruning threshold: minimum number of distinct principals that must
@@ -156,7 +160,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260414.0
+# Version: 1.7.20260414.2
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -180,7 +184,7 @@ param (
     [string]$WorkspaceId,
 
     [string[]]$EntraIdFilterCategory,
-    [string]$EntraIdRoleNamePrefix = 'GloryRole-EntraCluster',
+    [string]$EntraIdRoleNamePrefix = 'GloryRole',
 
     [int]$MinDistinctPrincipals = 2,
     [double]$MinTotalCount = 10,
@@ -573,7 +577,13 @@ try {
 
     # Role JSON per cluster
     if ($InputMode -eq 'EntraId') {
-        # Entra ID custom role definitions (unifiedRoleDefinition format)
+        # Entra ID custom role definitions (unifiedRoleDefinition format).
+        # The role JSON is written via the .NET File API with UTF-8
+        # without BOM so the generated artifact is byte-identical across
+        # Windows PowerShell 5.1 and PowerShell 7+ (Set-Content's default
+        # encoding differs between those hosts, which is why the style
+        # guide mandates explicit encoding for generated files).
+        $objEntraRoleJsonEncoding = New-Object System.Text.UTF8Encoding($false)
         foreach ($objCluster in $arrClusterActions) {
             $strRoleName = Get-EntraIdRoleDisplayName -ResourceActions $objCluster.Actions -ClusterId $objCluster.ClusterId -Prefix $EntraIdRoleNamePrefix
             $strDescription = ("Auto-generated least-privilege Entra ID role from cluster {0} with {1} resource actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
@@ -586,7 +596,7 @@ try {
             $strRoleJson = New-EntraIdRoleDefinitionJson @hashRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("entra_role_cluster_{0}.json" -f $objCluster.ClusterId)
-            $strRoleJson | Set-Content -Path $strRolePath
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objEntraRoleJsonEncoding)
             Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
     } else {

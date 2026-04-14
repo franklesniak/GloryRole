@@ -280,6 +280,115 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
         }
     }
 
+    Context "TimeGenerated normalization" {
+        It "Normalizes a [datetime] ActivityDateTime to UTC [datetime]" {
+            # Arrange
+            $dtLocal = (Get-Date '2026-04-14T12:00:00')
+            $objRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-dt-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtLocal
+                CorrelationId = 'corr-dt-1'
+                Id = 'id-dt-1'
+            }
+
+            # Act
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+
+            # Assert
+            $objResult | Should -Not -BeNullOrEmpty
+            $objResult.TimeGenerated | Should -BeOfType ([datetime])
+            $objResult.TimeGenerated.Kind | Should -Be ([System.DateTimeKind]::Utc)
+        }
+
+        It "Parses ISO-8601 string ActivityDateTime into [datetime]" {
+            # Arrange
+            $objRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-dt-2'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = '2026-04-14T09:15:30Z'
+                CorrelationId = 'corr-dt-2'
+                Id = 'id-dt-2'
+            }
+
+            # Act
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+
+            # Assert
+            $objResult | Should -Not -BeNullOrEmpty
+            $objResult.TimeGenerated | Should -BeOfType ([datetime])
+            $objResult.TimeGenerated.Year | Should -Be 2026
+            $objResult.TimeGenerated.Month | Should -Be 4
+            $objResult.TimeGenerated.Day | Should -Be 14
+        }
+
+        It "Returns null when ActivityDateTime is null" {
+            # Arrange
+            $objRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-dt-3'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $null
+                CorrelationId = 'corr-dt-3'
+                Id = 'id-dt-3'
+            }
+
+            # Act
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+
+            # Assert
+            $objResult | Should -Be $null
+        }
+
+        It "Returns null when ActivityDateTime is an unparseable string" {
+            # Arrange
+            $objRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-dt-4'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = 'not-a-real-date'
+                CorrelationId = 'corr-dt-4'
+                Id = 'id-dt-4'
+            }
+
+            # Act
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+
+            # Assert
+            $objResult | Should -Be $null
+        }
+    }
+
     Context "Output object properties" {
         It "Contains all expected properties" {
             # Arrange

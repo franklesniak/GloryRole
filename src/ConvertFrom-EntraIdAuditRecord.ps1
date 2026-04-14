@@ -43,11 +43,12 @@ function ConvertFrom-EntraIdAuditRecord {
     # - The principal cannot be resolved (no User.Id, App.AppId, or
     #   App.DisplayName).
     # - The action string is null or whitespace after mapping.
-    # - ActivityDateTime is missing or cannot be normalized to a UTC
-    #   [datetime].
+    # - ActivityDateTime is missing or cannot be parsed as [datetime].
     # .NOTES
-    # Requires ConvertTo-EntraIdResourceAction and
-    # ConvertTo-NormalizedAction to be loaded.
+    # Requires ConvertTo-EntraIdResourceAction to be loaded. The action
+    # strings returned by that function are already fully normalized
+    # (lowercase microsoft.directory/* paths), so no additional
+    # normalization via ConvertTo-NormalizedAction is performed.
     #
     # Supported on Windows PowerShell 5.1 (.NET Framework 4.6.2+) and
     # PowerShell 7.4.x / 7.5.x / 7.6.x (Windows, macOS, Linux).
@@ -55,7 +56,7 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.1.20260414.1
+    # Version: 1.0.20260414.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -142,10 +143,34 @@ function ConvertFrom-EntraIdAuditRecord {
                 Write-Verbose ("Mapped action: {0}" -f $strAction)
             }
 
-            # Build the canonical event object
+            # Build the canonical event object. The DC-6 contract
+            # requires TimeGenerated to be a [datetime] so that
+            # downstream consumers (e.g., Sort-Object TimeGenerated in
+            # Remove-DuplicateCanonicalEvent) can compare values. Graph
+            # records may expose ActivityDateTime as a [datetime],
+            # [datetimeoffset], or ISO-8601 string depending on
+            # deserialization path, so normalize to UTC [datetime]
+            # here and drop records whose timestamp cannot be parsed.
             $dateTimeGenerated = $null
             if ($null -ne $Record.ActivityDateTime) {
-                $dateTimeGenerated = $Record.ActivityDateTime
+                $objActivityDateTime = $Record.ActivityDateTime
+                try {
+                    if ($objActivityDateTime -is [datetime]) {
+                        $dateTimeGenerated = ([datetime]$objActivityDateTime).ToUniversalTime()
+                    } elseif ($objActivityDateTime -is [datetimeoffset]) {
+                        $dateTimeGenerated = ([datetimeoffset]$objActivityDateTime).UtcDateTime
+                    } else {
+                        $dateTimeGenerated = ([datetime]::Parse([string]$objActivityDateTime, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal))
+                    }
+                } catch {
+                    $dateTimeGenerated = $null
+                }
+            }
+            if ($null -eq $dateTimeGenerated) {
+                if ($boolVerbose) {
+                    Write-Verbose "ActivityDateTime is missing or could not be parsed as [datetime]; returning null."
+                }
+                return $null
             }
 
             $dateTimeGenerated = $null

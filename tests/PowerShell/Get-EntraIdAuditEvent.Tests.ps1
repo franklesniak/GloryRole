@@ -122,7 +122,6 @@ Describe "Get-EntraIdAuditEvent" {
             $dtEnd = Get-Date
 
             Mock Get-MgAuditLogDirectoryAudit {
-                # Verify the filter contains category constraints
                 return @()
             }
 
@@ -131,7 +130,52 @@ Describe "Get-EntraIdAuditEvent" {
 
             # Assert
             $arrResult.Count | Should -Be 0
-            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1
+            # The constructed OData filter MUST contain the GroupManagement
+            # category clause so the Graph query is actually scoped to that
+            # category; assertion fails if -FilterCategory is ignored.
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -ParameterFilter {
+                $Filter -match "category eq 'GroupManagement'"
+            }
+        }
+
+        It "Escapes single quotes in category values for OData safety" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                return @()
+            }
+
+            # Act - a pathological category containing a single quote
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -FilterCategory @("O'Brien"))
+
+            # Assert - literal quote is doubled per OData grammar
+            $arrResult.Count | Should -Be 0
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -ParameterFilter {
+                $Filter -match "category eq 'O''Brien'"
+            }
+        }
+
+        It "Joins multiple category filters with 'or'" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                return @()
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -FilterCategory @('GroupManagement', 'UserManagement'))
+
+            # Assert
+            $arrResult.Count | Should -Be 0
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -ParameterFilter {
+                $Filter -match "category eq 'GroupManagement'" -and
+                $Filter -match "category eq 'UserManagement'" -and
+                $Filter -match " or "
+            }
         }
     }
 

@@ -13,7 +13,11 @@ function Remove-DuplicateCanonicalEvent {
     # Events are sorted by TimeGenerated before deduplication so the
     # earliest occurrence is retained.
     # .PARAMETER Events
-    # An array of CanonicalAdminEvent objects to deduplicate.
+    # An array of canonical event objects to deduplicate. Accepts both
+    # CanonicalAdminEvent objects (with ResourceId) and
+    # CanonicalEntraIdEvent objects (without ResourceId). When
+    # ResourceId is missing from an event, it is treated as an empty
+    # string in the composite dedupe key.
     # .EXAMPLE
     # $arrUnique = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
     # .EXAMPLE
@@ -44,7 +48,7 @@ function Remove-DuplicateCanonicalEvent {
     # This function supports positional parameters:
     #   Position 0: Events
     #
-    # Version: 1.2.20260414.0
+    # Version: 1.2.20260414.1
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
