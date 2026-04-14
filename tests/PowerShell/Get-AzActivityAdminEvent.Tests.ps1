@@ -165,6 +165,21 @@ Describe "Get-AzActivityAdminEvent" {
         }
     }
 
+    # The credential-probing noise suppression (passing
+    # -WarningAction SilentlyContinue to Set-AzContext to silence
+    # Az.Accounts' SharedTokenCacheCredential chain warnings) cannot be
+    # covered by a Pester unit test. Pester 5's Mock invokes the mock
+    # scriptblock in a scope that does not inherit the caller's
+    # $WarningPreference and does not apply the stub's [CmdletBinding()]
+    # -WarningAction binding to it, so any Write-Warning inside a Mock
+    # fires at the ambient default regardless of what the production
+    # code does. -ParameterFilter also does not expose the -WarningAction
+    # common parameter in its $PSBoundParameters, so the contract cannot
+    # be asserted that way either. The real Az.Accounts 3.x+ cmdlet on
+    # Az.Monitor 7.0.0 honors -WarningAction and silences the probing
+    # warnings - this has been verified manually end-to-end against a
+    # live tenant.
+
     Context "When Set-AzContext fails" {
         It "Emits a Write-Error and continues to the next subscription" {
             # Arrange

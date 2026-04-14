@@ -138,7 +138,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.3.20260413.0
+# Version: 1.4.20260413.3
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -289,7 +289,30 @@ try {
     Write-Verbose ("  Sparse triples loaded: {0}" -f $arrCounts.Count)
 
     if ($arrCounts.Count -eq 0) {
-        throw "No data was ingested. Check your input parameters."
+        # Provide mode-specific guidance so the user can diagnose common
+        # root causes without needing to re-run with -Verbose.
+        switch ($InputMode) {
+            'ActivityLog' {
+                $strIngestHint = ("No data was ingested from Azure Activity Log. Common causes: " +
+                    "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                    "(2) the specified SubscriptionIds ({0}) had no Administrative category events between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; " +
+                    "(3) none of the collected events had Status = 'Succeeded'; or " +
+                    "(4) none of the events resolved to a principal and a normalized action. " +
+                    "Re-run with -Verbose for per-subscription diagnostics.") -f ($SubscriptionIds -join ', '), $Start, $End
+            }
+            'LogAnalytics' {
+                $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}'. Common causes: " +
+                    "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                    "(2) the workspace had no matching activity records between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; or " +
+                    "(3) the workspace ID is incorrect or inaccessible. " +
+                    "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+            }
+            default {
+                $strIngestHint = ("No data was ingested from CSV file '{0}'. Verify the file exists, " +
+                    "contains the expected PrincipalKey/Action/Count columns, and has at least one data row.") -f $CsvPath
+            }
+        }
+        throw $strIngestHint
     }
     #endregion Stage 1: Ingest
 
@@ -310,6 +333,8 @@ try {
     #region Stage 3: Prune rare actions
     Write-Verbose "Stage 3: Pruning rare actions..."
 
+    $intInputTripleCount = $arrCounts.Count
+
     $hashPruneParams = @{
         Counts = $arrCounts
         MinDistinctPrincipals = $MinDistinctPrincipals
@@ -323,7 +348,42 @@ try {
     Write-Verbose ("  Kept: {0} triples, Dropped: {1} triples" -f $arrCounts.Count, $arrDropped.Count)
 
     if ($arrCounts.Count -eq 0) {
-        throw "All actions were pruned. Lower the pruning thresholds."
+        # Summarize the best-performing actions so the user can see how close
+        # their data was to clearing the thresholds and choose sensible new
+        # values, rather than guessing blindly.
+        $intMaxDistinctPrincipals = 0
+        $dblMaxTotalCount = 0.0
+        if ($null -ne $objPruneResult.Stats -and $objPruneResult.Stats.Count -gt 0) {
+            $objMaxPrincipals = $objPruneResult.Stats | Measure-Object -Property DistinctPrincipals -Maximum
+            $objMaxTotal = $objPruneResult.Stats | Measure-Object -Property TotalCount -Maximum
+            if ($null -ne $objMaxPrincipals.Maximum) {
+                $intMaxDistinctPrincipals = [int]$objMaxPrincipals.Maximum
+            }
+            if ($null -ne $objMaxTotal.Maximum) {
+                $dblMaxTotalCount = [double]$objMaxTotal.Maximum
+            }
+        }
+
+        # Parenthesized multi-line concat (PSScriptAnalyzer's
+        # PSUseConsistentIndentation tolerates continuation inside
+        # parens but flags it for bare operator continuation). -f is
+        # placed on the same line as the closing paren so no backtick
+        # is needed.
+        $strPruneHint = ("All actions were pruned. Input to stage 3 had {0} triple(s) covering {1} principal(s) and {2} distinct action(s). " +
+            "No action met BOTH thresholds (MinDistinctPrincipals={3}, MinTotalCount={4}). " +
+            "The most-covered action was seen by {5} distinct principal(s); the highest total count for any single action was {6}. " +
+            "Lower -MinDistinctPrincipals and/or -MinTotalCount (or widen the time range / add subscriptions), then retry. Re-run with -Verbose for per-stage diagnostics.") -f $intInputTripleCount, $objQuality.Principals, $objQuality.Actions, $MinDistinctPrincipals, $MinTotalCount, $intMaxDistinctPrincipals, $dblMaxTotalCount
+
+        # When no action is shared by more than one principal, the dataset
+        # lacks the overlap that clustering exploits. Call this out
+        # explicitly because it typically indicates a thin test environment
+        # or a too-narrow time window, not a configuration problem that
+        # lowering thresholds alone can fix.
+        if ($intMaxDistinctPrincipals -le 1) {
+            $strPruneHint = $strPruneHint + " NOTE: No action was performed by more than one principal, so principals have no shared activity. Clustering requires shared actions; consider widening the time range, adding more subscriptions, or using a production environment with real admin activity."
+        }
+
+        throw $strPruneHint
     }
     #endregion Stage 3: Prune rare actions
 

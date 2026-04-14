@@ -325,6 +325,174 @@ Describe "ConvertFrom-AzActivityLogRecord" {
         }
     }
 
+    Context "When Claims is an IDictionary (Az.Monitor 7+ shape)" {
+        It "Extracts ObjectId from a hashtable-shaped claims bag" {
+            # Arrange
+            # Az.Monitor 7+ may expose Claims as IDictionary<string,string>
+            # rather than a JSON string. A Hashtable is the closest
+            # in-process representation for that shape.
+            $htClaims = @{
+                'http://schemas.microsoft.com/identity/claims/objectidentifier' = 'oid-dict-1'
+                'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn' = 'dict-user@example.com'
+                'appid' = 'app-dict-1'
+            }
+            $objRecord = [pscustomobject]@{
+                Category = 'Administrative'
+                Claims = $htClaims
+                Authorization = [pscustomobject]@{ Action = 'Microsoft.Compute/virtualMachines/write' }
+                OperationName = $null
+                Caller = 'dict-user@example.com'
+                EventTimestamp = (Get-Date)
+                SubscriptionId = 'sub-dict'
+                Status = 'Succeeded'
+                ResourceId = '/subscriptions/sub-dict'
+                CorrelationId = 'corr-dict-1'
+            }
+
+            # Act
+            $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
+
+            # Assert
+            $objResult.PrincipalKey | Should -Be 'oid-dict-1'
+            $objResult.PrincipalType | Should -Be 'User'
+            $objResult.PrincipalUPN | Should -Be 'dict-user@example.com'
+            $objResult.AppId | Should -Be 'app-dict-1'
+        }
+
+        It "Extracts AppId via the applicationid claim URI when lowercase appid is absent" {
+            # Arrange
+            $htClaims = @{
+                'http://schemas.microsoft.com/identity/claims/applicationid' = 'app-uri-1'
+            }
+            $objRecord = [pscustomobject]@{
+                Category = 'Administrative'
+                Claims = $htClaims
+                Authorization = [pscustomobject]@{ Action = 'Microsoft.Storage/storageAccounts/listKeys/action' }
+                OperationName = $null
+                Caller = 'service-principal'
+                EventTimestamp = (Get-Date)
+                SubscriptionId = 'sub-uri'
+                Status = 'Succeeded'
+                ResourceId = '/subscriptions/sub-uri'
+                CorrelationId = 'corr-uri-1'
+            }
+
+            # Act
+            $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
+
+            # Assert
+            $objResult.PrincipalKey | Should -Be 'app-uri-1'
+            $objResult.PrincipalType | Should -Be 'ServicePrincipal'
+            $objResult.AppId | Should -Be 'app-uri-1'
+        }
+    }
+
+    Context "When Claims is a PSDictionaryElement-style wrapper (Az.Monitor 7+)" {
+        It "Unwraps .Content and resolves the principal by ObjectId" {
+            # Arrange
+            # Az.Monitor 7+ returns Record.Claims as a
+            # Microsoft.Azure.Commands.Insights.OutputClasses.PSDictionaryElement
+            # instance whose .Content property is a Dictionary<string,string>
+            # of claim URI -> value. The wrapper is NOT itself an IDictionary
+            # and exposes NO claim URIs as PSObject properties, so reading
+            # Record.Claims directly silently discards every claim. The
+            # conversion has to unwrap .Content before probing for known
+            # claim URIs. Verified against a live Az.Monitor 7.0.0 record.
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['http://schemas.microsoft.com/identity/claims/objectidentifier'] = 'oid-psde-1'
+            $htContent['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'] = 'psde-user@example.com'
+            $htContent['appid'] = 'app-psde-1'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
+            $objRecord = [pscustomobject]@{
+                Category = 'Administrative'
+                Claims = $objWrapper
+                Authorization = [pscustomobject]@{ Action = 'Microsoft.Authorization/roleAssignments/write' }
+                OperationName = $null
+                Caller = 'psde-user@example.com'
+                EventTimestamp = (Get-Date)
+                SubscriptionId = 'sub-psde'
+                Status = 'Succeeded'
+                ResourceId = '/subscriptions/sub-psde'
+                CorrelationId = 'corr-psde-1'
+            }
+
+            # Act
+            $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
+
+            # Assert
+            $objResult.PrincipalKey | Should -Be 'oid-psde-1'
+            $objResult.PrincipalType | Should -Be 'User'
+            $objResult.PrincipalUPN | Should -Be 'psde-user@example.com'
+            $objResult.AppId | Should -Be 'app-psde-1'
+        }
+
+        It "Resolves by AppId when .Content has only appid (service-principal-only claims)" {
+            # Arrange
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['appid'] = 'app-psde-svc-1'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
+            $objRecord = [pscustomobject]@{
+                Category = 'Administrative'
+                Claims = $objWrapper
+                Authorization = [pscustomobject]@{ Action = 'Microsoft.Storage/storageAccounts/listKeys/action' }
+                OperationName = $null
+                Caller = 'some-service-caller'
+                EventTimestamp = (Get-Date)
+                SubscriptionId = 'sub-psde-svc'
+                Status = 'Succeeded'
+                ResourceId = '/subscriptions/sub-psde-svc'
+                CorrelationId = 'corr-psde-svc'
+            }
+
+            # Act
+            $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
+
+            # Assert
+            $objResult.PrincipalKey | Should -Be 'app-psde-svc-1'
+            $objResult.PrincipalType | Should -Be 'ServicePrincipal'
+            $objResult.AppId | Should -Be 'app-psde-svc-1'
+        }
+
+        It "Falls back to Caller when .Content exists but carries no known identity claims" {
+            # Arrange
+            # Mirrors the real-world case where a record's claims bag
+            # contains only audit fields (aud, iss, iat, nbf, etc.) and no
+            # principal-identifying claim. The extractor must not invent a
+            # principal from those fields; Caller is the right fallback.
+            $htContent = [System.Collections.Generic.Dictionary[string, string]]::new()
+            $htContent['aud'] = 'https://management.core.windows.net/'
+            $htContent['iss'] = 'https://sts.windows.net/tenant/'
+            $htContent['iat'] = '1771356480'
+            $htContent['nbf'] = '1771356480'
+
+            $objWrapper = [pscustomobject]@{ Content = $htContent }
+
+            $objRecord = [pscustomobject]@{
+                Category = 'Administrative'
+                Claims = $objWrapper
+                Authorization = [pscustomobject]@{ Action = 'Microsoft.Resources/subscriptions/read' }
+                OperationName = $null
+                Caller = 'caller-fallback@example.com'
+                EventTimestamp = (Get-Date)
+                SubscriptionId = 'sub-psde-fallback'
+                Status = 'Succeeded'
+                ResourceId = '/subscriptions/sub-psde-fallback'
+                CorrelationId = 'corr-psde-fallback'
+            }
+
+            # Act
+            $objResult = ConvertFrom-AzActivityLogRecord -Record $objRecord
+
+            # Assert
+            $objResult.PrincipalKey | Should -Be 'caller-fallback@example.com'
+            $objResult.PrincipalType | Should -Be 'Unknown'
+        }
+    }
+
     Context "When Authorization is null and OperationName is a plain-string action id" {
         It "Accepts the plain-string OperationName as the action" {
             # Arrange

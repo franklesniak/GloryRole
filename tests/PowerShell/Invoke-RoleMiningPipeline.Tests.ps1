@@ -149,6 +149,60 @@ Describe "Invoke-RoleMiningPipeline" {
         }
     }
 
+    Context "When all actions are pruned by the default thresholds" {
+        BeforeAll {
+            # Build a CSV whose data clears the stage-2 quality gate (>= 2
+            # principals) but fails stage 3: every action is unique to a
+            # single principal and has a total count below MinTotalCount=10,
+            # so the pruner drops everything.
+            $script:strPruneAllCsvPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (([System.Guid]::NewGuid().ToString()) + '.csv')
+            $arrRows = @(
+                'PrincipalKey,Action,Count'
+                'user-a,microsoft.compute/virtualmachines/read,1'
+                'user-a,microsoft.compute/virtualmachines/write,2'
+                'user-b,microsoft.storage/storageaccounts/read,1'
+                'user-b,microsoft.storage/storageaccounts/write,2'
+            )
+            Set-Content -LiteralPath $script:strPruneAllCsvPath -Value $arrRows -Encoding UTF8
+            $script:strPruneAllOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+        }
+
+        AfterAll {
+            if (Test-Path -LiteralPath $script:strPruneAllCsvPath) {
+                Remove-Item -LiteralPath $script:strPruneAllCsvPath -Force
+            }
+            if (Test-Path -LiteralPath $script:strPruneAllOutputPath) {
+                Remove-Item -LiteralPath $script:strPruneAllOutputPath -Recurse -Force
+            }
+        }
+
+        It "Throws a diagnostic error that includes the thresholds and best-observed stats" {
+            # Act
+            $objException = $null
+            try {
+                & $script:strScriptPath -InputMode CSV -CsvPath $script:strPruneAllCsvPath -OutputPath $script:strPruneAllOutputPath
+            } catch {
+                $objException = $_
+            }
+
+            # Assert
+            $objException | Should -Not -BeNullOrEmpty
+            $objException.Exception.Message | Should -Match 'All actions were pruned'
+            $objException.Exception.Message | Should -Match 'MinDistinctPrincipals=2'
+            $objException.Exception.Message | Should -Match 'MinTotalCount=10'
+            # The message should report how many principals and distinct
+            # actions were in the data so the user can gauge how far off
+            # their thresholds are.
+            $objException.Exception.Message | Should -Match 'principal'
+            $objException.Exception.Message | Should -Match 'action'
+            # Every action in the fixture is unique to a single principal,
+            # so the message should include the "no shared activity" hint
+            # that guides users toward widening data collection rather
+            # than just lowering thresholds.
+            $objException.Exception.Message | Should -Match 'No action was performed by more than one principal'
+        }
+    }
+
     Context "When verifying deterministic seeding" {
         BeforeAll {
             $script:strSeedOutputPath1 = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
