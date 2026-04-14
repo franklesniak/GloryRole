@@ -13,7 +13,9 @@ function Get-ClusterActionSet {
     # principals for each cluster, suitable for constructing Azure custom
     # role definitions and downstream role assignment. Principals present
     # in Counts but absent from AssignmentsMap are skipped (a Debug
-    # message is emitted for each skipped principal).
+    # message is emitted for each such skipped count record, so a
+    # principal that appears on multiple rows can produce multiple
+    # messages).
     # .PARAMETER Counts
     # An array of PrincipalActionCount sparse triples.
     # .PARAMETER AssignmentsMap
