@@ -96,8 +96,8 @@
 #     for each evaluated K value
 #   - ClusterActions ([object[]]): Array of cluster action sets, one per
 #     cluster, each containing a ClusterId, an Actions array, and a
-#     Principals array listing the contributing users and service
-#     principals
+#     Principals array of contributing principal keys (e.g., UPNs,
+#     object IDs, or application IDs)
 #   - Quality ([pscustomobject]): Quality metrics for the ingested data
 #     (Principals, Actions, NonZeroEntries, Density)
 #   - OutputPath ([string]): The directory path where artifacts were
