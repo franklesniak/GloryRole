@@ -168,10 +168,10 @@ Describe "Invoke-RoleMiningPipeline" {
         }
 
         AfterAll {
-            if (Test-Path -Path $script:strPruneAllCsvPath) {
+            if (Test-Path -LiteralPath $script:strPruneAllCsvPath) {
                 Remove-Item -LiteralPath $script:strPruneAllCsvPath -Force
             }
-            if (Test-Path -Path $script:strPruneAllOutputPath) {
+            if (Test-Path -LiteralPath $script:strPruneAllOutputPath) {
                 Remove-Item -LiteralPath $script:strPruneAllOutputPath -Recurse -Force
             }
         }
