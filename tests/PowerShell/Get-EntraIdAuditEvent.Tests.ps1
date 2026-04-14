@@ -123,7 +123,6 @@ Describe "Get-EntraIdAuditEvent" {
 
             Mock Get-MgAuditLogDirectoryAudit {
                 # Verify the filter contains category constraints
-                param($Filter)
                 return @()
             }
 

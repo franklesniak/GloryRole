@@ -532,7 +532,7 @@ try {
     # overwrote $arrCounts, use the cluster assignments against the current
     # counts which still have the correct PrincipalKey->Action mapping.
     $hashClusterActionParams = @{
-        Counts         = $arrCounts
+        Counts = $arrCounts
         AssignmentsMap = $objAutoK.BestModel.Assignments
     }
     if ($hashPrincipalDisplayName.Count -gt 0) {

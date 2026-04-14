@@ -193,7 +193,7 @@ function Get-EntraIdRoleDisplayName {
 
             # Sort by priority (known types first), then by count
             # descending, then alphabetically.
-            $arrSortedLabels = @($hashResourceCounts.Keys | Sort-Object -Property @{
+            $hashSortByPriority = @{
                 Expression = {
                     if ($hashResourcePriority.ContainsKey($_)) {
                         $hashResourcePriority[$_]
@@ -201,18 +201,22 @@ function Get-EntraIdRoleDisplayName {
                         100
                     }
                 }
-            }, @{
+            }
+            $hashSortByCount = @{
                 Expression = { $hashResourceCounts[$_] }
                 Descending = $true
-            }, @{
+            }
+            $hashSortByName = @{
                 Expression = { $_ }
-            })
+            }
+            $arrSortedLabels = @(
+                $hashResourceCounts.Keys | Sort-Object -Property $hashSortByPriority, $hashSortByCount, $hashSortByName
+            )
 
             # Determine suffix based on action types (create, delete,
             # update patterns). Analyze all actions for the verb.
             $boolHasCreate = $false
             $boolHasDelete = $false
-            $boolHasUpdate = $false
             foreach ($strAction in $ResourceActions) {
                 $strLower = $strAction.ToLowerInvariant()
                 if ($strLower -match '/create$' -or $strLower -match '/allTasks$') {
@@ -220,9 +224,6 @@ function Get-EntraIdRoleDisplayName {
                 }
                 if ($strLower -match '/delete$' -or $strLower -match '/allTasks$') {
                     $boolHasDelete = $true
-                }
-                if ($strLower -match '/update$' -or $strLower -match '/allTasks$') {
-                    $boolHasUpdate = $true
                 }
             }
 
