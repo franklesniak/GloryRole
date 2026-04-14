@@ -64,7 +64,7 @@ function Get-AzActivityAdminEvent {
     #   Position 1: End
     #   Position 2: SubscriptionIds
     #
-    # Version: 1.2.20260413.1
+    # Version: 1.2.20260413.2
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -94,26 +94,19 @@ function Get-AzActivityAdminEvent {
             # credential type (e.g., Azure CLI or Interactive Browser)
             # successfully acquires a token. These warnings alarm users but
             # do not indicate a real failure: genuine auth failures still
-            # throw a terminating error that we catch below. Suppress both
-            # via $WarningPreference (inherited by the callee's scope and
-            # by Pester mocks, which do not consistently honor the
-            # -WarningAction common parameter) and -WarningAction (belt and
-            # suspenders for real Az.Accounts internals).
+            # throw a terminating error that we catch below. Suppress the
+            # probing warnings so only real problems surface to the user.
             $objVerbosePreferenceAtStartOfBlock = $VerbosePreference
-            $objWarningPreferenceAtStartOfBlock = $WarningPreference
             try {
                 $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
-                $WarningPreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
                 [void](Set-AzContext -SubscriptionId $strSubscriptionId -ErrorAction Stop -WarningAction SilentlyContinue)
                 $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
-                $WarningPreference = $objWarningPreferenceAtStartOfBlock
             } catch {
                 Write-Debug ("Set-AzContext failed for subscription: {0}" -f $_.Exception.Message)
                 Write-Error ("Failed to set Azure context for subscription {0}: {1}" -f $strSubscriptionId, $_.Exception.Message)
                 continue
             } finally {
                 $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
-                $WarningPreference = $objWarningPreferenceAtStartOfBlock
             }
 
             $dateCursor = $Start
