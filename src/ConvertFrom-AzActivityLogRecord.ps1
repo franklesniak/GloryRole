@@ -42,7 +42,7 @@ function ConvertFrom-AzActivityLogRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.4.20260413.0
+    # Version: 1.4.20260413.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -103,15 +103,24 @@ function ConvertFrom-AzActivityLogRecord {
                 # property names are those same URIs. Handle both so the
                 # same URI constants work across versions.
                 if ($objClaims -is [System.Collections.IDictionary]) {
-                    if ($objClaims.Contains($strObjectIdClaim)) {
+                    # Dictionary<TKey,TValue> implements IDictionary
+                    # explicitly, so $dict.Contains('key') fails method
+                    # resolution ("Cannot find an overload for Contains
+                    # and the argument count: 1") because the only
+                    # publicly visible Contains overload on the runtime
+                    # type takes a KeyValuePair, not a key. Iterating
+                    # .Keys with -contains works uniformly for generic
+                    # Dictionary<K,V>, Hashtable, and OrderedDictionary.
+                    $arrClaimKeys = @($objClaims.Keys)
+                    if ($arrClaimKeys -contains $strObjectIdClaim) {
                         $strObjectId = [string]$objClaims[$strObjectIdClaim]
                     }
-                    if ($objClaims.Contains($strUpnClaim)) {
+                    if ($arrClaimKeys -contains $strUpnClaim) {
                         $strUpn = [string]$objClaims[$strUpnClaim]
                     }
-                    if ($objClaims.Contains('appid')) {
+                    if ($arrClaimKeys -contains 'appid') {
                         $strAppId = [string]$objClaims['appid']
-                    } elseif ($objClaims.Contains($strAppIdClaimAlt)) {
+                    } elseif ($arrClaimKeys -contains $strAppIdClaimAlt) {
                         $strAppId = [string]$objClaims[$strAppIdClaimAlt]
                     }
                 } elseif ($null -ne $objClaims.PSObject -and $null -ne $objClaims.PSObject.Properties) {
