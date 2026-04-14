@@ -53,8 +53,12 @@
 # 'RoleManagement'). When omitted, all categories are returned.
 #
 # .PARAMETER EntraIdRoleNamePrefix
-# Prefix for generated Entra ID role names. Default is
-# 'GloryRole-EntraCluster'.
+# Prefix for generated Entra ID role names. Default is 'GloryRole'.
+# Get-EntraIdRoleDisplayName appends either a descriptive suffix
+# ("-{ResourceName} {Suffix}-{ClusterId}") or, when no descriptive
+# name can be generated, a fallback suffix ("-EntraCluster-{ClusterId}"),
+# so the default produces names like "GloryRole-User Manager-0" or
+# "GloryRole-EntraCluster-0".
 #
 # .PARAMETER MinDistinctPrincipals
 # Pruning threshold: minimum number of distinct principals that must
@@ -156,7 +160,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260414.1
+# Version: 1.7.20260414.2
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -180,7 +184,7 @@ param (
     [string]$WorkspaceId,
 
     [string[]]$EntraIdFilterCategory,
-    [string]$EntraIdRoleNamePrefix = 'GloryRole-EntraCluster',
+    [string]$EntraIdRoleNamePrefix = 'GloryRole',
 
     [int]$MinDistinctPrincipals = 2,
     [double]$MinTotalCount = 10,
