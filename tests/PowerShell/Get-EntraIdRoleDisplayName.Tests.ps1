@@ -138,7 +138,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Administrator$'
+            $strResult | Should -Match 'Administrator-\d+$'
         }
 
         It "Uses Manager when only update is present" {
@@ -152,7 +152,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Manager$'
+            $strResult | Should -Match 'Manager-\d+$'
         }
 
         It "Uses Administrator for allTasks actions" {
@@ -165,7 +165,7 @@ Describe "Get-EntraIdRoleDisplayName" {
             $strResult = Get-EntraIdRoleDisplayName -ResourceActions $arrActions -ClusterId 0
 
             # Assert
-            $strResult | Should -Match 'Administrator$'
+            $strResult | Should -Match 'Administrator-\d+$'
         }
     }
 
