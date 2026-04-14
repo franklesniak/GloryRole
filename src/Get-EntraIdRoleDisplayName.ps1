@@ -13,9 +13,12 @@ function Get-EntraIdRoleDisplayName {
     # such as "User & Group Manager" or "Application Administrator".
     #
     # When a prefix is provided, the generated name is appended to the
-    # prefix with a dash separator. When no meaningful name can be
-    # generated (e.g., empty or unrecognized actions), a fallback name
-    # using the cluster ID is returned.
+    # prefix with a dash separator and the ClusterId is appended as a
+    # trailing suffix to guarantee uniqueness across clusters (Entra ID
+    # requires role definition displayName values to be unique within
+    # a tenant). When no meaningful name can be generated (e.g., empty
+    # or unrecognized actions), a fallback name using the cluster ID is
+    # returned.
     # .PARAMETER ResourceActions
     # An array of microsoft.directory/* resource action strings that
     # define the role's permissions.
@@ -27,14 +30,16 @@ function Get-EntraIdRoleDisplayName {
     # 'GloryRole'.
     # .EXAMPLE
     # $strName = Get-EntraIdRoleDisplayName -ResourceActions @('microsoft.directory/users/create', 'microsoft.directory/users/basic/update', 'microsoft.directory/users/password/update') -ClusterId 0
-    # # Returns: 'GloryRole-User Manager'
+    # # Returns: 'GloryRole-User Manager-0'
     # # The actions are all user-related, so the generated name
-    # # reflects user management.
+    # # reflects user management. The trailing '-0' is the ClusterId
+    # # suffix, which keeps the display name unique across clusters.
     # .EXAMPLE
     # $strName = Get-EntraIdRoleDisplayName -ResourceActions @('microsoft.directory/groups/members/update', 'microsoft.directory/users/basic/update') -ClusterId 1
-    # # Returns: 'GloryRole-User & Group Manager'
+    # # Returns: 'GloryRole-User & Group Manager-1'
     # # Multiple resource types produce a combined name with the
-    # # dominant types joined by ampersands.
+    # # dominant types joined by ampersands. The trailing '-1'
+    # # is the ClusterId suffix.
     # .EXAMPLE
     # $strName = Get-EntraIdRoleDisplayName -ResourceActions @() -ClusterId 5
     # # Returns: 'GloryRole-EntraCluster-5'
@@ -58,7 +63,7 @@ function Get-EntraIdRoleDisplayName {
     #   Position 0: ResourceActions
     #   Position 1: ClusterId
     #
-    # Version: 1.0.20260414.0
+    # Version: 1.0.20260414.1
 
     [CmdletBinding()]
     [OutputType([string])]
@@ -165,8 +170,12 @@ function Get-EntraIdRoleDisplayName {
                 if ($strAction -match '^microsoft\.directory/([^/]+)/') {
                     $strResourceType = $Matches[1]
 
-                    # Normalize subtypes (e.g., groups.unified -> groups,
-                    # groups.security -> groups, deletedItems.users -> users)
+                    # Normalize dotted subtypes to their parent segment
+                    # (e.g., groups.unified -> groups, groups.security ->
+                    # groups). The URL path is split on '/' first, so the
+                    # segment `deletedItems` in
+                    # microsoft.directory/deletedItems/users/... stays as
+                    # `deletedItems` and is not affected by this rule.
                     if ($strResourceType -match '\.') {
                         $strResourceType = $strResourceType.Split('.')[0]
                     }
@@ -241,7 +250,15 @@ function Get-EntraIdRoleDisplayName {
 
             $strResourceName = $arrSortedLabels -join ' & '
 
-            return ("{0}-{1} {2}" -f $Prefix, $strResourceName, $strSuffix)
+            # Append ClusterId to guarantee each generated name is
+            # unique per cluster. Entra ID requires role definition
+            # displayName values to be unique within a tenant, and
+            # two clusters can otherwise produce identical
+            # descriptive names (e.g., two distinct user-management
+            # clusters both collapsing to "User Manager"). The
+            # suffix mirrors the fallback path style
+            # ("{Prefix}-EntraCluster-{ClusterId}").
+            return ("{0}-{1} {2}-{3}" -f $Prefix, $strResourceName, $strSuffix, $ClusterId)
         } catch {
             Write-Debug ("Get-EntraIdRoleDisplayName failed: {0}" -f $_.Exception.Message)
             throw
