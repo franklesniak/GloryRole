@@ -13,6 +13,8 @@
     FunctionsToExport = @(
         'ConvertFrom-AzActivityLogRecord'
         'ConvertFrom-ClaimsJson'
+        'ConvertFrom-EntraIdAuditRecord'
+        'ConvertTo-EntraIdResourceAction'
         'ConvertTo-NormalizedAction'
         'ConvertTo-NormalizedVectorRow'
         'ConvertTo-PrincipalActionCount'
@@ -25,6 +27,7 @@
         'Get-CalinskiHarabaszIndex'
         'Get-ClusterActionSet'
         'Get-DaviesBouldinIndex'
+        'Get-EntraIdAuditEvent'
         'Get-FarthestPointIndex'
         'Get-SquaredEuclideanDistance'
         'Get-StableSha256Hex'
@@ -34,6 +37,7 @@
         'Invoke-KMeansClustering'
         'Measure-PrincipalActionCountQuality'
         'New-AzureRoleDefinitionJson'
+        'New-EntraIdRoleDefinitionJson'
         'New-FeatureIndex'
         'Remove-DuplicateCanonicalEvent'
         'Remove-RareAction'
@@ -47,7 +51,7 @@
 
     PrivateData = @{
         PSData = @{
-            Tags         = @('Azure', 'RBAC', 'RoleMining', 'KMeans', 'Clustering', 'LeastPrivilege', 'Security', 'IAM')
+            Tags         = @('Azure', 'RBAC', 'RoleMining', 'KMeans', 'Clustering', 'LeastPrivilege', 'Security', 'IAM', 'EntraID', 'MicrosoftGraph')
             LicenseUri   = 'https://github.com/franklesniak/GloryRole/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/franklesniak/GloryRole'
             ReleaseNotes = 'Initial release'

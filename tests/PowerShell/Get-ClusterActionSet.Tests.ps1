@@ -284,4 +284,157 @@ Describe "Get-ClusterActionSet" {
             $arrResult.Count | Should -Be 3
         }
     }
+
+    Context "PrincipalDisplayNameMap - with map" {
+        It "Adds PrincipalDisplayNames property when map is provided" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
+            )
+            $hashAssignments = @{
+                'guid-1' = 0
+                'guid-2' = 0
+            }
+            $hashDisplayNames = @{
+                'guid-1' = 'alice@contoso.com'
+                'guid-2' = 'bob@contoso.com'
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+
+            # Assert
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].PSObject.Properties['PrincipalDisplayNames'] | Should -Not -BeNullOrEmpty
+            $arrResult[0].PrincipalDisplayNames.Count | Should -Be 2
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'alice@contoso.com'
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'bob@contoso.com'
+        }
+
+        It "Returns sorted PrincipalDisplayNames" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'guid-z'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'guid-a'; Action = 'write'; Count = 2 }
+            )
+            $hashAssignments = @{
+                'guid-z' = 0
+                'guid-a' = 0
+            }
+            $hashDisplayNames = @{
+                'guid-z' = 'zara@contoso.com'
+                'guid-a' = 'alice@contoso.com'
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+
+            # Assert
+            $arrResult[0].PrincipalDisplayNames[0] | Should -Be 'alice@contoso.com'
+            $arrResult[0].PrincipalDisplayNames[1] | Should -Be 'zara@contoso.com'
+        }
+
+        It "Falls back to PrincipalKey when principal is not in the map" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
+            )
+            $hashAssignments = @{
+                'guid-1' = 0
+                'guid-2' = 0
+            }
+            $hashDisplayNames = @{
+                'guid-1' = 'alice@contoso.com'
+                # guid-2 intentionally missing
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+
+            # Assert
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'alice@contoso.com'
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'guid-2'
+        }
+
+        It "PrincipalDisplayNames is [string[]]" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
+            )
+            $hashAssignments = @{ 'guid-1' = 0 }
+            $hashDisplayNames = @{ 'guid-1' = 'alice@contoso.com' }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+
+            # Assert
+            ($arrResult[0].PrincipalDisplayNames -is [string[]]) | Should -BeTrue
+        }
+    }
+
+    Context "PrincipalDisplayNameMap - without map" {
+        It "Does not add PrincipalDisplayNames property when map is not provided" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
+            )
+            $hashAssignments = @{ 'userA' = 0 }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert
+            $arrResult[0].PSObject.Properties['PrincipalDisplayNames'] | Should -BeNullOrEmpty
+        }
+
+        It "Does not add PrincipalDisplayNames property when map is empty" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
+            )
+            $hashAssignments = @{ 'userA' = 0 }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap @{})
+
+            # Assert
+            $arrResult[0].PSObject.Properties['PrincipalDisplayNames'] | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "PrincipalDisplayNameMap - multi-cluster" {
+        It "Each cluster gets its own PrincipalDisplayNames from the shared map" {
+            # Arrange
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
+                [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
+                [pscustomobject]@{ PrincipalKey = 'guid-3'; Action = 'delete'; Count = 1 }
+            )
+            $hashAssignments = @{
+                'guid-1' = 0
+                'guid-2' = 1
+                'guid-3' = 0
+            }
+            $hashDisplayNames = @{
+                'guid-1' = 'alice@contoso.com'
+                'guid-2' = 'bob@contoso.com'
+                'guid-3' = 'charlie@contoso.com'
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+
+            # Assert
+            $arrResult.Count | Should -Be 2
+            $arrResult[0].ClusterId | Should -Be 0
+            $arrResult[0].PrincipalDisplayNames.Count | Should -Be 2
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'alice@contoso.com'
+            $arrResult[0].PrincipalDisplayNames | Should -Contain 'charlie@contoso.com'
+            $arrResult[1].ClusterId | Should -Be 1
+            $arrResult[1].PrincipalDisplayNames.Count | Should -Be 1
+            $arrResult[1].PrincipalDisplayNames[0] | Should -Be 'bob@contoso.com'
+        }
+    }
 }

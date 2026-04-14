@@ -16,16 +16,31 @@ function Get-ClusterActionSet {
     # message is emitted for each such skipped count record, so a
     # principal that appears on multiple rows can produce multiple
     # messages).
+    #
+    # When a PrincipalDisplayNameMap is supplied, each output object also
+    # includes a PrincipalDisplayNames property containing human-readable
+    # names (e.g. UPNs) for the principals in that cluster. Principals
+    # not found in the map are included by their PrincipalKey value.
     # .PARAMETER Counts
     # An array of PrincipalActionCount sparse triples.
     # .PARAMETER AssignmentsMap
     # A hashtable mapping PrincipalKey to cluster ID (from K-Means
     # result).
+    # .PARAMETER PrincipalDisplayNameMap
+    # An optional hashtable mapping PrincipalKey to a human-readable
+    # display name (e.g. UserPrincipalName, app display name). When
+    # provided, each output object includes a PrincipalDisplayNames
+    # property. Principals not present in the map are represented by
+    # their PrincipalKey value.
     # .EXAMPLE
     # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments)
     # # $arrClusterActions[0].ClusterId = 0
     # # $arrClusterActions[0].Actions = @('microsoft.compute/virtualmachines/read', ...)
     # # $arrClusterActions[0].Principals = @('user1@contoso.com', 'spn-abcde')
+    # .EXAMPLE
+    # $hashDisplayNames = @{ '00000000-0000-0000-0000-000000000001' = 'admin@contoso.com'; 'app-id-123' = 'app-id-123' }
+    # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments -PrincipalDisplayNameMap $hashDisplayNames)
+    # # $arrClusterActions[0].PrincipalDisplayNames = @('admin@contoso.com')
     # .EXAMPLE
     # $arrCounts = @(
     # #     [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
@@ -48,6 +63,10 @@ function Get-ClusterActionSet {
     #     belonging to principals assigned to this cluster.
     #   - Principals ([string[]]) - A sorted array of unique principal
     #     keys (users and service principals) assigned to this cluster.
+    #   - PrincipalDisplayNames ([string[]]) - (Present only when
+    #     PrincipalDisplayNameMap is supplied.) A sorted array of
+    #     human-readable names for each principal. Principals not in the
+    #     map are represented by their PrincipalKey.
     # .NOTES
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
@@ -63,7 +82,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.1.20260414.0
+    # Version: 2.2.20260414.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -72,7 +91,10 @@ function Get-ClusterActionSet {
         [object[]]$Counts,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AssignmentsMap
+        [hashtable]$AssignmentsMap,
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]$PrincipalDisplayNameMap
     )
 
     process {
@@ -101,11 +123,32 @@ function Get-ClusterActionSet {
             }
 
             foreach ($intClusterId in ($hashActionsByCluster.Keys | Sort-Object)) {
-                [pscustomobject]@{
+                $arrSortedPrincipals = [string[]]@($hashPrincipalsByCluster[$intClusterId].Keys | Sort-Object)
+
+                $objOutput = [pscustomobject]@{
                     ClusterId = $intClusterId
                     Actions = [string[]]@($hashActionsByCluster[$intClusterId].Keys | Sort-Object)
-                    Principals = [string[]]@($hashPrincipalsByCluster[$intClusterId].Keys | Sort-Object)
+                    Principals = $arrSortedPrincipals
                 }
+
+                # Append human-readable display names when a lookup map
+                # was supplied. Principals not in the map fall back to
+                # their PrincipalKey so no entry is silently dropped.
+                if ($null -ne $PrincipalDisplayNameMap -and $PrincipalDisplayNameMap.Count -gt 0) {
+                    $arrDisplayNames = [string[]]@(
+                        foreach ($strPrincipalKey in $arrSortedPrincipals) {
+                            if ($PrincipalDisplayNameMap.ContainsKey($strPrincipalKey)) {
+                                [string]$PrincipalDisplayNameMap[$strPrincipalKey]
+                            } else {
+                                $strPrincipalKey
+                            }
+                        }
+                    )
+                    $arrDisplayNames = [string[]]@($arrDisplayNames | Sort-Object)
+                    $objOutput | Add-Member -MemberType NoteProperty -Name 'PrincipalDisplayNames' -Value $arrDisplayNames
+                }
+
+                $objOutput
             }
         } catch {
             $strErrorMessage = $null

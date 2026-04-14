@@ -209,4 +209,57 @@ Describe "Remove-DuplicateCanonicalEvent" {
             { Remove-DuplicateCanonicalEvent -Events $arrMalformed -ErrorAction Stop } | Should -Throw
         }
     }
+
+    Context "When events lack the ResourceId property (Entra ID events)" {
+        It "Deduplicates events that have no ResourceId property using remaining composite key fields" {
+            # Arrange - simulates CanonicalEntraIdEvent shape (no ResourceId)
+            $dtEarlier = [datetime]'2026-01-01T00:00:00Z'
+            $dtLater = [datetime]'2026-01-01T00:01:00Z'
+            $arrEvents = @(
+                [pscustomobject]@{ PrincipalKey = 'user-obj-001'; Action = 'microsoft.directory/groups/members/update'; CorrelationId = 'corr-1'; TimeGenerated = $dtLater }
+                [pscustomobject]@{ PrincipalKey = 'user-obj-001'; Action = 'microsoft.directory/groups/members/update'; CorrelationId = 'corr-1'; TimeGenerated = $dtEarlier }
+            )
+
+            # Act
+            $arrResult = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+
+            # Assert
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].TimeGenerated | Should -Be $dtEarlier
+        }
+
+        It "Retains distinct actions for the same principal when ResourceId is absent" {
+            # Arrange
+            $dtBase = [datetime]'2026-01-01T00:00:00Z'
+            $arrEvents = @(
+                [pscustomobject]@{ PrincipalKey = 'user-obj-001'; Action = 'microsoft.directory/groups/create'; CorrelationId = 'corr-2'; TimeGenerated = $dtBase }
+                [pscustomobject]@{ PrincipalKey = 'user-obj-001'; Action = 'microsoft.directory/groups/delete'; CorrelationId = 'corr-2'; TimeGenerated = $dtBase }
+            )
+
+            # Act
+            $arrResult = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+
+            # Assert
+            $arrResult.Count | Should -Be 2
+        }
+
+        It "Handles a mix of events with and without ResourceId" {
+            # Arrange
+            $dtBase = [datetime]'2026-01-01T00:00:00Z'
+            $arrEvents = @(
+                # Azure event (has ResourceId)
+                [pscustomobject]@{ PrincipalKey = 'user1'; Action = 'Microsoft.Compute/virtualMachines/read'; ResourceId = '/subscriptions/sub-1/providers/Microsoft.Compute/virtualMachines/vm1'; CorrelationId = 'abc'; TimeGenerated = $dtBase }
+                [pscustomobject]@{ PrincipalKey = 'user1'; Action = 'Microsoft.Compute/virtualMachines/read'; ResourceId = '/subscriptions/sub-1/providers/Microsoft.Compute/virtualMachines/vm1'; CorrelationId = 'abc'; TimeGenerated = $dtBase.AddSeconds(1) }
+                # Entra ID event (no ResourceId)
+                [pscustomobject]@{ PrincipalKey = 'user-obj-002'; Action = 'microsoft.directory/users/create'; CorrelationId = 'def'; TimeGenerated = $dtBase }
+                [pscustomobject]@{ PrincipalKey = 'user-obj-002'; Action = 'microsoft.directory/users/create'; CorrelationId = 'def'; TimeGenerated = $dtBase.AddSeconds(1) }
+            )
+
+            # Act
+            $arrResult = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+
+            # Assert
+            $arrResult.Count | Should -Be 2
+        }
+    }
 }
