@@ -122,9 +122,12 @@ function Get-EntraIdAuditEventFromLogAnalytics {
                 }
             }
 
+            $strStartUtc = $Start.ToUniversalTime().ToString("o")
+            $strEndUtc = $End.ToUniversalTime().ToString("o")
+
             $strKql = @"
 AuditLogs
-| where TimeGenerated between (datetime($($Start.ToUniversalTime().ToString("o"))) .. datetime($($End.ToUniversalTime().ToString("o"))))
+| where TimeGenerated between (datetime($strStartUtc) .. datetime($strEndUtc))
 | where ResultDescription =~ "success" or Result =~ "success"
 $strCategoryFilter
 | extend InitiatedByObj = parse_json(InitiatedBy)
