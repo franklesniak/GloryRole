@@ -160,7 +160,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260414.2
+# Version: 1.7.20260415.0
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -600,7 +600,12 @@ try {
             Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
     } else {
-        # Azure RBAC custom role definitions
+        # Azure RBAC custom role definitions. Use the .NET File API with
+        # UTF-8 without BOM for the same cross-version byte-determinism
+        # reason as the EntraId branch above (Set-Content's default
+        # encoding differs between Windows PowerShell 5.1 and
+        # PowerShell 7+).
+        $objAzureRoleJsonEncoding = New-Object System.Text.UTF8Encoding($false)
         foreach ($objCluster in $arrClusterActions) {
             $strRoleName = ("{0}-{1}" -f $RoleNamePrefix, $objCluster.ClusterId)
             $strDescription = ("Auto-generated least-privilege role from cluster {0} with {1} actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
@@ -614,7 +619,7 @@ try {
             $strRoleJson = New-AzureRoleDefinitionJson @hashRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("role_cluster_{0}.json" -f $objCluster.ClusterId)
-            $strRoleJson | Set-Content -Path $strRolePath
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objAzureRoleJsonEncoding)
             Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
     }
