@@ -17,10 +17,15 @@ function Get-ClusterActionSet {
     # principal that appears on multiple rows can produce multiple
     # messages).
     #
-    # When a PrincipalDisplayNameMap is supplied, each output object also
-    # includes a PrincipalDisplayNames property containing human-readable
-    # names (e.g. UPNs) for the principals in that cluster. Principals
-    # not found in the map are included by their PrincipalKey value.
+    # When a **non-empty** PrincipalDisplayNameMap is supplied, each
+    # output object also includes a PrincipalDisplayNames property
+    # containing human-readable names (e.g. UPNs) for the principals in
+    # that cluster. Principals not found in the map are included by
+    # their PrincipalKey value. When the map is omitted, `$null`, or
+    # empty (Count -eq 0), the PrincipalDisplayNames property is
+    # **not** added to output objects; callers should test with
+    # PSObject.Properties.Match or Get-Member rather than assuming the
+    # property is always present.
     # .PARAMETER Counts
     # An array of PrincipalActionCount sparse triples.
     # .PARAMETER AssignmentsMap
@@ -29,9 +34,11 @@ function Get-ClusterActionSet {
     # .PARAMETER PrincipalDisplayNameMap
     # An optional hashtable mapping PrincipalKey to a human-readable
     # display name (e.g. UserPrincipalName, app display name). When
-    # provided, each output object includes a PrincipalDisplayNames
-    # property. Principals not present in the map are represented by
-    # their PrincipalKey value.
+    # provided **and non-empty** (Count -gt 0), each output object
+    # includes a PrincipalDisplayNames property. Principals not present
+    # in the map are represented by their PrincipalKey value. An
+    # omitted, `$null`, or empty map causes the property to be absent
+    # from output (callers should not assume it is always present).
     # .EXAMPLE
     # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments)
     # # $arrClusterActions[0].ClusterId = 0
@@ -64,9 +71,10 @@ function Get-ClusterActionSet {
     #   - Principals ([string[]]) - A sorted array of unique principal
     #     keys (users and service principals) assigned to this cluster.
     #   - PrincipalDisplayNames ([string[]]) - (Present only when
-    #     PrincipalDisplayNameMap is supplied.) A sorted array of
-    #     human-readable names for each principal. Principals not in the
-    #     map are represented by their PrincipalKey.
+    #     PrincipalDisplayNameMap is supplied **and non-empty**.) A
+    #     sorted array of human-readable names for each principal.
+    #     Principals not in the map are represented by their
+    #     PrincipalKey.
     # .NOTES
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
@@ -82,7 +90,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.2.20260415.0
+    # Version: 2.2.20260415.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
