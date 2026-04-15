@@ -10,7 +10,8 @@
 
     # Functions to export — these are the module's public functions from src/
     # (excludes Invoke-RoleMiningPipeline.ps1, which is a script entry point,
-    # and non-exported helper functions such as Get-EntraIdRoleDisplayName.ps1)
+    # and non-exported helper functions such as Get-EntraIdRoleDisplayName.ps1
+    # and ConvertTo-PrincipalDisplayNameMap.ps1)
     FunctionsToExport = @(
         'ConvertFrom-AzActivityLogRecord'
         'ConvertFrom-ClaimsJson'
