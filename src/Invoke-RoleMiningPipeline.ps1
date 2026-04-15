@@ -160,7 +160,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260415.1
+# Version: 1.7.20260415.2
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -535,42 +535,50 @@ try {
     #region Stage 10: Export artifacts
     Write-Verbose "Stage 10: Exporting artifacts..."
 
+    # Use UTF-8 without BOM for every generated artifact so the output
+    # is byte-identical across Windows PowerShell 5.1 and PowerShell
+    # 7+. Set-Content / Export-Csv / Out-File defaults differ between
+    # those hosts (Windows PowerShell 5.1 emits ANSI/ASCII by default
+    # for some cmdlets and UTF-16LE for others), so the pipeline
+    # bypasses those cmdlets and writes every artifact through the
+    # .NET File API with a single shared encoding.
+    $objUtf8NoBomEncoding = New-Object System.Text.UTF8Encoding($false)
+
     # principal_action_counts.csv
     $strCountsPath = Join-Path -Path $OutputPath -ChildPath 'principal_action_counts.csv'
-    $arrCounts | Export-Csv -Path $strCountsPath -NoTypeInformation
+    $arrCountsCsvLines = @($arrCounts | ConvertTo-Csv -NoTypeInformation)
+    [System.IO.File]::WriteAllLines($strCountsPath, [string[]]$arrCountsCsvLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strCountsPath)
 
     # features.txt
     $strFeaturesPath = Join-Path -Path $OutputPath -ChildPath 'features.txt'
-    $objFeatureIndex.FeatureNames | Set-Content -Path $strFeaturesPath
+    $arrFeatureLines = @($objFeatureIndex.FeatureNames)
+    [System.IO.File]::WriteAllLines($strFeaturesPath, [string[]]$arrFeatureLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strFeaturesPath)
 
     # quality.json
     $strQualityPath = Join-Path -Path $OutputPath -ChildPath 'quality.json'
-    $objQuality | Select-Object -Property Principals, Actions, NonZeroEntries, Density |
-        ConvertTo-Json -Depth 4 |
-        Set-Content -Path $strQualityPath
+    $strQualityJson = $objQuality |
+        Select-Object -Property Principals, Actions, NonZeroEntries, Density |
+        ConvertTo-Json -Depth 4
+    [System.IO.File]::WriteAllText($strQualityPath, [string]$strQualityJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strQualityPath)
 
     # autoK_candidates.csv
     $strAutoKPath = Join-Path -Path $OutputPath -ChildPath 'autoK_candidates.csv'
-    $objAutoK.Candidates | Export-Csv -Path $strAutoKPath -NoTypeInformation
+    $arrAutoKCsvLines = @($objAutoK.Candidates | ConvertTo-Csv -NoTypeInformation)
+    [System.IO.File]::WriteAllLines($strAutoKPath, [string[]]$arrAutoKCsvLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strAutoKPath)
 
     # clusters.json
     $strClustersPath = Join-Path -Path $OutputPath -ChildPath 'clusters.json'
-    $arrClusterActions | ConvertTo-Json -Depth 4 | Set-Content -Path $strClustersPath
+    $strClustersJson = $arrClusterActions | ConvertTo-Json -Depth 4
+    [System.IO.File]::WriteAllText($strClustersPath, [string]$strClustersJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strClustersPath)
 
     # Role JSON per cluster
     if ($InputMode -eq 'EntraId') {
         # Entra ID custom role definitions (unifiedRoleDefinition format).
-        # The role JSON is written via the .NET File API with UTF-8
-        # without BOM so the generated artifact is byte-identical across
-        # Windows PowerShell 5.1 and PowerShell 7+ (Set-Content's default
-        # encoding differs between those hosts, which is why the style
-        # guide mandates explicit encoding for generated files).
-        $objEntraRoleJsonEncoding = New-Object System.Text.UTF8Encoding($false)
         foreach ($objCluster in $arrClusterActions) {
             $strRoleName = Get-EntraIdRoleDisplayName -ResourceActions $objCluster.Actions -ClusterId $objCluster.ClusterId -Prefix $EntraIdRoleNamePrefix
             $strDescription = ("Auto-generated least-privilege Entra ID role from cluster {0} with {1} resource actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
@@ -583,16 +591,11 @@ try {
             $strRoleJson = New-EntraIdRoleDefinitionJson @hashRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("entra_role_cluster_{0}.json" -f $objCluster.ClusterId)
-            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objEntraRoleJsonEncoding)
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)
             Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
     } else {
-        # Azure RBAC custom role definitions. Use the .NET File API with
-        # UTF-8 without BOM for the same cross-version byte-determinism
-        # reason as the EntraId branch above (Set-Content's default
-        # encoding differs between Windows PowerShell 5.1 and
-        # PowerShell 7+).
-        $objAzureRoleJsonEncoding = New-Object System.Text.UTF8Encoding($false)
+        # Azure RBAC custom role definitions.
         foreach ($objCluster in $arrClusterActions) {
             $strRoleName = ("{0}-{1}" -f $RoleNamePrefix, $objCluster.ClusterId)
             $strDescription = ("Auto-generated least-privilege role from cluster {0} with {1} actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
@@ -606,7 +609,7 @@ try {
             $strRoleJson = New-AzureRoleDefinitionJson @hashRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("role_cluster_{0}.json" -f $objCluster.ClusterId)
-            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objAzureRoleJsonEncoding)
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)
             Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
     }
