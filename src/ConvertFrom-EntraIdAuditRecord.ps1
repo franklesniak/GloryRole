@@ -46,9 +46,12 @@ function ConvertFrom-EntraIdAuditRecord {
     # - ActivityDateTime is missing or cannot be parsed as [datetime].
     # .NOTES
     # Requires ConvertTo-EntraIdResourceAction to be loaded. The action
-    # strings returned by that function are already fully normalized
-    # (lowercase microsoft.directory/* paths), so no additional
-    # normalization via ConvertTo-NormalizedAction is performed.
+    # strings returned by that function are already canonical
+    # microsoft.directory/* resource action paths (preserving the
+    # camelCase segments of the published Entra ID / Microsoft Graph
+    # role-permission namespace, such as oAuth2PermissionGrants and
+    # administrativeUnits), so no additional normalization via
+    # ConvertTo-NormalizedAction is performed.
     #
     # Supported on Windows PowerShell 5.1 (.NET Framework 4.6.2+) and
     # PowerShell 7.4.x / 7.5.x / 7.6.x (Windows, macOS, Linux).
@@ -56,7 +59,7 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.0.20260415.1
+    # Version: 1.0.20260415.2
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]

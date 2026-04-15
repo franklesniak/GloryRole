@@ -102,4 +102,33 @@ Describe "New-EntraIdRoleDefinitionJson" {
             $objParsed.rolePermissions[0].PSObject.Properties.Name | Should -Contain 'condition'
         }
     }
+
+    Context "When required parameters are empty" {
+        It "Fails fast when RoleName is an empty string" {
+            {
+                New-EntraIdRoleDefinitionJson `
+                    -RoleName '' `
+                    -Description 'D' `
+                    -ResourceActions @('microsoft.directory/users/create')
+            } | Should -Throw
+        }
+
+        It "Fails fast when Description is an empty string" {
+            {
+                New-EntraIdRoleDefinitionJson `
+                    -RoleName 'R' `
+                    -Description '' `
+                    -ResourceActions @('microsoft.directory/users/create')
+            } | Should -Throw
+        }
+
+        It "Fails fast when ResourceActions is an empty array" {
+            {
+                New-EntraIdRoleDefinitionJson `
+                    -RoleName 'R' `
+                    -Description 'D' `
+                    -ResourceActions @()
+            } | Should -Throw
+        }
+    }
 }
