@@ -52,7 +52,7 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.0.20260414.0
+    # Version: 1.0.20260415.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -61,12 +61,15 @@ function New-EntraIdRoleDefinitionJson {
     [OutputType([string])]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$RoleName,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$Description,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string[]]$ResourceActions,
 
         [bool]$IsEnabled = $true
