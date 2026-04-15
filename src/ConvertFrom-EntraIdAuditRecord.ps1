@@ -56,7 +56,7 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.0.20260415.1
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -151,7 +151,7 @@ function ConvertFrom-EntraIdAuditRecord {
             # [datetimeoffset], or ISO-8601 string depending on
             # deserialization path, so normalize to UTC [datetime]
             # here and drop records whose timestamp cannot be parsed.
-            $dateTimeGenerated = $null
+            $objDateTimeGenerated = $null
             if ($null -eq $Record.ActivityDateTime) {
                 if ($boolVerbose) {
                     Write-Verbose "Dropping record because ActivityDateTime is missing."
@@ -161,9 +161,9 @@ function ConvertFrom-EntraIdAuditRecord {
             }
 
             if ($Record.ActivityDateTime -is [datetimeoffset]) {
-                $dateTimeGenerated = $Record.ActivityDateTime.UtcDateTime
+                $objDateTimeGenerated = $Record.ActivityDateTime.UtcDateTime
             } elseif ($Record.ActivityDateTime -is [datetime]) {
-                $dateTimeGenerated = $Record.ActivityDateTime.ToUniversalTime()
+                $objDateTimeGenerated = $Record.ActivityDateTime.ToUniversalTime()
             } else {
                 $strActivityDateTime = [string]$Record.ActivityDateTime
                 if ([string]::IsNullOrWhiteSpace($strActivityDateTime)) {
@@ -189,7 +189,7 @@ function ConvertFrom-EntraIdAuditRecord {
                     return $null
                 }
 
-                $dateTimeGenerated = $objParsedActivityDateTimeOffset.UtcDateTime
+                $objDateTimeGenerated = $objParsedActivityDateTimeOffset.UtcDateTime
             }
 
             $strCorrelationId = $null
@@ -208,7 +208,7 @@ function ConvertFrom-EntraIdAuditRecord {
 
             [pscustomobject]@{
                 PSTypeName = 'CanonicalEntraIdEvent'
-                TimeGenerated = $dateTimeGenerated
+                TimeGenerated = $objDateTimeGenerated
                 PrincipalKey = $strPrincipalKey
                 PrincipalType = $strPrincipalType
                 Action = $strAction
