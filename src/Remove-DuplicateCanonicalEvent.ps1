@@ -48,7 +48,7 @@ function Remove-DuplicateCanonicalEvent {
     # This function supports positional parameters:
     #   Position 0: Events
     #
-    # Version: 1.2.20260414.1
+    # Version: 1.2.20260415.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

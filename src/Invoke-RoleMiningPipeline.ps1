@@ -194,21 +194,20 @@
 #   - macOS (PowerShell 7.x only)
 #   - Linux (PowerShell 7.x only)
 #
-# This script supports positional parameters:
-#   Position 0: InputMode
-#   Position 1: OutputPath
-# All other parameters must be specified by name.
+# This script does not support positional parameters. All parameters
+# must be specified by name (enforced by
+# `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 1.8.20260415.2
+# Version: 1.8.20260415.3
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
-    [Parameter(Mandatory = $true, Position = 0)]
+    [Parameter(Mandatory = $true)]
     [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics', 'EntraId')]
     [string]$InputMode,
 
-    [Parameter(Mandatory = $true, Position = 1)]
+    [Parameter(Mandatory = $true)]
     [string]$OutputPath,
 
     [ValidateSet('AzureRbac', 'EntraId')]

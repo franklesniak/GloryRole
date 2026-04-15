@@ -63,7 +63,7 @@ function Get-EntraIdRoleDisplayName {
     #   Position 0: ResourceActions
     #   Position 1: ClusterId
     #
-    # Version: 1.0.20260414.1
+    # Version: 1.0.20260415.0
 
     [CmdletBinding()]
     [OutputType([string])]

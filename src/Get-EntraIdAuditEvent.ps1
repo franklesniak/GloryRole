@@ -63,7 +63,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.0.20260414.1
+    # Version: 1.0.20260415.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
