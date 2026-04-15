@@ -212,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.3
+# Version: 2.1.20260415.4
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -222,6 +222,7 @@ param (
     [string]$InputMode,
 
     [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [string]$OutputPath,
 
     [ValidateSet('AzureRbac', 'EntraId')]
@@ -306,9 +307,15 @@ $strScriptDirectory = $PSScriptRoot
 # differ from $PWD (e.g. C:\windows\system32 on Windows).
 $OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
 
-# Ensure output directory exists
+# Ensure output directory exists. Using [System.IO.Directory]::CreateDirectory
+# rather than New-Item because New-Item does not support -LiteralPath (the
+# parameter does not exist on this cmdlet in any supported PowerShell version),
+# so New-Item -Path would interpret wildcard characters ([, ], *, ?) in a
+# user-supplied $OutputPath as patterns. $OutputPath is already resolved to
+# an absolute path above, so the .NET API's [Environment]::CurrentDirectory
+# semantics are not a concern here.
 if (-not (Test-Path -LiteralPath $OutputPath)) {
-    [void](New-Item -Path $OutputPath -ItemType Directory -Force)
+    [void][System.IO.Directory]::CreateDirectory($OutputPath)
 }
 
 # File writeability preflight
