@@ -85,9 +85,9 @@ Connect-MgGraph -Scopes 'AuditLog.Read.All'
     -OutputPath .\output\entra
 ```
 
-### Migration note — breaking change in 1.8
+### Migration note — breaking change in 2.0
 
-Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Starting in `Invoke-RoleMiningPipeline.ps1` **1.8**, `-RoleSchema` must be supplied explicitly for schema-neutral sources (`CSV`, `LogAnalytics`). The previous behavior treated Azure RBAC as the implicit default, which made no principled sense for CSV/LogAnalytics inputs that could equally hold Entra, and which also would not extend cleanly as AWS IAM, GCP IAM, and Active Directory schemas are added. Existing `CSV` or `LogAnalytics` invocations must be updated to pass `-RoleSchema AzureRbac` (for the previous behavior) or `-RoleSchema EntraId` (for Entra custom roles). `ActivityLog` and `EntraId` invocations are unaffected.
+Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Starting in `Invoke-RoleMiningPipeline.ps1` **2.0**, `-RoleSchema` must be supplied explicitly for schema-neutral sources (`CSV`, `LogAnalytics`), and `[CmdletBinding(PositionalBinding = $false)]` disables positional parameters on this entry point — all parameters must be specified by name. The previous behavior treated Azure RBAC as the implicit default, which made no principled sense for CSV/LogAnalytics inputs that could equally hold Entra, and which also would not extend cleanly as AWS IAM, GCP IAM, and Active Directory schemas are added. Existing `CSV` or `LogAnalytics` invocations must be updated to pass `-RoleSchema AzureRbac` (for the previous behavior) or `-RoleSchema EntraId` (for Entra custom roles). `ActivityLog` and `EntraId` invocations are unaffected by the `-RoleSchema` change.
 
 ## Output Artifacts
 
