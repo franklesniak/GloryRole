@@ -212,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.1
+# Version: 2.1.20260415.2
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -308,7 +308,7 @@ $OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromP
 
 # Ensure output directory exists
 if (-not (Test-Path -LiteralPath $OutputPath)) {
-    [void](New-Item -Path $OutputPath -ItemType Directory -Force)
+    [void](New-Item -LiteralPath $OutputPath -ItemType Directory -Force)
 }
 
 # File writeability preflight
