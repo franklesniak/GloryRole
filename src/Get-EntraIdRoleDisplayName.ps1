@@ -49,6 +49,14 @@ function Get-EntraIdRoleDisplayName {
     # .OUTPUTS
     # [string] A descriptive display name for the Entra ID custom role.
     # .NOTES
+    # **Private helper.** This function is intentionally **not** listed in
+    # the module manifest's `FunctionsToExport` and is not part of the
+    # module's public API surface. It is dot-sourced and used internally
+    # by `Invoke-RoleMiningPipeline.ps1` to generate Entra ID custom role
+    # `displayName` values. Its parameters, return shape, and positional
+    # contract may change without notice; external consumers should not
+    # take a dependency on this function.
+    #
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -59,11 +67,12 @@ function Get-EntraIdRoleDisplayName {
     #   - macOS (PowerShell 7.x only)
     #   - Linux (PowerShell 7.x only)
     #
-    # This function supports positional parameters:
+    # Positional parameters (internal caller contract only; subject to
+    # change):
     #   Position 0: ResourceActions
     #   Position 1: ClusterId
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.0.20260415.1
 
     [CmdletBinding()]
     [OutputType([string])]
