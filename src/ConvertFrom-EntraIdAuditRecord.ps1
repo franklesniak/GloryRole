@@ -56,7 +56,7 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.0.20260414.1
+    # Version: 1.0.20260415.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -151,28 +151,6 @@ function ConvertFrom-EntraIdAuditRecord {
             # [datetimeoffset], or ISO-8601 string depending on
             # deserialization path, so normalize to UTC [datetime]
             # here and drop records whose timestamp cannot be parsed.
-            $dateTimeGenerated = $null
-            if ($null -ne $Record.ActivityDateTime) {
-                $objActivityDateTime = $Record.ActivityDateTime
-                try {
-                    if ($objActivityDateTime -is [datetime]) {
-                        $dateTimeGenerated = ([datetime]$objActivityDateTime).ToUniversalTime()
-                    } elseif ($objActivityDateTime -is [datetimeoffset]) {
-                        $dateTimeGenerated = ([datetimeoffset]$objActivityDateTime).UtcDateTime
-                    } else {
-                        $dateTimeGenerated = ([datetime]::Parse([string]$objActivityDateTime, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal))
-                    }
-                } catch {
-                    $dateTimeGenerated = $null
-                }
-            }
-            if ($null -eq $dateTimeGenerated) {
-                if ($boolVerbose) {
-                    Write-Verbose "ActivityDateTime is missing or could not be parsed as [datetime]; returning null."
-                }
-                return $null
-            }
-
             $dateTimeGenerated = $null
             if ($null -eq $Record.ActivityDateTime) {
                 if ($boolVerbose) {
