@@ -113,7 +113,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 # Act / Assert
                 { & $script:strScriptPath -InputMode CSV -RoleSchema AzureRbac -OutputPath $strOutputPath } | Should -Throw
             } finally {
-                if (Test-Path -Path $strOutputPath) {
+                if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
                 }
             }
@@ -242,7 +242,7 @@ Describe "Invoke-RoleMiningPipeline" {
             $script:objRangeResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $script:strRangeOutputPath
 
             # Count distinct principals in sample data for upper bound
-            $arrCsvData = Import-Csv -Path $script:strCsvPath
+            $arrCsvData = Import-Csv -LiteralPath $script:strCsvPath
             $script:intPrincipalCount = ($arrCsvData | Select-Object -Property PrincipalKey -Unique).Count
         }
 
