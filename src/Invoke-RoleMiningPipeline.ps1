@@ -212,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.0
+# Version: 2.1.20260415.1
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -300,8 +300,14 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdRoleDisplayName.ps1')
 #endregion SourceFiles ########################################################
 
+# Resolve OutputPath to an absolute path against PowerShell's $PWD so that
+# downstream .NET File API calls (WriteAllLines / WriteAllText) do not
+# resolve relative paths against [Environment]::CurrentDirectory, which may
+# differ from $PWD (e.g. C:\windows\system32 on Windows).
+$OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+
 # Ensure output directory exists
-if (-not (Test-Path -Path $OutputPath)) {
+if (-not (Test-Path -LiteralPath $OutputPath)) {
     [void](New-Item -Path $OutputPath -ItemType Directory -Force)
 }
 
