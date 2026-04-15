@@ -88,4 +88,105 @@ Describe "Import-PrincipalActionCountFromCsv" {
             { Import-PrincipalActionCountFromCsv -Path 'nonexistent.csv' } | Should -Throw
         }
     }
+
+    Context "When -RoleSchema is 'EntraId'" {
+        BeforeAll {
+            $strTempFileName = [System.IO.Path]::GetRandomFileName()
+            $script:strEntraCsvPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath $strTempFileName
+            $strCsvContent = @(
+                'PrincipalKey,Action,Count'
+                'admin-001,microsoft.directory/oAuth2PermissionGrants/allProperties/update,10'
+                'admin-001,microsoft.directory/servicePrincipals/standard/read,15'
+                'admin-002,microsoft.directory/inviteGuest,5'
+                'admin-003,"  microsoft.directory/users/basic/update  ",8'
+                'admin-004,,3'
+                'admin-005,"   ",2'
+            ) -join [System.Environment]::NewLine
+            Set-Content -LiteralPath $script:strEntraCsvPath -Value $strCsvContent -Encoding UTF8
+        }
+
+        AfterAll {
+            if (Test-Path -LiteralPath $script:strEntraCsvPath) {
+                Remove-Item -LiteralPath $script:strEntraCsvPath -Force
+            }
+        }
+
+        It "Preserves camelCase segments in microsoft.directory/* actions (does not lowercase)" {
+            # Act
+            $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strEntraCsvPath -RoleSchema EntraId)
+
+            # Assert - only the 4 non-blank rows survive
+            $arrResult.Count | Should -Be 4
+            $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
+            $arrActions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+            $arrActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
+            $arrActions | Should -Contain 'microsoft.directory/inviteGuest'
+            $arrActions | Should -Contain 'microsoft.directory/users/basic/update'
+            # The camelCase forms MUST NOT have been downcased.
+            $arrActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+            $arrActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
+            $arrActions | Should -Not -Contain 'microsoft.directory/inviteguest'
+        }
+
+        It "Trims whitespace around actions but does not change case" {
+            # Act
+            $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strEntraCsvPath -RoleSchema EntraId)
+
+            # Assert - the quoted `"  microsoft.directory/users/basic/update  "` is trimmed
+            $objTrimmedRow = $arrResult | Where-Object { $_.PrincipalKey -eq 'admin-003' }
+            $objTrimmedRow | Should -Not -BeNullOrEmpty
+            $objTrimmedRow.Action | Should -BeExactly 'microsoft.directory/users/basic/update'
+        }
+
+        It "Skips rows with empty or whitespace-only actions" {
+            # Act
+            $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strEntraCsvPath -RoleSchema EntraId)
+
+            # Assert - admin-004 (empty) and admin-005 (whitespace) are skipped
+            $arrPrincipals = @($arrResult | Select-Object -ExpandProperty PrincipalKey)
+            $arrPrincipals | Should -Not -Contain 'admin-004'
+            $arrPrincipals | Should -Not -Contain 'admin-005'
+        }
+    }
+
+    Context "When -RoleSchema default is used (AzureRbac)" {
+        BeforeAll {
+            $strTempFileName = [System.IO.Path]::GetRandomFileName()
+            $script:strDefaultCsvPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath $strTempFileName
+            $strCsvContent = @(
+                'PrincipalKey,Action,Count'
+                'user-001,Microsoft.Compute/virtualMachines/Read,10'
+                'user-001,microsoft.directory/oAuth2PermissionGrants/allProperties/update,5'
+            ) -join [System.Environment]::NewLine
+            Set-Content -LiteralPath $script:strDefaultCsvPath -Value $strCsvContent -Encoding UTF8
+        }
+
+        AfterAll {
+            if (Test-Path -LiteralPath $script:strDefaultCsvPath) {
+                Remove-Item -LiteralPath $script:strDefaultCsvPath -Force
+            }
+        }
+
+        It "Lowercases actions when RoleSchema is omitted (default AzureRbac)" {
+            # Act
+            $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strDefaultCsvPath)
+
+            # Assert - default behavior lowercases everything
+            $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
+            $arrActions | Should -Contain 'microsoft.compute/virtualmachines/read'
+            $arrActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+            $arrActions | Should -Not -Contain 'Microsoft.Compute/virtualMachines/Read'
+            $arrActions | Should -Not -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+        }
+
+        It "Lowercases actions when RoleSchema is 'AzureRbac' explicitly" {
+            # Act
+            $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strDefaultCsvPath -RoleSchema AzureRbac)
+
+            # Assert
+            $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
+            $arrActions | Should -Contain 'microsoft.compute/virtualmachines/read'
+            $arrActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+        }
+    }
 }

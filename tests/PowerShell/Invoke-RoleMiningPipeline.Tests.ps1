@@ -445,21 +445,43 @@ Describe "Invoke-RoleMiningPipeline" {
             # that happen to already be valid Entra ID actions. To prove
             # the CSV->EntraId ingestion path does not downcase
             # camelCase segments (e.g., servicePrincipals,
-            # oAuth2PermissionGrants), write a small inline CSV with
+            # oAuth2PermissionGrants), write an inline CSV with
             # deliberately camelCase actions and assert the emitted
             # unifiedRoleDefinition JSON preserves them verbatim.
+            #
+            # The dataset is sized comparable to the default sample
+            # (10+ principals, 3+ distinct actions, varied counts to
+            # produce natural cluster structure) so that K-Means
+            # clustering and the Auto-K silhouette/Davies-Bouldin/
+            # Calinski-Harabasz metrics all have enough data to
+            # converge robustly on every supported platform.
             $strCamelCsvPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (([System.Guid]::NewGuid().ToString()) + '.csv')
             $strCamelOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
             try {
-                $strCsvBody = @'
-"PrincipalKey","Action","Count"
-"admin-obj-001","microsoft.directory/oAuth2PermissionGrants/allProperties/update",10
-"admin-obj-001","microsoft.directory/servicePrincipals/standard/read",15
-"admin-obj-002","microsoft.directory/oAuth2PermissionGrants/allProperties/update",8
-"admin-obj-002","microsoft.directory/servicePrincipals/standard/read",6
-"admin-obj-003","microsoft.directory/oAuth2PermissionGrants/allProperties/update",12
-"admin-obj-003","microsoft.directory/servicePrincipals/standard/read",9
-'@
+                $arrCsvLines = @(
+                    '"PrincipalKey","Action","Count"'
+                    # Cluster A: oAuth2PermissionGrants-heavy principals (service-principal admins)
+                    '"admin-obj-001","microsoft.directory/oAuth2PermissionGrants/allProperties/update",45'
+                    '"admin-obj-001","microsoft.directory/servicePrincipals/standard/read",12'
+                    '"admin-obj-002","microsoft.directory/oAuth2PermissionGrants/allProperties/update",38'
+                    '"admin-obj-002","microsoft.directory/servicePrincipals/standard/read",10'
+                    '"admin-obj-003","microsoft.directory/oAuth2PermissionGrants/allProperties/update",40'
+                    '"admin-obj-003","microsoft.directory/servicePrincipals/standard/read",15'
+                    '"admin-obj-004","microsoft.directory/oAuth2PermissionGrants/allProperties/update",33'
+                    # Cluster B: servicePrincipals-heavy principals (directory read-only)
+                    '"admin-obj-005","microsoft.directory/servicePrincipals/standard/read",55'
+                    '"admin-obj-005","microsoft.directory/oAuth2PermissionGrants/allProperties/update",8'
+                    '"admin-obj-006","microsoft.directory/servicePrincipals/standard/read",60'
+                    '"admin-obj-006","microsoft.directory/oAuth2PermissionGrants/allProperties/update",5'
+                    '"admin-obj-007","microsoft.directory/servicePrincipals/standard/read",48'
+                    # Cluster C: inviteGuest-heavy principals (guest admins)
+                    '"admin-obj-008","microsoft.directory/inviteGuest",50'
+                    '"admin-obj-008","microsoft.directory/users/basic/update",12'
+                    '"admin-obj-009","microsoft.directory/inviteGuest",44'
+                    '"admin-obj-009","microsoft.directory/users/basic/update",10'
+                    '"admin-obj-010","microsoft.directory/inviteGuest",55'
+                )
+                $strCsvBody = $arrCsvLines -join [System.Environment]::NewLine
                 Set-Content -LiteralPath $strCamelCsvPath -Value $strCsvBody -Encoding UTF8
 
                 $null = & $script:strScriptPath -InputMode CSV -CsvPath $strCamelCsvPath -RoleSchema EntraId -OutputPath $strCamelOutputPath
@@ -478,10 +500,14 @@ Describe "Invoke-RoleMiningPipeline" {
                     }
                 }
 
+                # Positive: camelCase segments are preserved verbatim.
                 $listAllActions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
                 $listAllActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
+                $listAllActions | Should -Contain 'microsoft.directory/inviteGuest'
+                # Negative: downcased forms must be absent anywhere in the emitted JSON.
                 $listAllActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
                 $listAllActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
+                $listAllActions | Should -Not -Contain 'microsoft.directory/inviteguest'
             } finally {
                 if (Test-Path -LiteralPath $strCamelCsvPath) {
                     Remove-Item -LiteralPath $strCamelCsvPath -Force
