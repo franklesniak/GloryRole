@@ -35,10 +35,10 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 
 ## Quick Start
 
-`Invoke-RoleMiningPipeline.ps1` takes two required parameters that describe independent concerns:
+`Invoke-RoleMiningPipeline.ps1` has two key parameters that describe independent concerns:
 
 - `-InputMode` selects the **data source** (where the principal-action counts come from): `CSV`, `ActivityLog`, `LogAnalytics`, or `EntraId`.
-- `-RoleSchema` selects the **role-definition schema** to emit: `AzureRbac` or `EntraId`.
+- `-RoleSchema` selects the **role-definition schema** to emit: `AzureRbac` or `EntraId`; it is **required** for schema-neutral sources and **defaulted** for schema-constrained sources.
 
 `-RoleSchema` is **required** when the source is schema-neutral (`CSV`, `LogAnalytics`) and **defaulted** when the source is schema-constrained (`ActivityLog` → `AzureRbac`; `EntraId` → `EntraId`). Incompatible combinations (e.g., `-InputMode EntraId -RoleSchema AzureRbac`) fail fast with a clear error.
 

@@ -194,12 +194,12 @@
 #   - macOS (PowerShell 7.x only)
 #   - Linux (PowerShell 7.x only)
 #
-# This script supports positional parameters in declaration order.
-# Position 0: InputMode
-# Position 1: OutputPath
-# All remaining parameters should be specified by name.
+# This script supports positional parameters:
+#   Position 0: InputMode
+#   Position 1: OutputPath
+# All other parameters must be specified by name.
 #
-# Version: 1.8.20260415.1
+# Version: 1.8.20260415.2
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
