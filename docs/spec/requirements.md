@@ -222,16 +222,26 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
   from the original (pre-vectorization) sparse triples.
   - **Verification:** Unit test.
 
-- **REQ-ROL-002:** The system MUST emit valid Azure custom role definition JSON
-  with `Name`, `IsCustom`, `Description`, `Actions`, `NotActions`,
-  `DataActions`, `NotDataActions`, and `AssignableScopes`.
+- **REQ-ROL-002:** When `RoleSchema` resolves to `AzureRbac`, the system MUST
+  emit valid Azure custom role definition JSON with `Name`, `IsCustom`,
+  `Description`, `Actions`, `NotActions`, `DataActions`, `NotDataActions`,
+  and `AssignableScopes`.
   - **Verification:** Unit test.
 
-- **REQ-ROL-003:** When InputMode is `EntraId`, the system MUST emit valid
-  Entra ID custom role definition JSON in the `unifiedRoleDefinition` format
-  with `displayName`, `description`, `isEnabled`, and `rolePermissions`
-  containing `allowedResourceActions` in the `microsoft.directory/*`
-  namespace.
+- **REQ-ROL-003:** When `RoleSchema` resolves to `EntraId`, the system MUST
+  emit valid Entra ID custom role definition JSON in the
+  `unifiedRoleDefinition` format with `displayName`, `description`,
+  `isEnabled`, and `rolePermissions` containing `allowedResourceActions`
+  in the `microsoft.directory/*` namespace.
+  - **Verification:** Unit test.
+
+- **REQ-ROL-004:** `InputMode` (data source) and `RoleSchema` (output role
+  schema) are independent concerns. `RoleSchema` defaults where the source
+  is schema-constrained (`ActivityLog` → `AzureRbac`; `EntraId` → `EntraId`)
+  and is required for schema-neutral sources (`CSV`, `LogAnalytics`). The
+  tool MUST NOT assume a default platform for schema-neutral inputs.
+  Incompatible combinations (e.g., `InputMode EntraId` with
+  `RoleSchema AzureRbac`) MUST fail fast with an actionable error.
   - **Verification:** Unit test.
 
 ### Export

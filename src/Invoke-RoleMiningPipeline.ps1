@@ -8,8 +8,35 @@
 # export all artifacts.
 #
 # .PARAMETER InputMode
-# Mandatory. Selects the data ingestion mode. Valid values are 'CSV',
-# 'ActivityLog', 'LogAnalytics', and 'EntraId'.
+# Mandatory. Selects the **data source** (where the principal-action
+# counts come from). Valid values are 'CSV', 'ActivityLog',
+# 'LogAnalytics', and 'EntraId'. This parameter describes the shape
+# of the input only and is **independent** of which role-definition
+# schema the pipeline emits at the end; see RoleSchema.
+#
+# .PARAMETER RoleSchema
+# Selects the **role-definition schema** written to the per-cluster
+# role JSON artifacts. Valid values are 'AzureRbac' (Azure RBAC
+# `roleDefinition` JSON with `Actions` / `AssignableScopes`) and
+# 'EntraId' (Microsoft Graph `unifiedRoleDefinition` JSON with
+# `rolePermissions.allowedResourceActions` in the
+# `microsoft.directory/*` namespace).
+#
+# For **schema-neutral** data sources, `RoleSchema` is **required**
+# because the tool does not assume a default platform:
+#   - InputMode 'CSV': the CSV is a neutral container; caller must
+#     pass `-RoleSchema AzureRbac` or `-RoleSchema EntraId`.
+#   - InputMode 'LogAnalytics': workspaces can hold Azure Activity,
+#     Entra sign-in / audit logs, or custom tables; caller must
+#     pass the matching schema.
+# For **schema-constrained** data sources, `RoleSchema` defaults
+# (and passing an incompatible value throws):
+#   - InputMode 'ActivityLog' (Azure Activity Log cmdlet) defaults
+#     to 'AzureRbac'.
+#   - InputMode 'EntraId' (Microsoft Graph directory audit logs)
+#     defaults to 'EntraId'.
+# Artifact naming: 'AzureRbac' produces `role_cluster_<id>.json`;
+# 'EntraId' produces `entra_role_cluster_<id>.json`.
 #
 # .PARAMETER OutputPath
 # Mandatory. Directory where all artifacts are exported. Created
@@ -117,25 +144,35 @@
 #     exported
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -RoleSchema AzureRbac -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
-# # Runs the pipeline in CSV mode. The returned object contains
-# # RecommendedK, Candidates, ClusterActions, Quality, and OutputPath
-# # properties summarizing the role-mining results.
+# # Runs the pipeline in CSV mode with Azure RBAC output. The returned
+# # object contains RecommendedK, Candidates, ClusterActions, Quality,
+# # and OutputPath properties summarizing the role-mining results.
+# # Emits role_cluster_<id>.json per cluster.
+#
+# .EXAMPLE
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/entra_counts.csv') -RoleSchema EntraId -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
+#
+# # Runs the pipeline in CSV mode with Entra ID output. Useful for
+# # demos and offline testing with a pre-canonicalized Entra sparse
+# # triple CSV. Emits entra_role_cluster_<id>.json per cluster.
 #
 # .EXAMPLE
 # $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode ActivityLog -SubscriptionIds @('00000000-0000-0000-0000-000000000001') -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
 # # Runs the pipeline in ActivityLog mode. Queries the Azure Activity
 # # Log for the specified subscription over the last 30 days and
-# # processes the results through the full pipeline.
+# # processes the results through the full pipeline. RoleSchema
+# # defaults to 'AzureRbac' (Activity Log is a schema-constrained
+# # source).
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -RoleSchema AzureRbac -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
-# # Runs the pipeline in LogAnalytics mode. Queries the specified Log
-# # Analytics workspace for activity data over the last 30 days and
-# # processes the results through the full pipeline.
+# # Runs the pipeline in LogAnalytics mode with Azure RBAC output.
+# # LogAnalytics is schema-neutral (the same workspace can hold Azure
+# # Activity or Entra audit tables), so RoleSchema is required.
 #
 # .EXAMPLE
 # $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode EntraId -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
@@ -143,6 +180,8 @@
 # # Runs the pipeline in EntraId mode. Queries Microsoft Graph for
 # # Entra ID directory audit logs over the last 30 days, clusters
 # # admin activities, and generates Entra ID custom role definitions.
+# # RoleSchema defaults to 'EntraId' (Graph directory audit is a
+# # schema-constrained source).
 #
 # .NOTES
 # Supported PowerShell versions:
@@ -160,7 +199,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260415.2
+# Version: 1.8.20260415.0
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -171,6 +210,9 @@ param (
 
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
+
+    [ValidateSet('AzureRbac', 'EntraId')]
+    [string]$RoleSchema,
 
     [string]$CsvPath,
 
@@ -259,7 +301,42 @@ try {
 }
 
 try {
-    Write-Debug ("Parameters received: InputMode={0}, OutputPath={1}" -f $InputMode, $OutputPath)
+    # Resolve -RoleSchema using default-where-constrained semantics.
+    # Schema-constrained sources (ActivityLog, EntraId) default to the
+    # only role schema they can meaningfully produce. Schema-neutral
+    # sources (CSV, LogAnalytics) require the caller to state the
+    # schema explicitly; the tool does not default to a particular
+    # platform, so that CSV / LogAnalytics callers treating AzureRbac,
+    # EntraId (and future AwsIam / GcpIam / ActiveDirectory) as equal
+    # citizens are not silently routed to a default platform.
+    if (-not $PSBoundParameters.ContainsKey('RoleSchema')) {
+        switch ($InputMode) {
+            'ActivityLog' { $RoleSchema = 'AzureRbac' }
+            'EntraId' { $RoleSchema = 'EntraId' }
+            default {
+                throw ("RoleSchema is required when InputMode is '{0}'. Pass -RoleSchema 'AzureRbac' or -RoleSchema 'EntraId' to select which role-definition schema to emit." -f $InputMode)
+            }
+        }
+    } else {
+        # Compatibility check: schema-constrained sources reject
+        # incompatible RoleSchema values so the caller gets a clear
+        # error instead of silently producing a role-definition JSON
+        # that the target API would reject.
+        switch ($InputMode) {
+            'ActivityLog' {
+                if ($RoleSchema -ne 'AzureRbac') {
+                    throw ("RoleSchema '{0}' is incompatible with InputMode 'ActivityLog'. The Azure Activity Log cmdlet only produces Azure RBAC actions, so only -RoleSchema 'AzureRbac' is valid (or omit -RoleSchema to use the default)." -f $RoleSchema)
+                }
+            }
+            'EntraId' {
+                if ($RoleSchema -ne 'EntraId') {
+                    throw ("RoleSchema '{0}' is incompatible with InputMode 'EntraId'. Microsoft Graph directory audit logs only produce microsoft.directory/* actions, so only -RoleSchema 'EntraId' is valid (or omit -RoleSchema to use the default)." -f $RoleSchema)
+                }
+            }
+        }
+    }
+
+    Write-Debug ("Parameters received: InputMode={0}, RoleSchema={1}, OutputPath={2}" -f $InputMode, $RoleSchema, $OutputPath)
 
     # Principal display-name lookup built during ingestion. Maps
     # PrincipalKey (GUID / AppId) to a human-readable name (UPN for
@@ -576,8 +653,11 @@ try {
     [System.IO.File]::WriteAllText($strClustersPath, [string]$strClustersJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strClustersPath)
 
-    # Role JSON per cluster
-    if ($InputMode -eq 'EntraId') {
+    # Role JSON per cluster. Gated on $RoleSchema (not $InputMode) so
+    # that schema-neutral sources (CSV, LogAnalytics) can emit either
+    # Azure RBAC or Entra ID role definitions based on the caller's
+    # explicit -RoleSchema choice.
+    if ($RoleSchema -eq 'EntraId') {
         # Entra ID custom role definitions (unifiedRoleDefinition format).
         foreach ($objCluster in $arrClusterActions) {
             $strRoleName = Get-EntraIdRoleDisplayName -ResourceActions $objCluster.Actions -ClusterId $objCluster.ClusterId -Prefix $EntraIdRoleNamePrefix

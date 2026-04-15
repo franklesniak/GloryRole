@@ -11,7 +11,7 @@ Describe "Invoke-RoleMiningPipeline" {
     Context "When running in CSV mode with sample data" {
         BeforeAll {
             $script:strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
-            $script:objResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -OutputPath $script:strOutputPath
+            $script:objResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $script:strOutputPath
         }
 
         AfterAll {
@@ -111,7 +111,7 @@ Describe "Invoke-RoleMiningPipeline" {
             $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
             try {
                 # Act / Assert
-                { & $script:strScriptPath -InputMode CSV -OutputPath $strOutputPath } | Should -Throw
+                { & $script:strScriptPath -InputMode CSV -RoleSchema AzureRbac -OutputPath $strOutputPath } | Should -Throw
             } finally {
                 if (Test-Path -Path $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
@@ -190,7 +190,7 @@ Describe "Invoke-RoleMiningPipeline" {
             # Act
             $objException = $null
             try {
-                & $script:strScriptPath -InputMode CSV -CsvPath $script:strPruneAllCsvPath -OutputPath $script:strPruneAllOutputPath
+                & $script:strScriptPath -InputMode CSV -CsvPath $script:strPruneAllCsvPath -RoleSchema AzureRbac -OutputPath $script:strPruneAllOutputPath
             } catch {
                 $objException = $_
             }
@@ -217,8 +217,8 @@ Describe "Invoke-RoleMiningPipeline" {
         BeforeAll {
             $script:strSeedOutputPath1 = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
             $script:strSeedOutputPath2 = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
-            $script:objSeedResult1 = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -OutputPath $script:strSeedOutputPath1 -Seed 42
-            $script:objSeedResult2 = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -OutputPath $script:strSeedOutputPath2 -Seed 42
+            $script:objSeedResult1 = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $script:strSeedOutputPath1 -Seed 42
+            $script:objSeedResult2 = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $script:strSeedOutputPath2 -Seed 42
         }
 
         AfterAll {
@@ -239,7 +239,7 @@ Describe "Invoke-RoleMiningPipeline" {
     Context "When verifying RecommendedK range" {
         BeforeAll {
             $script:strRangeOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
-            $script:objRangeResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -OutputPath $script:strRangeOutputPath
+            $script:objRangeResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $script:strRangeOutputPath
 
             # Count distinct principals in sample data for upper bound
             $arrCsvData = Import-Csv -Path $script:strCsvPath
@@ -260,6 +260,126 @@ Describe "Invoke-RoleMiningPipeline" {
         It "RecommendedK is less than or equal to the number of principals" {
             # Assert
             $script:objRangeResult.RecommendedK | Should -BeLessOrEqual $script:intPrincipalCount
+        }
+    }
+
+    Context "When resolving -RoleSchema for schema-neutral sources" {
+        It "Throws when -RoleSchema is omitted with InputMode CSV" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match "RoleSchema is required when InputMode is 'CSV'"
+            } finally {
+                if (Test-Path -Path $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Throws when -RoleSchema is omitted with InputMode LogAnalytics" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode LogAnalytics -WorkspaceId 'w' -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match "RoleSchema is required when InputMode is 'LogAnalytics'"
+            } finally {
+                if (Test-Path -Path $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+    }
+
+    Context "When validating -RoleSchema / -InputMode compatibility" {
+        It "Throws when -RoleSchema 'EntraId' is passed with InputMode ActivityLog" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode ActivityLog -RoleSchema EntraId -SubscriptionIds @('00000000-0000-0000-0000-000000000000') -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match "incompatible with InputMode 'ActivityLog'"
+            } finally {
+                if (Test-Path -Path $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Throws when -RoleSchema 'AzureRbac' is passed with InputMode EntraId" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode EntraId -RoleSchema AzureRbac -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match "incompatible with InputMode 'EntraId'"
+            } finally {
+                if (Test-Path -Path $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+    }
+
+    Context "When running in CSV mode with -RoleSchema EntraId against the Entra sample" {
+        BeforeAll {
+            $script:strEntraCsvPath = Join-Path -Path $strSamplesRoot -ChildPath 'entra_id_principal_action_counts.csv'
+            $script:strEntraOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            $script:objEntraResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strEntraCsvPath -RoleSchema EntraId -OutputPath $script:strEntraOutputPath
+        }
+
+        AfterAll {
+            if (Test-Path -Path $script:strEntraOutputPath) {
+                Remove-Item -LiteralPath $script:strEntraOutputPath -Recurse -Force
+            }
+        }
+
+        It "Returns a non-null result" {
+            $script:objEntraResult | Should -Not -BeNullOrEmpty
+        }
+
+        It "Exports at least one entra_role_cluster_*.json file" {
+            $arrEntraRoleFiles = @(Get-ChildItem -Path $script:strEntraOutputPath -Filter 'entra_role_cluster_*.json')
+            $arrEntraRoleFiles.Count | Should -BeGreaterThan 0
+        }
+
+        It "Does not export any Azure RBAC role_cluster_*.json files" {
+            $arrAzureRoleFiles = @(Get-ChildItem -Path $script:strEntraOutputPath -Filter 'role_cluster_*.json')
+            $arrAzureRoleFiles.Count | Should -Be 0
         }
     }
 }
