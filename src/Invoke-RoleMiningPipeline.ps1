@@ -199,16 +199,16 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.8.20260415.0
+# Version: 1.8.20260415.1
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, Position = 0)]
     [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics', 'EntraId')]
     [string]$InputMode,
 
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, Position = 1)]
     [string]$OutputPath,
 
     [ValidateSet('AzureRbac', 'EntraId')]

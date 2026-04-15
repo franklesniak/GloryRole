@@ -280,7 +280,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 $objException | Should -Not -BeNullOrEmpty
                 $objException.Exception.Message | Should -Match "RoleSchema is required when InputMode is 'CSV'"
             } finally {
-                if (Test-Path -Path $strOutputPath) {
+                if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
                 }
             }
@@ -302,7 +302,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 $objException | Should -Not -BeNullOrEmpty
                 $objException.Exception.Message | Should -Match "RoleSchema is required when InputMode is 'LogAnalytics'"
             } finally {
-                if (Test-Path -Path $strOutputPath) {
+                if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
                 }
             }
@@ -326,7 +326,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 $objException | Should -Not -BeNullOrEmpty
                 $objException.Exception.Message | Should -Match "incompatible with InputMode 'ActivityLog'"
             } finally {
-                if (Test-Path -Path $strOutputPath) {
+                if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
                 }
             }
@@ -348,7 +348,7 @@ Describe "Invoke-RoleMiningPipeline" {
                 $objException | Should -Not -BeNullOrEmpty
                 $objException.Exception.Message | Should -Match "incompatible with InputMode 'EntraId'"
             } finally {
-                if (Test-Path -Path $strOutputPath) {
+                if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force
                 }
             }
@@ -363,7 +363,7 @@ Describe "Invoke-RoleMiningPipeline" {
         }
 
         AfterAll {
-            if (Test-Path -Path $script:strEntraOutputPath) {
+            if (Test-Path -LiteralPath $script:strEntraOutputPath) {
                 Remove-Item -LiteralPath $script:strEntraOutputPath -Recurse -Force
             }
         }
@@ -373,12 +373,12 @@ Describe "Invoke-RoleMiningPipeline" {
         }
 
         It "Exports at least one entra_role_cluster_*.json file" {
-            $arrEntraRoleFiles = @(Get-ChildItem -Path $script:strEntraOutputPath -Filter 'entra_role_cluster_*.json')
+            $arrEntraRoleFiles = @(Get-ChildItem -LiteralPath $script:strEntraOutputPath -Filter 'entra_role_cluster_*.json')
             $arrEntraRoleFiles.Count | Should -BeGreaterThan 0
         }
 
         It "Does not export any Azure RBAC role_cluster_*.json files" {
-            $arrAzureRoleFiles = @(Get-ChildItem -Path $script:strEntraOutputPath -Filter 'role_cluster_*.json')
+            $arrAzureRoleFiles = @(Get-ChildItem -LiteralPath $script:strEntraOutputPath -Filter 'role_cluster_*.json')
             $arrAzureRoleFiles.Count | Should -Be 0
         }
     }
