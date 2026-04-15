@@ -35,25 +35,44 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 
 ## Quick Start
 
+`Invoke-RoleMiningPipeline.ps1` has two key parameters that describe independent concerns:
+
+- `-InputMode` selects the **data source** (where the principal-action counts come from): `CSV`, `ActivityLog`, `LogAnalytics`, or `EntraId`.
+- `-RoleSchema` selects the **role-definition schema** to emit: `AzureRbac` or `EntraId`; it is **required** for schema-neutral sources and **defaulted** for schema-constrained sources.
+
+`-RoleSchema` is **required** when the source is schema-neutral (`CSV`, `LogAnalytics`) and **defaulted** when the source is schema-constrained (`ActivityLog` → `AzureRbac`; `EntraId` → `EntraId`). Incompatible combinations (e.g., `-InputMode EntraId -RoleSchema AzureRbac`) fail fast with a clear error.
+
 ```powershell
-# From a local CSV sample
+# From a local CSV sample — Azure RBAC output
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
     -CsvPath .\samples\principal_action_counts.csv `
+    -RoleSchema AzureRbac `
     -OutputPath .\output
 
+# From a local Entra ID CSV sample — Entra custom role output
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
+    -CsvPath .\samples\entra_id_principal_action_counts.csv `
+    -RoleSchema EntraId `
+    -OutputPath .\output\entra-demo
+
 # From Azure Activity Log (requires Az module)
+# RoleSchema defaults to AzureRbac for this source; can be omitted.
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode ActivityLog `
     -SubscriptionIds @('your-sub-id') `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
 
 # From Log Analytics (requires Az.OperationalInsights)
+# A Log Analytics workspace can hold either Azure Activity or Entra
+# tables, so RoleSchema is required.
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
     -WorkspaceId 'your-workspace-id' `
+    -RoleSchema AzureRbac `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
 
 # From Entra ID audit logs (requires Microsoft.Graph.Reports)
+# RoleSchema defaults to EntraId for this source; can be omitted.
 Connect-MgGraph -Scopes 'AuditLog.Read.All'
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode EntraId `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
@@ -64,12 +83,11 @@ Connect-MgGraph -Scopes 'AuditLog.Read.All'
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -EntraIdFilterCategory @('GroupManagement', 'UserManagement') `
     -OutputPath .\output\entra
-
-# From Entra ID sample CSV (for demos/testing)
-.\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
-    -CsvPath .\samples\entra_id_principal_action_counts.csv `
-    -OutputPath .\output\entra-demo
 ```
+
+### Migration note — breaking change in 1.8
+
+Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Starting in `Invoke-RoleMiningPipeline.ps1` **1.8**, `-RoleSchema` must be supplied explicitly for schema-neutral sources (`CSV`, `LogAnalytics`). The previous behavior treated Azure RBAC as the implicit default, which made no principled sense for CSV/LogAnalytics inputs that could equally hold Entra, and which also would not extend cleanly as AWS IAM, GCP IAM, and Active Directory schemas are added. Existing `CSV` or `LogAnalytics` invocations must be updated to pass `-RoleSchema AzureRbac` (for the previous behavior) or `-RoleSchema EntraId` (for Entra custom roles). `ActivityLog` and `EntraId` invocations are unaffected.
 
 ## Output Artifacts
 
@@ -80,8 +98,8 @@ Connect-MgGraph -Scopes 'AuditLog.Read.All'
 | `quality.json` | Dataset quality metrics (principals, actions, density) |
 | `autoK_candidates.csv` | Every evaluated K with all metrics, ranks, and composite score |
 | `clusters.json` | Cluster-to-action mapping with principal lists |
-| `role_cluster_<id>.json` | One Azure custom role definition per cluster (RBAC modes) |
-| `entra_role_cluster_<id>.json` | One Entra ID custom role definition per cluster (EntraId mode) |
+| `role_cluster_<id>.json` | One Azure custom role definition per cluster (when `-RoleSchema AzureRbac`) |
+| `entra_role_cluster_<id>.json` | One Entra ID custom role definition per cluster (when `-RoleSchema EntraId`) |
 
 ## Who It's For
 
