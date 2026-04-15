@@ -160,7 +160,7 @@
 # Position 1: OutputPath
 # All remaining parameters should be specified by name.
 #
-# Version: 1.7.20260415.0
+# Version: 1.7.20260415.1
 
 [CmdletBinding()]
 [OutputType([pscustomobject])]
@@ -222,6 +222,7 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromCsv.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Remove-DuplicateCanonicalEvent.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-PrincipalActionCount.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-PrincipalDisplayNameMap.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Measure-PrincipalActionCountQuality.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-ActionStatFromCount.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Remove-RareAction.ps1')
@@ -303,17 +304,10 @@ try {
             Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
 
             # Build principal display-name lookup from deduplicated events.
-            # Prefer UPN for users; fall back to PrincipalKey for apps.
-            foreach ($objEvt in $arrDeduped) {
-                $strKey = [string]$objEvt.PrincipalKey
-                if (-not $hashPrincipalDisplayName.ContainsKey($strKey)) {
-                    if (-not [string]::IsNullOrWhiteSpace($objEvt.PrincipalUPN)) {
-                        $hashPrincipalDisplayName[$strKey] = [string]$objEvt.PrincipalUPN
-                    } else {
-                        $hashPrincipalDisplayName[$strKey] = $strKey
-                    }
-                }
-            }
+            # Helper centralizes the UPN-preferred / PrincipalKey-fallback
+            # precedence so both ActivityLog and EntraId branches stay in
+            # lockstep if those rules change.
+            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
             Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
 
             $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
@@ -355,16 +349,9 @@ try {
             Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
 
             # Build principal display-name map from Entra ID events.
-            foreach ($objEvt in $arrDeduped) {
-                $strKey = [string]$objEvt.PrincipalKey
-                if (-not $hashPrincipalDisplayName.ContainsKey($strKey)) {
-                    if (-not [string]::IsNullOrWhiteSpace($objEvt.PrincipalUPN)) {
-                        $hashPrincipalDisplayName[$strKey] = [string]$objEvt.PrincipalUPN
-                    } else {
-                        $hashPrincipalDisplayName[$strKey] = $strKey
-                    }
-                }
-            }
+            # Shares the same helper as the ActivityLog branch so
+            # display-name precedence rules cannot drift between modes.
+            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
             Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
 
             $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
