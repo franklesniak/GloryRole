@@ -158,7 +158,11 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
 
 - **REQ-DED-001:** Retry deduplication MUST use the composite key
   `PrincipalKey|Action|ResourceId|CorrelationId`. Records without a
-  `CorrelationId` MUST be kept.
+  `CorrelationId` MUST be kept. When the canonical event shape does not
+  carry a `ResourceId` (e.g., `DC-6 Canonical Entra ID Event`, which
+  omits the column), the missing value MUST be treated as an empty
+  string in the composite key so the dedupe rule applies uniformly
+  across event shapes.
   - **Verification:** Unit test.
 
 - **REQ-AGG-001:** Canonical events MUST be aggregated into

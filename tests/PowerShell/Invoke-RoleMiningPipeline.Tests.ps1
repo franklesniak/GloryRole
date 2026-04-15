@@ -353,6 +353,34 @@ Describe "Invoke-RoleMiningPipeline" {
                 }
             }
         }
+
+        It "Throws when -RoleSchema 'EntraId' is passed with InputMode LogAnalytics" {
+            # The bundled Log Analytics adapter queries AzureActivity and
+            # lowercases actions, so it cannot produce valid Entra ID
+            # microsoft.directory/* resource actions. The pipeline must
+            # fast-fail with a clear error instead of silently producing
+            # entra_role_cluster_*.json files Microsoft Graph would reject.
+
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode LogAnalytics -RoleSchema EntraId -WorkspaceId 'w' -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match "incompatible with InputMode 'LogAnalytics'"
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
     }
 
     Context "When -RoleSchema is omitted for schema-constrained sources" {

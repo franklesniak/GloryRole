@@ -27,8 +27,14 @@
 #   - InputMode 'CSV': the CSV is a neutral container; caller must
 #     pass `-RoleSchema AzureRbac` or `-RoleSchema EntraId`.
 #   - InputMode 'LogAnalytics': workspaces can hold Azure Activity,
-#     Entra sign-in / audit logs, or custom tables; caller must
-#     pass the matching schema.
+#     Entra sign-in / audit logs, or custom tables, so the mode is
+#     schema-neutral in principle; caller must pass an explicit
+#     `-RoleSchema`. The bundled LogAnalytics adapter
+#     (`Import-PrincipalActionCountFromLogAnalytics`) currently only
+#     queries the `AzureActivity` table and normalizes actions to
+#     lowercase, so today only `-RoleSchema AzureRbac` is accepted;
+#     `-RoleSchema EntraId` throws a fast-fail compatibility error
+#     until an Entra-capable LogAnalytics adapter is introduced.
 # For **schema-constrained** data sources, `RoleSchema` defaults
 # (and passing an incompatible value throws):
 #   - InputMode 'ActivityLog' (Azure Activity Log cmdlet) defaults
@@ -198,7 +204,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.0.20260415.1
+# Version: 2.0.20260415.2
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -330,6 +336,20 @@ try {
             'EntraId' {
                 if ($RoleSchema -ne 'EntraId') {
                     throw ("RoleSchema '{0}' is incompatible with InputMode 'EntraId'. Microsoft Graph directory audit logs only produce microsoft.directory/* actions, so only -RoleSchema 'EntraId' is valid (or omit -RoleSchema to use the default)." -f $RoleSchema)
+                }
+            }
+            'LogAnalytics' {
+                # The bundled LogAnalytics adapter
+                # (Import-PrincipalActionCountFromLogAnalytics) queries the
+                # AzureActivity table and normalizes actions to lowercase via
+                # ConvertTo-NormalizedAction. That makes it incompatible with
+                # the EntraId schema, which requires camelCase microsoft.directory/*
+                # resource actions. Fast-fail here with a clear error instead
+                # of silently producing entra_role_cluster_*.json files that
+                # Microsoft Graph would reject. When an Entra-capable
+                # LogAnalytics adapter is introduced, this check can be relaxed.
+                if ($RoleSchema -ne 'AzureRbac') {
+                    throw ("RoleSchema '{0}' is incompatible with InputMode 'LogAnalytics'. The bundled LogAnalytics adapter currently queries the AzureActivity table and lowercases actions, so only -RoleSchema 'AzureRbac' is valid today. Support for ingesting Entra ID audit logs via Log Analytics is a future extension." -f $RoleSchema)
                 }
             }
         }
