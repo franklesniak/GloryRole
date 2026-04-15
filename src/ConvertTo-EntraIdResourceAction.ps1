@@ -28,10 +28,21 @@ function ConvertTo-EntraIdResourceAction {
     # can be assigned in Entra ID custom role definitions
     # (unifiedRoleDefinition allowedResourceActions arrays).
     # .PARAMETER ActivityDisplayName
-    # The activity display name from the directory audit record.
+    # The activity display name from the directory audit record. This
+    # is the **sole** lookup key for the mapping table; the match is
+    # performed on a trimmed, invariant-lowercase form of this value.
     # .PARAMETER Category
     # The category from the directory audit record (e.g.,
-    # 'GroupManagement', 'UserManagement', 'RoleManagement').
+    # 'GroupManagement', 'UserManagement', 'RoleManagement'). This
+    # parameter is **informational only**: it is not used to select
+    # the mapped resource action. It is included in the verbose
+    # diagnostic output for unmapped activities so operators can see
+    # the originating category context when adding new mappings, and
+    # it is accepted so that per-record callers such as
+    # ConvertFrom-EntraIdAuditRecord can forward it without losing
+    # the record's category field. Future versions of this function
+    # may incorporate Category into the lookup key if collisions
+    # between categories emerge in the audit-log corpus.
     # .EXAMPLE
     # $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName 'Add member to group' -Category 'GroupManagement'
     # # Returns: 'microsoft.directory/groups/members/update'
@@ -69,7 +80,7 @@ function ConvertTo-EntraIdResourceAction {
     #   Position 0: ActivityDisplayName
     #   Position 1: Category
     #
-    # Version: 1.2.20260414.1
+    # Version: 1.2.20260415.0
 
     [CmdletBinding()]
     [OutputType([string])]
