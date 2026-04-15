@@ -118,7 +118,7 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
         }
 
         It "Does not upgrade a PrincipalKey fallback when a later event has a UPN" {
-            # Arrange — first event has no UPN (sets fallback), second event
+            # Arrange -- first event has no UPN (sets fallback), second event
             # for the same key has a UPN; first-write-wins keeps the fallback.
             $arrEvents = @(
                 [pscustomobject]@{
