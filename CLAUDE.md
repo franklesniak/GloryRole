@@ -1,6 +1,6 @@
 # Agent Instructions for Claude Code
 
-**Version:** 1.2.20260414.7
+**Version:** 1.3.20260415.0
 
 This file provides project-specific instructions for Claude Code and compatible AI coding agents operating in this repository. These instructions ensure that agents follow the same coding standards, safety rules, and workflows that apply to all contributors.
 
@@ -68,7 +68,9 @@ When a code review comment is received from GitHub Copilot, a human reviewer, or
 
 6. **Post the evaluation.** Reply to the review comment thread with the options table, the scoring table, the selected option, and either a note that implementation will follow in step 7 or, if the fix was already applied, the commit SHA that implements it.
 
-7. **Implement the fix.** Apply the selected option, commit, and push so that the change is visible on the PR (i.e., reachable from the PR's head ref). If the agent's current development branch is not the PR head branch, the agent **MUST** state in its step-6 reply which branch the commit will be pushed to and whether a merge or cherry-pick will be required to make it visible on the PR.
+7. **Implement the fix.** Apply the selected option, commit, and push. The goal is for the change to become visible on the PR (i.e., reachable from the PR's head ref). If the agent's current development branch is not the PR head branch, the following rules determine how and when that visibility is achieved:
+   - **Outside an active automated review loop:** Cross-branch integration onto the PR head is a manual owner action. The agent **MUST NOT** push directly to the PR head branch. Instead, the agent **MUST** state in its step-6 reply which branch the commit will be pushed to and whether a merge or cherry-pick will be required to make it visible on the PR.
+   - **During an active automated review loop:** A narrowly scoped exception permits the agent to place fix commits directly onto the PR head branch when specific preconditions are met. See the "Direct PR-head placement during an active review loop" paragraph in Automated Review Loop step 7 for the full set of required conditions, safety constraints, and fallback behavior.
 
 8. **Evaluate style guide impact.** Determine whether the relevant language instruction file(s) under `.github/instructions/` should be updated to prevent the same issue in the future. **Read the full applicable style guide(s) before answering** — the recommendation must account for what the guide already covers to avoid duplicating or contradicting existing rules. If an update is warranted, write a prompt in a Markdown code fence (suitable for sending to GitHub Copilot's coding agent) that describes the style guide change. Post the prompt as a reply in the same review comment thread. Do **not** modify the style guide directly.
 
@@ -101,8 +103,20 @@ When a pull request is created or when the owner posts a PR comment containing `
 5. **Process each comment.** Follow the "Handling Code Review Comments" protocol above (steps 1-9) for every comment in the review, **where tooling allows**. If the available tooling cannot perform step 9 automatically, you **MUST** still complete steps 1-8 and **MUST** ensure the step 9 completion work is handled before treating the comment as fully processed: remove any temporary `:eyes:` reaction per the protocol and resolve the review thread manually when appropriate.
 6. **Check for style guide recommendations.** If **any** comment produced a style guide update prompt (step 8), **PAUSE** and post a PR comment:
    `Review loop paused: style guide update(s) recommended — see review thread(s) above. Apply the style guide changes, then post "@claude resume review loop" to continue.`
-7. **Re-request review.** Before re-requesting, the agent **MUST** verify that the final fix commit(s) for the current round that are intended to land on the PR head are reachable from the PR's head ref. The agent **MUST** record those PR-head fix commit SHA(s) after any merge, rebase, or cherry-pick that changes commit IDs; intermediate authored commit SHA(s) that were superseded by equivalent PR-head commit SHA(s) **MUST NOT** block re-requesting review on their own. If any recorded PR-head fix commit is not reachable from the PR head, the agent **MUST NOT** re-request the review; instead it **MUST** pause and post a PR comment:
+7. **Re-request review.** Before re-requesting, the agent **MUST** verify that the final fix commit(s) for the current round that are intended to land on the PR head are reachable from the PR's head ref. The agent **MUST** record those PR-head fix commit SHA(s) after any merge, rebase, or cherry-pick that changes commit IDs; intermediate authored commit SHA(s) that were superseded by equivalent PR-head commit SHA(s) **MUST NOT** block re-requesting review on their own.
+
+   **Direct PR-head placement during an active review loop.** When the agent's working branch differs from the PR head branch and **all** of the following preconditions are satisfied, the agent **MAY** push the current round's fix commit(s) directly to the PR head branch instead of pausing for manual integration:
+   1. The review loop is actively running (not paused and not in an out-of-loop context).
+   2. The PR head branch is in the **same repository** as the agent's working branch (cross-fork PRs are excluded).
+   3. The push is **non-destructive**: the agent **MUST NOT** force-push or rewrite history on the PR head branch.
+   4. All existing branch protections, required status checks, signing requirements, and CI/CD validation rules on the PR head branch continue to be satisfied.
+   5. The agent retains the fix commit on its own development branch so that every round's changes remain in the development branch history as a per-round ledger.
+
+   When direct PR-head placement is used, the agent **MUST** record the resulting PR-head commit SHA(s) for the reachability check below. In the reply posted for **Handling Code Review Comments** step 6, the agent **MUST** state that it intends to place the fix directly on the PR head branch. After the push completes, the agent **MUST** post a follow-up reply confirming that the fix was placed directly on the PR head branch and listing the resulting PR-head commit SHA(s).
+
+   **Fallback.** If any recorded PR-head fix commit for the current round is not reachable from the PR head, the agent **MUST NOT** re-request the review; instead it **MUST** pause and post a PR comment:
    `Review loop paused: final fix commit(s) <SHA1>, <SHA2>, ... expected on PR head <pr-head-branch> are not reachable from that head. Merge or cherry-pick the fix onto <pr-head-branch>, record the resulting PR-head SHA(s), then post "@claude resume review loop" to continue.`
+   If the agent intended to use direct PR-head placement during an active review loop but any precondition above was not met, or the direct push failed for any reason, the agent **MUST** treat the fix as not yet placed on the PR head, **MUST** wait for the fix to be merged or cherry-picked onto `<pr-head-branch>`, and **MUST** record the resulting PR-head SHA(s) before re-requesting the review.
    If all recorded PR-head fix commits are reachable (or no code changes were made in this round), and no style guide updates were recommended, go to step 1. This applies regardless of whether code changes were made — even if all comments were addressed without code changes (e.g., concern noted but no action taken), re-requesting a review allows Copilot to find different issues on a fresh pass.
 
 ### Safety limits
