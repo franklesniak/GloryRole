@@ -500,14 +500,22 @@ Describe "Invoke-RoleMiningPipeline" {
                     }
                 }
 
+                # Case-sensitive assertions. PowerShell's `-contains`
+                # operator (which `Should -Contain` wraps) is
+                # case-insensitive by default, so a plain
+                # `Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'`
+                # would always fail when the camelCase form is present
+                # (the operator sees them as equal). Use `-ccontains`
+                # (the explicit case-sensitive variant) so the test
+                # genuinely distinguishes camelCase from lowercase.
                 # Positive: camelCase segments are preserved verbatim.
-                $listAllActions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
-                $listAllActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
-                $listAllActions | Should -Contain 'microsoft.directory/inviteGuest'
+                ($listAllActions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeTrue
+                ($listAllActions -ccontains 'microsoft.directory/servicePrincipals/standard/read') | Should -BeTrue
+                ($listAllActions -ccontains 'microsoft.directory/inviteGuest') | Should -BeTrue
                 # Negative: downcased forms must be absent anywhere in the emitted JSON.
-                $listAllActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-                $listAllActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
-                $listAllActions | Should -Not -Contain 'microsoft.directory/inviteguest'
+                ($listAllActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+                ($listAllActions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+                ($listAllActions -ccontains 'microsoft.directory/inviteguest') | Should -BeFalse
             } finally {
                 if (Test-Path -LiteralPath $strCamelCsvPath) {
                     Remove-Item -LiteralPath $strCamelCsvPath -Force

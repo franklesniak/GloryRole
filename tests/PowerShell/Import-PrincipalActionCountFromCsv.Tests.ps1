@@ -118,14 +118,20 @@ Describe "Import-PrincipalActionCountFromCsv" {
             # Assert - only the 4 non-blank rows survive
             $arrResult.Count | Should -Be 4
             $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
-            $arrActions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
-            $arrActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
-            $arrActions | Should -Contain 'microsoft.directory/inviteGuest'
-            $arrActions | Should -Contain 'microsoft.directory/users/basic/update'
+            # Case-sensitive assertions via -ccontains. `Should -Contain`
+            # wraps PowerShell's `-contains`, which is case-insensitive,
+            # so a plain `Should -Not -Contain` against the downcased
+            # form would false-positive whenever the camelCase form is
+            # present. -ccontains is the explicit case-sensitive
+            # variant and correctly distinguishes the two.
+            ($arrActions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeTrue
+            ($arrActions -ccontains 'microsoft.directory/servicePrincipals/standard/read') | Should -BeTrue
+            ($arrActions -ccontains 'microsoft.directory/inviteGuest') | Should -BeTrue
+            ($arrActions -ccontains 'microsoft.directory/users/basic/update') | Should -BeTrue
             # The camelCase forms MUST NOT have been downcased.
-            $arrActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-            $arrActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
-            $arrActions | Should -Not -Contain 'microsoft.directory/inviteguest'
+            ($arrActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/inviteguest') | Should -BeFalse
         }
 
         It "Trims whitespace around actions but does not change case" {
@@ -171,12 +177,17 @@ Describe "Import-PrincipalActionCountFromCsv" {
             # Act
             $arrResult = @(Import-PrincipalActionCountFromCsv -Path $script:strDefaultCsvPath)
 
-            # Assert - default behavior lowercases everything
+            # Assert - default behavior lowercases everything. Use
+            # -ccontains (case-sensitive) for both the positive and
+            # negative assertions because the whole point of this test
+            # is to prove the string was downcased: we MUST
+            # distinguish 'Microsoft.Compute/virtualMachines/Read'
+            # from 'microsoft.compute/virtualmachines/read'.
             $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
-            $arrActions | Should -Contain 'microsoft.compute/virtualmachines/read'
-            $arrActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-            $arrActions | Should -Not -Contain 'Microsoft.Compute/virtualMachines/Read'
-            $arrActions | Should -Not -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+            ($arrActions -ccontains 'microsoft.compute/virtualmachines/read') | Should -BeTrue
+            ($arrActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeTrue
+            ($arrActions -ccontains 'Microsoft.Compute/virtualMachines/Read') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeFalse
         }
 
         It "Lowercases actions when RoleSchema is 'AzureRbac' explicitly" {
@@ -185,8 +196,8 @@ Describe "Import-PrincipalActionCountFromCsv" {
 
             # Assert
             $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
-            $arrActions | Should -Contain 'microsoft.compute/virtualmachines/read'
-            $arrActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+            ($arrActions -ccontains 'microsoft.compute/virtualmachines/read') | Should -BeTrue
+            ($arrActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeTrue
         }
     }
 }
