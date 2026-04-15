@@ -123,9 +123,11 @@ Describe "Import-PrincipalActionCountFromCsv" {
             $arrActions | Should -Contain 'microsoft.directory/inviteGuest'
             $arrActions | Should -Contain 'microsoft.directory/users/basic/update'
             # The camelCase forms MUST NOT have been downcased.
-            $arrActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-            $arrActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
-            $arrActions | Should -Not -Contain 'microsoft.directory/inviteguest'
+            # Use -ccontains (case-sensitive) because Pester's Should -Contain
+            # is case-insensitive and would match the camelCase originals.
+            ($arrActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/inviteguest') | Should -BeFalse
         }
 
         It "Trims whitespace around actions but does not change case" {
@@ -175,8 +177,10 @@ Describe "Import-PrincipalActionCountFromCsv" {
             $arrActions = @($arrResult | Select-Object -ExpandProperty Action)
             $arrActions | Should -Contain 'microsoft.compute/virtualmachines/read'
             $arrActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-            $arrActions | Should -Not -Contain 'Microsoft.Compute/virtualMachines/Read'
-            $arrActions | Should -Not -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+            # Use -ccontains (case-sensitive) because Pester's Should -Contain
+            # is case-insensitive and would match the lowercased forms.
+            ($arrActions -ccontains 'Microsoft.Compute/virtualMachines/Read') | Should -BeFalse
+            ($arrActions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeFalse
         }
 
         It "Lowercases actions when RoleSchema is 'AzureRbac' explicitly" {

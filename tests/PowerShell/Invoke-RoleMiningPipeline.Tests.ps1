@@ -505,9 +505,11 @@ Describe "Invoke-RoleMiningPipeline" {
                 $listAllActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
                 $listAllActions | Should -Contain 'microsoft.directory/inviteGuest'
                 # Negative: downcased forms must be absent anywhere in the emitted JSON.
-                $listAllActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
-                $listAllActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
-                $listAllActions | Should -Not -Contain 'microsoft.directory/inviteguest'
+                # Use -ccontains (case-sensitive) because Pester's Should -Contain
+                # is case-insensitive and would match the camelCase originals.
+                ($listAllActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+                ($listAllActions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+                ($listAllActions -ccontains 'microsoft.directory/inviteguest') | Should -BeFalse
             } finally {
                 if (Test-Path -LiteralPath $strCamelCsvPath) {
                     Remove-Item -LiteralPath $strCamelCsvPath -Force
