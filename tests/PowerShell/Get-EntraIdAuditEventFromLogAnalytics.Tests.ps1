@@ -1,0 +1,279 @@
+BeforeAll {
+    # Stub function that mimics the real Az.OperationalInsights cmdlet so Pester
+    # can Mock it without importing Az.OperationalInsights in CI. The
+    # parameters exist to match the real cmdlet's interface (callers set them),
+    # and the body intentionally does nothing.
+    function Invoke-AzOperationalInsightsQuery {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'Parameters exist to mirror the stubbed cmdlet signature so Pester Mocks bind correctly.')]
+        [CmdletBinding()]
+        param ($WorkspaceId, $Query)
+    }
+    # Avoid relative-path segments per style guide checklist item
+    $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
+    . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-EntraIdResourceAction.ps1')
+    . (Join-Path -Path $strSrcPath -ChildPath 'Get-EntraIdAuditEventFromLogAnalytics.ps1')
+}
+
+Describe "Get-EntraIdAuditEventFromLogAnalytics" {
+    Context "When query returns valid Entra ID audit rows" {
+        It "Streams CanonicalEntraIdEvent objects with correct properties" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-16T14:00:00Z'
+                    OperationName = 'Add user'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin2@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult | Should -HaveCount 2
+            $arrResult[0].PSObject.TypeNames | Should -Contain 'CanonicalEntraIdEvent'
+            $arrResult[0].PrincipalKey | Should -Be 'user-guid-001'
+            $arrResult[0].PrincipalType | Should -Be 'User'
+            $arrResult[0].Action | Should -Be 'microsoft.directory/groups/members/update'
+            $arrResult[0].Result | Should -Be 'success'
+            $arrResult[0].Category | Should -Be 'GroupManagement'
+            $arrResult[0].ActivityDisplayName | Should -Be 'Add member to group'
+            $arrResult[0].CorrelationId | Should -Be 'corr-001'
+            $arrResult[0].PrincipalUPN | Should -Be 'admin@contoso.com'
+            $arrResult[0].TimeGenerated | Should -BeOfType [datetime]
+
+            $arrResult[1].PrincipalKey | Should -Be 'user-guid-002'
+            $arrResult[1].Action | Should -Be 'microsoft.directory/users/create'
+        }
+    }
+
+    Context "When activity is unmapped" {
+        It "Skips records with unmapped activity display names" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T11:00:00Z'
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert - only the mapped activity is emitted
+            $arrResult | Should -HaveCount 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-guid-001'
+        }
+    }
+
+    Context "When query returns empty results" {
+        It "Produces no output" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = @() }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+        }
+    }
+
+    Context "When query fails" {
+        It "Throws a descriptive error message" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            Mock Invoke-AzOperationalInsightsQuery {
+                throw "Connection timed out"
+            }
+
+            # Act / Assert
+            { Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd } | Should -Throw '*Connection timed out*'
+        }
+    }
+
+    Context "When action casing must be preserved" {
+        It "Preserves camelCase segments in microsoft.directory/* actions" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Consent to application'
+                    Category = 'ApplicationManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-16T14:00:00Z'
+                    OperationName = 'Invite external user'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin2@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert - camelCase segments are preserved (case-sensitive check)
+            $arrResult | Should -HaveCount 2
+            # 'Consent to application' maps to
+            # microsoft.directory/servicePrincipals/appRoleAssignment/update
+            ($arrResult[0].Action -ceq 'microsoft.directory/servicePrincipals/appRoleAssignment/update') | Should -BeTrue
+            # 'Invite external user' maps to
+            # microsoft.directory/users/inviteGuest
+            ($arrResult[1].Action -ceq 'microsoft.directory/users/inviteGuest') | Should -BeTrue
+            # Verify lowercase variants are absent
+            ($arrResult[0].Action -ceq 'microsoft.directory/serviceprincipals/approleassignment/update') | Should -BeFalse
+            ($arrResult[1].Action -ceq 'microsoft.directory/users/inviteguest') | Should -BeFalse
+        }
+    }
+
+    Context "When TimeGenerated is missing or unparseable" {
+        It "Skips records with missing TimeGenerated" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = ''
+                    OperationName = 'Add user'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin2@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert - only the row with a valid TimeGenerated is emitted
+            $arrResult | Should -HaveCount 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-guid-001'
+        }
+    }
+
+    Context "When ServicePrincipal is the initiator" {
+        It "Emits events with PrincipalType ServicePrincipal and AppId" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'app-guid-001'
+                    PrincipalType = 'ServicePrincipal'
+                    PrincipalUPN = ''
+                    AppId = 'app-guid-001'
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult | Should -HaveCount 1
+            $arrResult[0].PrincipalType | Should -Be 'ServicePrincipal'
+            $arrResult[0].AppId | Should -Be 'app-guid-001'
+            $arrResult[0].PrincipalUPN | Should -BeNullOrEmpty
+        }
+    }
+}

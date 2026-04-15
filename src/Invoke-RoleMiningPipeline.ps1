@@ -26,9 +26,13 @@
 # because the tool does not assume a default platform:
 #   - InputMode 'CSV': the CSV is a neutral container; caller must
 #     pass `-RoleSchema AzureRbac` or `-RoleSchema EntraId`.
-#   - InputMode 'LogAnalytics': workspaces can hold Azure Activity,
-#     Entra sign-in / audit logs, or custom tables; caller must
-#     pass the matching schema.
+#   - InputMode 'LogAnalytics': workspaces can hold Azure Activity
+#     logs or Entra ID directory audit logs; caller must pass the
+#     matching schema. When `AzureRbac`, the bundled adapter queries
+#     the `AzureActivity` table and lowercases actions. When
+#     `EntraId`, it queries the `AuditLogs` table, maps activities
+#     via `ConvertTo-EntraIdResourceAction`, and preserves camelCase
+#     `microsoft.directory/*` action segments.
 # For **schema-constrained** data sources, `RoleSchema` defaults
 # (and passing an incompatible value throws):
 #   - InputMode 'ActivityLog' (Azure Activity Log cmdlet) defaults
@@ -172,7 +176,17 @@
 #
 # # Runs the pipeline in LogAnalytics mode with Azure RBAC output.
 # # LogAnalytics is schema-neutral (the same workspace can hold Azure
-# # Activity or Entra audit tables), so RoleSchema is required.
+# # Activity or Entra audit tables), so RoleSchema is required. When
+# # AzureRbac, queries the AzureActivity table.
+#
+# .EXAMPLE
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -RoleSchema EntraId -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
+#
+# # Runs the pipeline in LogAnalytics mode with Entra ID output.
+# # Queries the AuditLogs table for Entra ID directory audit events,
+# # maps activities to microsoft.directory/* actions (preserving
+# # camelCase), and generates unifiedRoleDefinition JSON. The workspace
+# # must receive Entra ID audit logs via diagnostic settings.
 #
 # .EXAMPLE
 # $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode EntraId -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
@@ -198,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.0.20260415.1
+# Version: 2.1.20260415.0
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -259,6 +273,7 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-EntraIdResourceAction.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertFrom-EntraIdAuditRecord.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdAuditEvent.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdAuditEventFromLogAnalytics.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromLogAnalytics.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromCsv.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Remove-DuplicateCanonicalEvent.ps1')
@@ -397,12 +412,41 @@ try {
                 throw "Start and End are required when InputMode is LogAnalytics."
             }
 
-            $hashLogAnalyticsParams = @{
-                WorkspaceId = $WorkspaceId
-                Start = $Start
-                End = $End
+            if ($RoleSchema -eq 'EntraId') {
+                # Entra ID path: query the AuditLogs table, map
+                # activities to microsoft.directory/* actions
+                # PowerShell-side (preserves camelCase), then feed
+                # canonical events through the same dedup -> display-
+                # name -> count pipeline as the direct EntraId InputMode.
+                $hashLogAnalyticsEntraParams = @{
+                    WorkspaceId = $WorkspaceId
+                    Start = $Start
+                    End = $End
+                }
+                if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
+                    $hashLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory
+                }
+                $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics @hashLogAnalyticsEntraParams)
+
+                Write-Verbose ("  Raw Entra ID events from Log Analytics: {0}" -f $arrEvents.Count)
+
+                $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+                Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
+
+                $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+                Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+
+                $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
+            } else {
+                # Azure RBAC path: query the AzureActivity table with
+                # pre-aggregation and lowercasing in KQL.
+                $hashLogAnalyticsParams = @{
+                    WorkspaceId = $WorkspaceId
+                    Start = $Start
+                    End = $End
+                }
+                $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashLogAnalyticsParams)
             }
-            $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashLogAnalyticsParams)
         }
 
         'EntraId' {
@@ -449,11 +493,21 @@ try {
                     "Re-run with -Verbose for per-subscription diagnostics.") -f ($SubscriptionIds -join ', '), $Start, $End
             }
             'LogAnalytics' {
-                $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}'. Common causes: " +
-                    "(1) not authenticated to Azure - run Connect-AzAccount; " +
-                    "(2) the workspace had no matching activity records between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; or " +
-                    "(3) the workspace ID is incorrect or inaccessible. " +
-                    "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                if ($RoleSchema -eq 'EntraId') {
+                    $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}' (AuditLogs table, RoleSchema=EntraId). Common causes: " +
+                        "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                        "(2) the workspace does not receive Entra ID directory audit logs (check diagnostic settings); " +
+                        "(3) the AuditLogs table had no successful events between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; " +
+                        "(4) the specified FilterCategory values did not match any events; or " +
+                        "(5) none of the activities mapped to a microsoft.directory/* action. " +
+                        "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                } else {
+                    $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}' (AzureActivity table, RoleSchema=AzureRbac). Common causes: " +
+                        "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                        "(2) the workspace had no matching activity records between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; or " +
+                        "(3) the workspace ID is incorrect or inaccessible. " +
+                        "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                }
             }
             'EntraId' {
                 $strIngestHint = ("No data was ingested from Entra ID audit logs. Common causes: " +

@@ -144,6 +144,17 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     admin activity patterns in Microsoft 365 / Entra ID tenants.
   - **Verification:** Unit test with mock Graph API output.
 
+- **REQ-ING-005:** The system MUST support ingesting Entra ID directory audit
+  logs from a Log Analytics workspace (`AuditLogs` table) via KQL, mapping
+  activity display names to `microsoft.directory/*` resource action strings
+  while preserving camelCase segments, and producing DC-6 canonical events
+  that flow through the standard deduplication and aggregation pipeline.
+  - **Rationale:** Enables Entra ID role mining from workspaces that receive
+    directory audit logs via diagnostic settings, without requiring a direct
+    Microsoft Graph connection.
+  - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
+    output.
+
 ### Canonicalization
 
 - **REQ-CAN-001:** Actions MUST be normalized to lowercase with whitespace
@@ -158,7 +169,10 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
 
 - **REQ-DED-001:** Retry deduplication MUST use the composite key
   `PrincipalKey|Action|ResourceId|CorrelationId`. Records without a
-  `CorrelationId` MUST be kept.
+  `CorrelationId` MUST be kept. When the canonical event shape does
+  not carry a `ResourceId` (e.g., DC-6 Canonical Entra ID Event), the
+  missing value MUST be treated as an empty string in the composite
+  dedupe key so that the rule applies uniformly across event shapes.
   - **Verification:** Unit test.
 
 - **REQ-AGG-001:** Canonical events MUST be aggregated into

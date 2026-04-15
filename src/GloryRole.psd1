@@ -30,6 +30,7 @@
         'Get-ClusterActionSet'
         'Get-DaviesBouldinIndex'
         'Get-EntraIdAuditEvent'
+        'Get-EntraIdAuditEventFromLogAnalytics'
         'Get-FarthestPointIndex'
         'Get-SquaredEuclideanDistance'
         'Get-StableSha256Hex'

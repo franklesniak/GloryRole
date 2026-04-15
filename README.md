@@ -4,7 +4,7 @@
 
 GloryRole is an unsupervised role mining engine written entirely in PowerShell. Instead of guessing at what cloud roles should look like, it derives them from evidence -- specifically, from what your identities *actually do* in your cloud environment. Feed it activity logs and it produces production-ready custom role definitions with only the permissions your people and service accounts truly need.
 
-GloryRole supports both **Azure RBAC** (from Azure Activity Log or Log Analytics) and **Entra ID custom roles** (from Microsoft Graph directory audit logs), enabling least-privilege role mining across your entire Microsoft cloud estate.
+GloryRole supports both **Azure RBAC** (from Azure Activity Log or Log Analytics) and **Entra ID custom roles** (from Microsoft Graph directory audit logs or Log Analytics), enabling least-privilege role mining across your entire Microsoft cloud estate.
 
 ## The Problem
 
@@ -14,7 +14,7 @@ Most cloud environments suffer from permission sprawl. Roles are hand-crafted ba
 
 GloryRole implements a complete end-to-end pipeline in ten stages:
 
-1. **Ingest** -- Supports four modes: Azure Log Analytics (KQL summarization), `Get-AzActivityLog` (adaptive time-slicing), Entra ID directory audit logs (Microsoft Graph API), and local CSV. The adapter-based design means adding support for additional platforms (AWS CloudTrail, GCP Audit Logs, Active Directory security logs) requires only a new ingestion adapter.
+1. **Ingest** -- Supports four modes: Azure Log Analytics (KQL summarization for Azure RBAC or Entra ID audit logs), `Get-AzActivityLog` (adaptive time-slicing), Entra ID directory audit logs (Microsoft Graph API), and local CSV. The adapter-based design means adding support for additional platforms (AWS CloudTrail, GCP Audit Logs, Active Directory security logs) requires only a new ingestion adapter.
 2. **Canonicalize and Deduplicate** -- Normalizes events into standard form. Resolves identities using a priority chain (ObjectId, AppId, Caller). Eliminates retry noise via composite-key deduplication.
 3. **Aggregate into Sparse Triples** -- Collapses cleaned events into `PrincipalKey|Action|Count` triples, the universal data contract for all downstream stages.
 4. **Quality Gate** -- Reports dataset health: distinct principals, actions, non-zero entries, and matrix density.
@@ -62,14 +62,24 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
 
-# From Log Analytics (requires Az.OperationalInsights)
+# From Log Analytics -- Azure RBAC (requires Az.OperationalInsights)
 # A Log Analytics workspace can hold either Azure Activity or Entra
-# tables, so RoleSchema is required.
+# audit tables, so RoleSchema is required.
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
     -WorkspaceId 'your-workspace-id' `
     -RoleSchema AzureRbac `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
+
+# From Log Analytics -- Entra ID (requires Az.OperationalInsights)
+# Queries the AuditLogs table for Entra ID directory audit events,
+# maps activities to microsoft.directory/* actions, and generates
+# Entra ID custom role definitions.
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
+    -WorkspaceId 'your-workspace-id' `
+    -RoleSchema EntraId `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -OutputPath .\output\entra-la
 
 # From Entra ID audit logs (requires Microsoft.Graph.Reports)
 # RoleSchema defaults to EntraId for this source; can be omitted.
