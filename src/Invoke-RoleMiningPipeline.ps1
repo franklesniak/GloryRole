@@ -198,7 +198,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 1.8.20260415.3
+# Version: 2.0.20260415.0
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
