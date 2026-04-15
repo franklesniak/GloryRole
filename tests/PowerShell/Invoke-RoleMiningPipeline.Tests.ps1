@@ -439,5 +439,57 @@ Describe "Invoke-RoleMiningPipeline" {
             $arrAzureRoleFiles = @(Get-ChildItem -LiteralPath $script:strEntraOutputPath -Filter 'role_cluster_*.json')
             $arrAzureRoleFiles.Count | Should -Be 0
         }
+
+        It "Preserves camelCase segments in microsoft.directory/* actions through CSV ingestion" {
+            # The default sample CSV uses all-lowercase action strings
+            # that happen to already be valid Entra ID actions. To prove
+            # the CSV->EntraId ingestion path does not downcase
+            # camelCase segments (e.g., servicePrincipals,
+            # oAuth2PermissionGrants), write a small inline CSV with
+            # deliberately camelCase actions and assert the emitted
+            # unifiedRoleDefinition JSON preserves them verbatim.
+            $strCamelCsvPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (([System.Guid]::NewGuid().ToString()) + '.csv')
+            $strCamelOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                $strCsvBody = @'
+"PrincipalKey","Action","Count"
+"admin-obj-001","microsoft.directory/oAuth2PermissionGrants/allProperties/update",10
+"admin-obj-001","microsoft.directory/servicePrincipals/standard/read",15
+"admin-obj-002","microsoft.directory/oAuth2PermissionGrants/allProperties/update",8
+"admin-obj-002","microsoft.directory/servicePrincipals/standard/read",6
+"admin-obj-003","microsoft.directory/oAuth2PermissionGrants/allProperties/update",12
+"admin-obj-003","microsoft.directory/servicePrincipals/standard/read",9
+'@
+                Set-Content -LiteralPath $strCamelCsvPath -Value $strCsvBody -Encoding UTF8
+
+                $null = & $script:strScriptPath -InputMode CSV -CsvPath $strCamelCsvPath -RoleSchema EntraId -OutputPath $strCamelOutputPath
+
+                $arrEntraRoleFiles = @(Get-ChildItem -LiteralPath $strCamelOutputPath -Filter 'entra_role_cluster_*.json')
+                $arrEntraRoleFiles.Count | Should -BeGreaterThan 0
+
+                $listAllActions = [System.Collections.Generic.List[string]]::new()
+                foreach ($objFile in $arrEntraRoleFiles) {
+                    $strJson = Get-Content -LiteralPath $objFile.FullName -Raw
+                    $objJson = $strJson | ConvertFrom-Json
+                    foreach ($objPerm in @($objJson.rolePermissions)) {
+                        foreach ($strAct in @($objPerm.allowedResourceActions)) {
+                            [void]$listAllActions.Add([string]$strAct)
+                        }
+                    }
+                }
+
+                $listAllActions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+                $listAllActions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
+                $listAllActions | Should -Not -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+                $listAllActions | Should -Not -Contain 'microsoft.directory/serviceprincipals/standard/read'
+            } finally {
+                if (Test-Path -LiteralPath $strCamelCsvPath) {
+                    Remove-Item -LiteralPath $strCamelCsvPath -Force
+                }
+                if (Test-Path -LiteralPath $strCamelOutputPath) {
+                    Remove-Item -LiteralPath $strCamelOutputPath -Recurse -Force
+                }
+            }
+        }
     }
 }

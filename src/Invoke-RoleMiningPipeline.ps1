@@ -198,7 +198,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.0.20260415.0
+# Version: 2.0.20260415.1
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -352,7 +352,7 @@ try {
             if ([string]::IsNullOrWhiteSpace($CsvPath)) {
                 throw "CsvPath is required when InputMode is CSV."
             }
-            $arrCounts = @(Import-PrincipalActionCountFromCsv -Path $CsvPath)
+            $arrCounts = @(Import-PrincipalActionCountFromCsv -Path $CsvPath -RoleSchema $RoleSchema)
         }
 
         'ActivityLog' {
