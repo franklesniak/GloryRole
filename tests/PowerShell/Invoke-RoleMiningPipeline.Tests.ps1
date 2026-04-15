@@ -355,6 +355,64 @@ Describe "Invoke-RoleMiningPipeline" {
         }
     }
 
+    Context "When -RoleSchema is omitted for schema-constrained sources" {
+        # Locks in the defaulting contract: InputMode 'ActivityLog' defaults
+        # to RoleSchema 'AzureRbac' and InputMode 'EntraId' defaults to
+        # RoleSchema 'EntraId'. These invocations will still fail downstream
+        # (no Az / Microsoft.Graph context, fake subscription IDs, etc.),
+        # but the error must NOT be the RoleSchema-required error (defaulting
+        # must bypass that gate) nor a compatibility error. A regression that
+        # removes the defaults would surface as a failure here.
+
+        It "Does not throw a RoleSchema-related error when -RoleSchema is omitted with InputMode ActivityLog" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode ActivityLog -SubscriptionIds @('00000000-0000-0000-0000-000000000000') -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert - any error raised must not be the RoleSchema gate
+                if ($null -ne $objException) {
+                    $objException.Exception.Message | Should -Not -Match "RoleSchema is required when InputMode is 'ActivityLog'"
+                    $objException.Exception.Message | Should -Not -Match "incompatible with InputMode 'ActivityLog'"
+                }
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Does not throw a RoleSchema-related error when -RoleSchema is omitted with InputMode EntraId" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode EntraId -Start (Get-Date) -End (Get-Date) -OutputPath $strOutputPath
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert - any error raised must not be the RoleSchema gate
+                if ($null -ne $objException) {
+                    $objException.Exception.Message | Should -Not -Match "RoleSchema is required when InputMode is 'EntraId'"
+                    $objException.Exception.Message | Should -Not -Match "incompatible with InputMode 'EntraId'"
+                }
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+    }
+
     Context "When running in CSV mode with -RoleSchema EntraId against the Entra sample" {
         BeforeAll {
             $script:strEntraCsvPath = Join-Path -Path $strSamplesRoot -ChildPath 'entra_id_principal_action_counts.csv'
