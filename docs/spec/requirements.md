@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Owner:** Frank Lesniak, Danny Stutz
-- **Last Updated:** 2026-04-14
+- **Last Updated:** 2026-04-15
 - **Scope:** Defines the requirements, data contracts, and design for GloryRole, a PowerShell-based pipeline that derives least-privilege Azure RBAC and Entra ID custom role definitions from cloud activity logs using K-Means clustering.
 - **Related:** [README](../../README.md)
 
