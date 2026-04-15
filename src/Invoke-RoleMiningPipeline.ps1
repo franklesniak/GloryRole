@@ -212,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.4
+# Version: 2.1.20260415.5
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -318,11 +318,17 @@ if (-not (Test-Path -LiteralPath $OutputPath)) {
     [void][System.IO.Directory]::CreateDirectory($OutputPath)
 }
 
-# File writeability preflight
+# File writeability preflight. Uses [System.IO.File]::Create and ::Delete
+# rather than New-Item / Remove-Item because New-Item does not support
+# -LiteralPath, so its -Path would interpret wildcard characters ([, ],
+# *, ?) in $strWriteTestPath (which inherits any such characters from the
+# user-supplied $OutputPath). $strWriteTestPath is absolute (derived from
+# the already-resolved $OutputPath), so the .NET API's
+# [Environment]::CurrentDirectory semantics do not apply.
 $strWriteTestPath = Join-Path -Path $OutputPath -ChildPath '.write_test'
 try {
-    [void](New-Item -Path $strWriteTestPath -ItemType File -Force -ErrorAction Stop)
-    Remove-Item -LiteralPath $strWriteTestPath -Force -ErrorAction Stop
+    [System.IO.File]::Create($strWriteTestPath).Dispose()
+    [System.IO.File]::Delete($strWriteTestPath)
 } catch {
     throw ("Cannot write to output directory '{0}': {1}" -f $OutputPath, $_.Exception.Message)
 }
