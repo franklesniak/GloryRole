@@ -5,7 +5,7 @@ description: "PowerShell coding standards"
 
 # PowerShell Writing Style
 
-**Version:** 2.9.20260415.0
+**Version:** 2.11.20260417.0
 
 **Scope:** PowerShell coding standards for all `.ps1` files in this repository — style, formatting, naming, error handling, documentation, and compatibility patterns for both legacy (v1.0) and modern (v2.0+) codebases.
 
@@ -51,6 +51,9 @@ Scope tags: **[All]** = all PowerShell versions, **[Modern]** = PowerShell v2.0+
 - **[All]** Code **SHOULD** use explicit scoping ($global:, $script:) → [Path and Scope Handling](#path-and-scope-handling)
 - **[All]** `-LiteralPath` **SHOULD** be used instead of `-Path` when operating on concrete (non-wildcard) paths derived from variables or `Join-Path` → [Prefer `-LiteralPath` Over `-Path` for Concrete Paths](#prefer--literalpath-over--path-for-concrete-paths)
 - **[All]** For destructive cmdlets (`Remove-Item`, `Move-Item`), `-LiteralPath` **MUST** be used for variable-derived paths → [Prefer `-LiteralPath` Over `-Path` for Concrete Paths](#prefer--literalpath-over--path-for-concrete-paths)
+- **[All]** `New-Item` does **not** support `-LiteralPath`; use `-Path` with `New-Item` → [Prefer `-LiteralPath` Over `-Path` for Concrete Paths](#prefer--literalpath-over--path-for-concrete-paths)
+- **[All]** For directory creation from variable-derived paths that may contain wildcard characters, prefer `[System.IO.Directory]::CreateDirectory()` → [Prefer `-LiteralPath` Over `-Path` for Concrete Paths](#prefer--literalpath-over--path-for-concrete-paths)
+- **[All]** Paths passed to .NET file APIs (`System.IO.*`) **MUST** be resolved to absolute via `GetUnresolvedProviderPathFromPSPath()` first; non-FileSystem provider paths **MUST NOT** be used → [Resolving Paths for .NET Static Methods](#resolving-paths-for-net-static-methods)
 
 ### Documentation and Comments (Quick Reference)
 
@@ -571,6 +574,27 @@ Get-Content -Path '../config.json'
 ```powershell
 # Good — always resolves relative to the script's own directory:
 Get-Content -LiteralPath (Join-Path -Path $PSScriptRoot -ChildPath '../config.json')
+```
+
+#### Resolving Paths for .NET Static Methods
+
+**[All]** When a script or function passes a user-provided or otherwise unresolved PowerShell path to a .NET file API (for example, `[System.IO.File]::WriteAllText()`, `[System.IO.File]::WriteAllLines()`, or other `System.IO.*` methods that expect a file-system path), the path **MUST** first be converted to an absolute file-system path via `$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath()`. This method assumes the path resolves through the FileSystem provider; non-FileSystem provider paths (such as `HKLM:\…` or `Cert:\…`) **MUST NOT** be passed to `System.IO.*` methods.
+
+**Compliant:**
+
+```powershell
+# Resolve the PowerShell path before passing it to .NET
+$strOutputPath = '.\output.txt'
+$strOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strOutputPath)
+[System.IO.File]::WriteAllText($strOutputPath, $strContent, $objEncoding)
+```
+
+**Non-Compliant:**
+
+```powershell
+# Non-Compliant: passing an unresolved PowerShell path directly to a .NET method
+$strOutputPath = '.\output.txt'
+[System.IO.File]::WriteAllText($strOutputPath, $strContent, $objEncoding)
 ```
 
 <!-- rationale-anchor: options-for-local-variable-prefixes-analysis -->
@@ -1550,25 +1574,16 @@ if (-not $boolIsWritable) {
 
 ```powershell
 try {
-    [void](New-Item -Path $OutputPath -ItemType File -Force -ErrorAction Stop)
-    Remove-Item -LiteralPath $OutputPath -Force -ErrorAction Stop
+    $strOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+    $strWriteTestPath = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($strOutputPath), ('.write_test_{0}.tmp' -f [Guid]::NewGuid().ToString('N')))
+    [System.IO.File]::Open($strWriteTestPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write).Dispose()
+    [System.IO.File]::Delete($strWriteTestPath)
 } catch {
-    throw "Cannot write to '$OutputPath': $($_.Exception.Message)"
+    throw ("Cannot write to '{0}': {1}" -f $OutputPath, $_.Exception.Message)
 }
 ```
 
-**Note**: Using `-LiteralPath` with `Remove-Item` is important to avoid wildcard interpretation issues. See [Prefer `-LiteralPath` Over `-Path` for Concrete Paths](#prefer--literalpath-over--path-for-concrete-paths) for the general rule.
-
-#### try/catch Alternative (.NET Methods)
-
-```powershell
-try {
-    [System.IO.File]::WriteAllText($OutputPath, '')
-    [System.IO.File]::Delete($OutputPath)
-} catch {
-    throw "Cannot write to '$OutputPath': $($_.Exception.Message)"
-}
-```
+> **Warning:** File APIs with create-or-overwrite semantics (e.g., `[System.IO.File]::Create()`, `New-Item -Force`) **SHOULD NOT** be used for writeability probes unless the probe filename is guaranteed unique. Using the actual output path as the probe can destroy pre-existing data or cause false failures when the file already exists.
 
 ---
 
@@ -2233,7 +2248,20 @@ For **destructive** operations—`Remove-Item`, `Move-Item`—`-LiteralPath` **M
 
 Reserve `-Path` for cases where wildcard expansion is **explicitly intended**.
 
-**Common cmdlets where this rule applies:** `Test-Path`, `Get-Item`, `Get-ChildItem`, `Get-Content`, `Set-Content`, `Copy-Item`, `Move-Item`, `Remove-Item`.
+**Exception — `New-Item`:** `New-Item` does **not** have a `-LiteralPath` parameter (across Windows PowerShell 5.1 and PowerShell 7.x). Use `New-Item -Path` for item creation. Because `-Path` still interprets wildcard characters, code **SHOULD** validate or reject untrusted input containing `[`, `]`, `*`, or `?` as literal characters, or use a .NET file API (e.g., `[System.IO.File]::Create()`) when literal path semantics are required.
+
+**Directory creation:** When creating a directory from a variable-derived path that may contain wildcard characters (`[`, `]`, `*`, or `?`), code **SHOULD** prefer `[System.IO.Directory]::CreateDirectory()` over `New-Item -Path ... -ItemType Directory`. The path **MUST** first be resolved to an absolute filesystem path per [Resolving Paths for .NET Static Methods](#resolving-paths-for-net-static-methods).
+
+**Compliant** (wildcard-safe directory creation):
+
+```powershell
+$strOutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+if (-not (Test-Path -LiteralPath $strOutputPath)) {
+    [void]([System.IO.Directory]::CreateDirectory($strOutputPath))
+}
+```
+
+**Common cmdlets where this rule applies:** `Copy-Item`, `Get-ChildItem`, `Get-Content`, `Get-Item`, `Move-Item`, `Remove-Item`, `Set-Content`, `Test-Path`.
 
 **Compliant:**
 

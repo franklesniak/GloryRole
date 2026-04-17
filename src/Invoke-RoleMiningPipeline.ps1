@@ -212,7 +212,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.0
+# Version: 2.1.20260415.6
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -222,6 +222,7 @@ param (
     [string]$InputMode,
 
     [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [string]$OutputPath,
 
     [ValidateSet('AzureRbac', 'EntraId')]
@@ -300,16 +301,37 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdRoleDisplayName.ps1')
 #endregion SourceFiles ########################################################
 
-# Ensure output directory exists
-if (-not (Test-Path -Path $OutputPath)) {
-    [void](New-Item -Path $OutputPath -ItemType Directory -Force)
+# Resolve OutputPath to an absolute path against PowerShell's $PWD so that
+# downstream .NET File API calls (WriteAllLines / WriteAllText) do not
+# resolve relative paths against [Environment]::CurrentDirectory, which may
+# differ from $PWD (e.g. C:\windows\system32 on Windows).
+$OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+
+# Ensure output directory exists. Using [System.IO.Directory]::CreateDirectory
+# rather than New-Item because New-Item does not support -LiteralPath (the
+# parameter does not exist on this cmdlet in any supported PowerShell version),
+# so New-Item -Path would interpret wildcard characters ([, ], *, ?) in a
+# user-supplied $OutputPath as patterns. $OutputPath is already resolved to
+# an absolute path above, so the .NET API's [Environment]::CurrentDirectory
+# semantics are not a concern here.
+if (-not (Test-Path -LiteralPath $OutputPath)) {
+    [void][System.IO.Directory]::CreateDirectory($OutputPath)
 }
 
-# File writeability preflight
-$strWriteTestPath = Join-Path -Path $OutputPath -ChildPath '.write_test'
+# File writeability preflight. Uses a GUID-suffixed filename so the probe
+# never collides with a user file in $OutputPath, plus [System.IO.File]::Open
+# with FileMode.CreateNew as a belt-and-suspenders safeguard so an existing
+# file at $strWriteTestPath is never truncated (CreateNew throws on existence
+# instead of overwriting). Uses .NET APIs rather than New-Item / Remove-Item
+# because New-Item does not support -LiteralPath, so its -Path would interpret
+# wildcard characters ([, ], *, ?) in $strWriteTestPath (which inherits any
+# such characters from the user-supplied $OutputPath). $strWriteTestPath is
+# absolute (derived from the already-resolved $OutputPath), so the .NET
+# API's [Environment]::CurrentDirectory semantics do not apply.
+$strWriteTestPath = Join-Path -Path $OutputPath -ChildPath ('.write_test_{0}.tmp' -f [Guid]::NewGuid().ToString('N'))
 try {
-    [void](New-Item -Path $strWriteTestPath -ItemType File -Force -ErrorAction Stop)
-    Remove-Item -LiteralPath $strWriteTestPath -Force -ErrorAction Stop
+    [System.IO.File]::Open($strWriteTestPath, [System.IO.FileMode]::CreateNew).Dispose()
+    [System.IO.File]::Delete($strWriteTestPath)
 } catch {
     throw ("Cannot write to output directory '{0}': {1}" -f $OutputPath, $_.Exception.Message)
 }

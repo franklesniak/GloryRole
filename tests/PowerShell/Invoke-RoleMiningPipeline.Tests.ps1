@@ -520,4 +520,35 @@ Describe "Invoke-RoleMiningPipeline" {
             }
         }
     }
+
+    Context "When running in CSV mode with a relative OutputPath" {
+        It "Resolves the relative path against PowerShell PWD and exports artifacts correctly" {
+            # Arrange - create a temporary directory to use as PWD
+            $strTempBase = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            [void][System.IO.Directory]::CreateDirectory($strTempBase)
+            $strRelativeOutput = 'sub_output'
+            $strExpectedAbsolute = Join-Path -Path $strTempBase -ChildPath $strRelativeOutput
+
+            try {
+                # Act - push into the temp directory so the relative path
+                # resolves against it, not [Environment]::CurrentDirectory.
+                Push-Location -LiteralPath $strTempBase
+                try {
+                    $objRelResult = & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac -OutputPath $strRelativeOutput
+                } finally {
+                    Pop-Location
+                }
+
+                # Assert - artifacts must land under the expected absolute path
+                $objRelResult | Should -Not -BeNullOrEmpty
+                $objRelResult.OutputPath | Should -Be $strExpectedAbsolute
+                (Test-Path -LiteralPath (Join-Path -Path $strExpectedAbsolute -ChildPath 'principal_action_counts.csv')) | Should -BeTrue
+                (Test-Path -LiteralPath (Join-Path -Path $strExpectedAbsolute -ChildPath 'quality.json')) | Should -BeTrue
+            } finally {
+                if (Test-Path -LiteralPath $strTempBase) {
+                    Remove-Item -LiteralPath $strTempBase -Recurse -Force
+                }
+            }
+        }
+    }
 }
