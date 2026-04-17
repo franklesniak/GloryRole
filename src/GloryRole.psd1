@@ -8,11 +8,15 @@
     Description       = 'An unsupervised role mining engine written in PowerShell. Feed it cloud activity logs and it figures out who does what, groups similar principals via K-Means clustering, and generates least-privilege custom role definitions.'
     PowerShellVersion = '5.1'
 
-    # Functions to export — these are the 28 function files in src/
-    # (excludes Invoke-RoleMiningPipeline.ps1 which is a script entry point)
+    # Functions to export — these are the module's public functions from src/
+    # (excludes Invoke-RoleMiningPipeline.ps1, which is a script entry point,
+    # and non-exported helper functions such as Get-EntraIdRoleDisplayName.ps1
+    # and ConvertTo-PrincipalDisplayNameMap.ps1)
     FunctionsToExport = @(
         'ConvertFrom-AzActivityLogRecord'
         'ConvertFrom-ClaimsJson'
+        'ConvertFrom-EntraIdAuditRecord'
+        'ConvertTo-EntraIdResourceAction'
         'ConvertTo-NormalizedAction'
         'ConvertTo-NormalizedVectorRow'
         'ConvertTo-PrincipalActionCount'
@@ -25,6 +29,8 @@
         'Get-CalinskiHarabaszIndex'
         'Get-ClusterActionSet'
         'Get-DaviesBouldinIndex'
+        'Get-EntraIdAuditEvent'
+        'Get-EntraIdAuditEventFromLogAnalytics'
         'Get-FarthestPointIndex'
         'Get-SquaredEuclideanDistance'
         'Get-StableSha256Hex'
@@ -34,6 +40,7 @@
         'Invoke-KMeansClustering'
         'Measure-PrincipalActionCountQuality'
         'New-AzureRoleDefinitionJson'
+        'New-EntraIdRoleDefinitionJson'
         'New-FeatureIndex'
         'Remove-DuplicateCanonicalEvent'
         'Remove-RareAction'
@@ -47,7 +54,7 @@
 
     PrivateData = @{
         PSData = @{
-            Tags         = @('Azure', 'RBAC', 'RoleMining', 'KMeans', 'Clustering', 'LeastPrivilege', 'Security', 'IAM')
+            Tags         = @('Azure', 'RBAC', 'RoleMining', 'KMeans', 'Clustering', 'LeastPrivilege', 'Security', 'IAM', 'EntraID', 'MicrosoftGraph')
             LicenseUri   = 'https://github.com/franklesniak/GloryRole/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/franklesniak/GloryRole'
             ReleaseNotes = 'Initial release'

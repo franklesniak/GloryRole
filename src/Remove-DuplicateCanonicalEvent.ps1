@@ -5,13 +5,19 @@ function Remove-DuplicateCanonicalEvent {
     # Deduplicates canonical admin events by correlation ID without
     # dropping distinct actions.
     # .DESCRIPTION
-    # Removes retry duplicates from canonical admin events using the
-    # composite key PrincipalKey|Action|ResourceId|CorrelationId. Events
-    # without a CorrelationId are always kept. Events are sorted by
-    # TimeGenerated before deduplication so the earliest occurrence is
-    # retained.
+    # Removes retry duplicates from canonical events using a composite
+    # key built from PrincipalKey, Action, CorrelationId, and (when
+    # present) ResourceId. This supports both CanonicalAdminEvent
+    # objects (which carry ResourceId) and CanonicalEntraIdEvent objects
+    # (which do not). Events without a CorrelationId are always kept.
+    # Events are sorted by TimeGenerated before deduplication so the
+    # earliest occurrence is retained.
     # .PARAMETER Events
-    # An array of CanonicalAdminEvent objects to deduplicate.
+    # An array of canonical event objects to deduplicate. Accepts both
+    # CanonicalAdminEvent objects (with ResourceId) and
+    # CanonicalEntraIdEvent objects (without ResourceId). When
+    # ResourceId is missing from an event, it is treated as an empty
+    # string in the composite dedupe key.
     # .EXAMPLE
     # $arrUnique = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
     # .EXAMPLE
@@ -28,12 +34,12 @@ function Remove-DuplicateCanonicalEvent {
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
-    # [pscustomobject] Deduplicated CanonicalAdminEvent objects streamed to
-    # the pipeline. Each output object retains all original properties
-    # (e.g., PrincipalKey, Action, ResourceId, CorrelationId,
-    # TimeGenerated). The earliest event per composite key is retained.
-    # Events without a CorrelationId (null, empty, or whitespace-only) are
-    # always emitted.
+    # [pscustomobject] Deduplicated canonical event objects streamed to
+    # the pipeline. Each output object retains all original properties.
+    # Supports both CanonicalAdminEvent (with ResourceId) and
+    # CanonicalEntraIdEvent (without ResourceId). The earliest event per
+    # composite key is retained. Events without a CorrelationId (null,
+    # empty, or whitespace-only) are always emitted.
     # .NOTES
     # Supported platforms:
     #   Windows PowerShell 5.1 (.NET Framework 4.6.2+)
@@ -42,7 +48,7 @@ function Remove-DuplicateCanonicalEvent {
     # This function supports positional parameters:
     #   Position 0: Events
     #
-    # Version: 1.1.20260412.0
+    # Version: 1.2.20260415.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -67,7 +73,8 @@ function Remove-DuplicateCanonicalEvent {
                 }
 
                 $strResourceId = ''
-                if ($null -ne $objEvent.ResourceId) {
+                if ($null -ne $objEvent.PSObject.Properties['ResourceId'] -and
+                    $null -ne $objEvent.ResourceId) {
                     $strResourceId = [string]$objEvent.ResourceId
                 }
 

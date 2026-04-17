@@ -4,6 +4,8 @@
 
 GloryRole is an unsupervised role mining engine written entirely in PowerShell. Instead of guessing at what cloud roles should look like, it derives them from evidence -- specifically, from what your identities *actually do* in your cloud environment. Feed it activity logs and it produces production-ready custom role definitions with only the permissions your people and service accounts truly need.
 
+GloryRole supports both **Azure RBAC** (from Azure Activity Log or Log Analytics) and **Entra ID custom roles** (from Microsoft Graph directory audit logs or Log Analytics), enabling least-privilege role mining across your entire Microsoft cloud estate.
+
 ## The Problem
 
 Most cloud environments suffer from permission sprawl. Roles are hand-crafted based on job titles, copied from templates, or assigned as broad built-in roles because "it's easier." Over time, identities accumulate far more permissions than they actually use. Security teams know they should enforce least privilege, but they face a fundamental question: *what roles should we actually create?*
@@ -12,7 +14,7 @@ Most cloud environments suffer from permission sprawl. Roles are hand-crafted ba
 
 GloryRole implements a complete end-to-end pipeline in ten stages:
 
-1. **Ingest** -- Supports three modes: Azure Log Analytics (KQL summarization), `Get-AzActivityLog` (adaptive time-slicing), and local CSV. The adapter-based design means adding support for additional platforms (AWS CloudTrail, GCP Audit Logs, Active Directory security logs) requires only a new ingestion adapter.
+1. **Ingest** -- Supports four modes: Azure Log Analytics (KQL summarization for Azure RBAC or Entra ID audit logs), `Get-AzActivityLog` (adaptive time-slicing), Entra ID directory audit logs (Microsoft Graph API), and local CSV. The adapter-based design means adding support for additional platforms (AWS CloudTrail, GCP Audit Logs, Active Directory security logs) requires only a new ingestion adapter.
 2. **Canonicalize and Deduplicate** -- Normalizes events into standard form. Resolves identities using a priority chain (ObjectId, AppId, Caller). Eliminates retry noise via composite-key deduplication.
 3. **Aggregate into Sparse Triples** -- Collapses cleaned events into `PrincipalKey|Action|Count` triples, the universal data contract for all downstream stages.
 4. **Quality Gate** -- Reports dataset health: distinct principals, actions, non-zero entries, and matrix density.
@@ -21,7 +23,7 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 7. **Vectorize** -- Converts sparse triples into fixed-length numeric vectors using a stable, sorted feature index.
 8. **Normalize** -- Log1P transformation compresses dynamic range; L2 normalization scales vectors to unit length so clustering measures behavioral profile rather than activity volume.
 9. **Auto-K Clustering** -- Runs K-Means for every candidate K. Evaluates using five metrics (WCSS, WCSS second derivative, silhouette, Davies-Bouldin, Calinski-Harabasz). Weighted composite scoring selects the optimal K. Deterministic seeding (default: 42) and farthest-point empty cluster rescue ensure reproducible results.
-10. **Generate and Export** -- Each cluster becomes a candidate role with a valid Azure custom role definition JSON file.
+10. **Generate and Export** -- Each cluster becomes a candidate role with a valid Azure custom role definition JSON file (for Azure RBAC modes) or Entra ID custom role definition JSON file (for Entra ID mode).
 
 ## Design Philosophy
 
@@ -33,24 +35,69 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 
 ## Quick Start
 
+`Invoke-RoleMiningPipeline.ps1` has two key parameters that describe independent concerns:
+
+- `-InputMode` selects the **data source** (where the principal-action counts come from): `CSV`, `ActivityLog`, `LogAnalytics`, or `EntraId`.
+- `-RoleSchema` selects the **role-definition schema** to emit: `AzureRbac` or `EntraId`; it is **required** for schema-neutral sources and **defaulted** for schema-constrained sources.
+
+`-RoleSchema` is **required** when the source is schema-neutral (`CSV`, `LogAnalytics`) and **defaulted** when the source is schema-constrained (`ActivityLog` → `AzureRbac`; `EntraId` → `EntraId`). Incompatible combinations (e.g., `-InputMode EntraId -RoleSchema AzureRbac`) fail fast with a clear error.
+
 ```powershell
-# From a local CSV sample
+# From a local CSV sample — Azure RBAC output
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
     -CsvPath .\samples\principal_action_counts.csv `
+    -RoleSchema AzureRbac `
     -OutputPath .\output
 
+# From a local Entra ID CSV sample — Entra custom role output
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode CSV `
+    -CsvPath .\samples\entra_id_principal_action_counts.csv `
+    -RoleSchema EntraId `
+    -OutputPath .\output\entra-demo
+
 # From Azure Activity Log (requires Az module)
+# RoleSchema defaults to AzureRbac for this source; can be omitted.
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode ActivityLog `
     -SubscriptionIds @('your-sub-id') `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
 
-# From Log Analytics (requires Az.OperationalInsights)
+# From Log Analytics -- Azure RBAC (requires Az.OperationalInsights)
+# A Log Analytics workspace can hold either Azure Activity or Entra
+# audit tables, so RoleSchema is required.
 .\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
     -WorkspaceId 'your-workspace-id' `
+    -RoleSchema AzureRbac `
     -Start (Get-Date).AddDays(-90) -End (Get-Date) `
     -OutputPath .\output
+
+# From Log Analytics -- Entra ID (requires Az.OperationalInsights)
+# Queries the AuditLogs table for Entra ID directory audit events,
+# maps activities to microsoft.directory/* actions, and generates
+# Entra ID custom role definitions.
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode LogAnalytics `
+    -WorkspaceId 'your-workspace-id' `
+    -RoleSchema EntraId `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -OutputPath .\output\entra-la
+
+# From Entra ID audit logs (requires Microsoft.Graph.Reports)
+# RoleSchema defaults to EntraId for this source; can be omitted.
+Connect-MgGraph -Scopes 'AuditLog.Read.All'
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode EntraId `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -OutputPath .\output\entra
+
+# Entra ID with category filter
+.\src\Invoke-RoleMiningPipeline.ps1 -InputMode EntraId `
+    -Start (Get-Date).AddDays(-90) -End (Get-Date) `
+    -EntraIdFilterCategory @('GroupManagement', 'UserManagement') `
+    -OutputPath .\output\entra
 ```
+
+### Migration note — breaking change in 2.0
+
+Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Starting in `Invoke-RoleMiningPipeline.ps1` **2.0**, `-RoleSchema` must be supplied explicitly for schema-neutral sources (`CSV`, `LogAnalytics`), and `[CmdletBinding(PositionalBinding = $false)]` disables positional parameters on this entry point — all parameters must be specified by name. The previous behavior treated Azure RBAC as the implicit default, which made no principled sense for CSV/LogAnalytics inputs that could equally hold Entra, and which also would not extend cleanly as AWS IAM, GCP IAM, and Active Directory schemas are added. Existing `CSV` or `LogAnalytics` invocations must be updated to pass `-RoleSchema AzureRbac` (for the previous behavior) or `-RoleSchema EntraId` (for Entra custom roles). `ActivityLog` and `EntraId` invocations are unaffected by the `-RoleSchema` change.
 
 ## Output Artifacts
 
@@ -60,8 +107,9 @@ GloryRole implements a complete end-to-end pipeline in ten stages:
 | `features.txt` | Ordered feature (action) index |
 | `quality.json` | Dataset quality metrics (principals, actions, density) |
 | `autoK_candidates.csv` | Every evaluated K with all metrics, ranks, and composite score |
-| `clusters.json` | Cluster-to-action mapping |
-| `role_cluster_<id>.json` | One Azure custom role definition per cluster |
+| `clusters.json` | Cluster-to-action mapping with principal lists |
+| `role_cluster_<id>.json` | One Azure custom role definition per cluster (when `-RoleSchema AzureRbac`) |
+| `entra_role_cluster_<id>.json` | One Entra ID custom role definition per cluster (when `-RoleSchema EntraId`) |
 
 ## Who It's For
 

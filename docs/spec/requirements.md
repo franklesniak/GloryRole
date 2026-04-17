@@ -2,31 +2,39 @@
 
 - **Status:** Active
 - **Owner:** Frank Lesniak, Danny Stutz
-- **Last Updated:** 2026-03-19
-- **Scope:** Defines the requirements, data contracts, and design for GloryRole, a PowerShell-based pipeline that derives least-privilege Azure RBAC role definitions from cloud activity logs using K-Means clustering.
+- **Last Updated:** 2026-04-15
+- **Scope:** Defines the requirements, data contracts, and design for GloryRole, a PowerShell-based pipeline that derives least-privilege Azure RBAC and Entra ID custom role definitions from cloud activity logs using K-Means clustering.
 - **Related:** [README](../../README.md)
 
 ## Purpose
 
-GloryRole ingests Azure cloud activity logs, builds a user-action
-matrix, applies unsupervised K-Means clustering with an automatic K selection
-algorithm, and emits production-ready Azure custom role definition JSON files.
+GloryRole ingests Azure cloud activity logs and Entra ID directory audit logs,
+builds a user-action matrix, applies unsupervised K-Means clustering with an
+automatic K selection algorithm, and emits production-ready Azure custom role
+definition JSON files and Entra ID custom role definition JSON files.
 The tool supports Windows PowerShell 5.1 and PowerShell 7+.
 
 ## Design Goals
 
 - **DG-1 — RBAC fidelity:** Actions MUST be derived from `Authorization.Action`
   so they can be placed directly into Azure role definition `Actions` arrays.
+  Entra ID actions MUST be derived from directory audit activity display names
+  and mapped to `microsoft.directory/*` resource action strings for
+  `unifiedRoleDefinition` `allowedResourceActions` arrays.
 - **DG-2 — Identity stability:** Principals MUST be keyed by ObjectId (humans)
-  or AppId (service principals) where possible, falling back to Caller.
+  or AppId (service principals) where possible, falling back to Caller. For
+  Entra ID mode, principals MUST be keyed by `InitiatedBy.User.Id` (humans)
+  or `InitiatedBy.App.AppId` (service principals), falling back to
+  `InitiatedBy.App.DisplayName`.
 - **DG-3 — Clustering readiness:** Output vectors MUST be fixed-length
   `double[]` arrays with a stable, sorted feature index.
 - **DG-4 — Cross-version support:** Core code MUST run on Windows PowerShell
   5.1 and PowerShell 7+. PS7-only operators (`??`, ternary `?:`) and PS6+
   `Group-Object -AsHashTable` MUST NOT be used.
-- **DG-5 — Operational realism:** The tool MUST support three ingestion modes:
+- **DG-5 — Operational realism:** The tool MUST support four ingestion modes:
   Log Analytics / KQL summarize, `Get-AzActivityLog` with adaptive time
-  slicing, and local sanitized CSV for deterministic demos.
+  slicing, Entra ID directory audit logs via Microsoft Graph API, and local
+  sanitized CSV for deterministic demos.
 - **DG-6 — Human review:** The tool MUST emit artifacts (counts, dropped
   actions, quality metrics, cluster-to-action sets, role JSON) that make review
   and governance feasible.
@@ -89,6 +97,25 @@ Dense vector representation for clustering input.
 | `BestModel` | K-Means Result | The model for the recommended K |
 | `Candidates` | `[array]` | All evaluated K values with SSE, silhouette, Davies-Bouldin, Calinski-Harabasz, WCSS 2nd derivative, per-metric ranks, and composite rank |
 
+### DC-6: Canonical Entra ID Event
+
+Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
+`PSCustomObject` with:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `TimeGenerated` | `[datetime]` | Timestamp of the event |
+| `PrincipalKey` | `[string]` | User.Id > App.AppId > App.DisplayName |
+| `PrincipalType` | `[string]` | `User` or `ServicePrincipal` |
+| `Action` | `[string]` | Mapped `microsoft.directory/*` resource action |
+| `Result` | `[string]` | Filtered to `success` |
+| `Category` | `[string]` | Audit log category (e.g., `GroupManagement`) |
+| `ActivityDisplayName` | `[string]` | Original activity display name |
+| `CorrelationId` | `[string]` | Used for deduplication |
+| `RecordId` | `[string]` | Unique record identifier |
+| `PrincipalUPN` | `[string]` | UPN from InitiatedBy (metadata) |
+| `AppId` | `[string]` | Application ID from InitiatedBy (metadata) |
+
 ## Requirements
 
 ### Ingestion
@@ -109,6 +136,25 @@ Dense vector representation for clustering input.
   - **Rationale:** Deterministic demo and CI testing support.
   - **Verification:** Unit test with sample CSV.
 
+- **REQ-ING-004:** The system MUST support ingesting Entra ID directory audit
+  logs via Microsoft Graph API (`Get-MgAuditLogDirectoryAudit`), mapping
+  activity display names to `microsoft.directory/*` resource action strings,
+  and producing DC-2 sparse triples.
+  - **Rationale:** Enables least-privilege Entra ID custom role mining from
+    admin activity patterns in Microsoft 365 / Entra ID tenants.
+  - **Verification:** Unit test with mock Graph API output.
+
+- **REQ-ING-005:** The system MUST support ingesting Entra ID directory audit
+  logs from a Log Analytics workspace (`AuditLogs` table) via KQL, mapping
+  activity display names to `microsoft.directory/*` resource action strings
+  while preserving camelCase segments, and producing DC-6 canonical events
+  that flow through the standard deduplication and aggregation pipeline.
+  - **Rationale:** Enables Entra ID role mining from workspaces that receive
+    directory audit logs via diagnostic settings, without requiring a direct
+    Microsoft Graph connection.
+  - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
+    output.
+
 ### Canonicalization
 
 - **REQ-CAN-001:** Actions MUST be normalized to lowercase with whitespace
@@ -123,7 +169,10 @@ Dense vector representation for clustering input.
 
 - **REQ-DED-001:** Retry deduplication MUST use the composite key
   `PrincipalKey|Action|ResourceId|CorrelationId`. Records without a
-  `CorrelationId` MUST be kept.
+  `CorrelationId` MUST be kept. When the canonical event shape does
+  not carry a `ResourceId` (e.g., DC-6 Canonical Entra ID Event), the
+  missing value MUST be treated as an empty string in the composite
+  dedupe key so that the rule applies uniformly across event shapes.
   - **Verification:** Unit test.
 
 - **REQ-AGG-001:** Canonical events MUST be aggregated into
@@ -187,9 +236,26 @@ Dense vector representation for clustering input.
   from the original (pre-vectorization) sparse triples.
   - **Verification:** Unit test.
 
-- **REQ-ROL-002:** The system MUST emit valid Azure custom role definition JSON
-  with `Name`, `IsCustom`, `Description`, `Actions`, `NotActions`,
-  `DataActions`, `NotDataActions`, and `AssignableScopes`.
+- **REQ-ROL-002:** When `RoleSchema` resolves to `AzureRbac`, the system MUST
+  emit valid Azure custom role definition JSON with `Name`, `IsCustom`,
+  `Description`, `Actions`, `NotActions`, `DataActions`, `NotDataActions`,
+  and `AssignableScopes`.
+  - **Verification:** Unit test.
+
+- **REQ-ROL-003:** When `RoleSchema` resolves to `EntraId`, the system MUST
+  emit valid Entra ID custom role definition JSON in the
+  `unifiedRoleDefinition` format with `displayName`, `description`,
+  `isEnabled`, and `rolePermissions` containing `allowedResourceActions`
+  in the `microsoft.directory/*` namespace.
+  - **Verification:** Unit test.
+
+- **REQ-ROL-004:** `InputMode` (data source) and `RoleSchema` (output role
+  schema) are independent concerns. `RoleSchema` defaults where the source
+  is schema-constrained (`ActivityLog` → `AzureRbac`; `EntraId` → `EntraId`)
+  and is required for schema-neutral sources (`CSV`, `LogAnalytics`). The
+  tool MUST NOT assume a default platform for schema-neutral inputs.
+  Incompatible combinations (e.g., `InputMode EntraId` with
+  `RoleSchema AzureRbac`) MUST fail fast with an actionable error.
   - **Verification:** Unit test.
 
 ### Export
@@ -197,7 +263,8 @@ Dense vector representation for clustering input.
 - **REQ-EXP-001:** The system MUST export the following artifacts per run:
   `principal_action_counts.csv`, `features.txt`, `quality.json`,
   `autoK_candidates.csv`, `clusters.json`, and one
-  `role_cluster_<id>.json` per cluster.
+  `role_cluster_<id>.json` (Azure RBAC) or `entra_role_cluster_<id>.json`
+  (Entra ID) per cluster.
   - **Verification:** Integration test.
 
 ### Compatibility
@@ -211,7 +278,8 @@ Dense vector representation for clustering input.
 
 The orchestration entry point MUST execute the following stages in order:
 
-1. Ingest counts via Log Analytics, Activity Log, or CSV sample
+1. Ingest counts via Log Analytics, Activity Log, Entra ID audit logs, or CSV
+   sample
 2. Quality report with warnings
 3. Prune actions and keep dropped report
 4. Apply read-dominance handling mode

@@ -8,8 +8,39 @@
 # export all artifacts.
 #
 # .PARAMETER InputMode
-# Mandatory. Selects the data ingestion mode. Valid values are 'CSV',
-# 'ActivityLog', and 'LogAnalytics'.
+# Mandatory. Selects the **data source** (where the principal-action
+# counts come from). Valid values are 'CSV', 'ActivityLog',
+# 'LogAnalytics', and 'EntraId'. This parameter describes the shape
+# of the input only and is **independent** of which role-definition
+# schema the pipeline emits at the end; see RoleSchema.
+#
+# .PARAMETER RoleSchema
+# Selects the **role-definition schema** written to the per-cluster
+# role JSON artifacts. Valid values are 'AzureRbac' (Azure RBAC
+# `roleDefinition` JSON with `Actions` / `AssignableScopes`) and
+# 'EntraId' (Microsoft Graph `unifiedRoleDefinition` JSON with
+# `rolePermissions.allowedResourceActions` in the
+# `microsoft.directory/*` namespace).
+#
+# For **schema-neutral** data sources, `RoleSchema` is **required**
+# because the tool does not assume a default platform:
+#   - InputMode 'CSV': the CSV is a neutral container; caller must
+#     pass `-RoleSchema AzureRbac` or `-RoleSchema EntraId`.
+#   - InputMode 'LogAnalytics': workspaces can hold Azure Activity
+#     logs or Entra ID directory audit logs; caller must pass the
+#     matching schema. When `AzureRbac`, the bundled adapter queries
+#     the `AzureActivity` table and lowercases actions. When
+#     `EntraId`, it queries the `AuditLogs` table, maps activities
+#     via `ConvertTo-EntraIdResourceAction`, and preserves camelCase
+#     `microsoft.directory/*` action segments.
+# For **schema-constrained** data sources, `RoleSchema` defaults
+# (and passing an incompatible value throws):
+#   - InputMode 'ActivityLog' (Azure Activity Log cmdlet) defaults
+#     to 'AzureRbac'.
+#   - InputMode 'EntraId' (Microsoft Graph directory audit logs)
+#     defaults to 'EntraId'.
+# Artifact naming: 'AzureRbac' produces `role_cluster_<id>.json`;
+# 'EntraId' produces `entra_role_cluster_<id>.json`.
 #
 # .PARAMETER OutputPath
 # Mandatory. Directory where all artifacts are exported. Created
@@ -24,12 +55,12 @@
 # subscription IDs to query for activity log events.
 #
 # .PARAMETER Start
-# Required when InputMode is 'ActivityLog' or 'LogAnalytics'. Start of
-# the time window for data collection.
+# Required when InputMode is 'ActivityLog', 'LogAnalytics', or
+# 'EntraId'. Start of the time window for data collection.
 #
 # .PARAMETER End
-# Required when InputMode is 'ActivityLog' or 'LogAnalytics'. End of
-# the time window for data collection.
+# Required when InputMode is 'ActivityLog', 'LogAnalytics', or
+# 'EntraId'. End of the time window for data collection.
 #
 # .PARAMETER InitialSliceHours
 # Initial time-slice width in hours used for adaptive time-slicing when
@@ -46,6 +77,19 @@
 # .PARAMETER WorkspaceId
 # Required when InputMode is 'LogAnalytics'. The Log Analytics
 # workspace ID to query.
+#
+# .PARAMETER EntraIdFilterCategory
+# Optional when InputMode is 'EntraId'. One or more audit log
+# categories to filter (e.g., 'GroupManagement', 'UserManagement',
+# 'RoleManagement'). When omitted, all categories are returned.
+#
+# .PARAMETER EntraIdRoleNamePrefix
+# Prefix for generated Entra ID role names. Default is 'GloryRole'.
+# Get-EntraIdRoleDisplayName appends either a descriptive suffix
+# ("-{ResourceName} {Suffix}-{ClusterId}") or, when no descriptive
+# name can be generated, a fallback suffix ("-EntraCluster-{ClusterId}"),
+# so the default produces names like "GloryRole-User Manager-0" or
+# "GloryRole-EntraCluster-0".
 #
 # .PARAMETER MinDistinctPrincipals
 # Pruning threshold: minimum number of distinct principals that must
@@ -104,25 +148,54 @@
 #     exported
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/counts.csv') -RoleSchema AzureRbac -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
-# # Runs the pipeline in CSV mode. The returned object contains
-# # RecommendedK, Candidates, ClusterActions, Quality, and OutputPath
-# # properties summarizing the role-mining results.
+# # Runs the pipeline in CSV mode with Azure RBAC output. The returned
+# # object contains RecommendedK, Candidates, ClusterActions, Quality,
+# # and OutputPath properties summarizing the role-mining results.
+# # Emits role_cluster_<id>.json per cluster.
+#
+# .EXAMPLE
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode CSV -CsvPath (Join-Path -Path $HOME -ChildPath 'data/entra_counts.csv') -RoleSchema EntraId -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
+#
+# # Runs the pipeline in CSV mode with Entra ID output. Useful for
+# # demos and offline testing with a pre-canonicalized Entra sparse
+# # triple CSV. Emits entra_role_cluster_<id>.json per cluster.
 #
 # .EXAMPLE
 # $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode ActivityLog -SubscriptionIds @('00000000-0000-0000-0000-000000000001') -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
 # # Runs the pipeline in ActivityLog mode. Queries the Azure Activity
 # # Log for the specified subscription over the last 30 days and
-# # processes the results through the full pipeline.
+# # processes the results through the full pipeline. RoleSchema
+# # defaults to 'AzureRbac' (Activity Log is a schema-constrained
+# # source).
 #
 # .EXAMPLE
-# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -RoleSchema AzureRbac -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/role-mining')
 #
-# # Runs the pipeline in LogAnalytics mode. Queries the specified Log
-# # Analytics workspace for activity data over the last 30 days and
-# # processes the results through the full pipeline.
+# # Runs the pipeline in LogAnalytics mode with Azure RBAC output.
+# # LogAnalytics is schema-neutral (the same workspace can hold Azure
+# # Activity or Entra audit tables), so RoleSchema is required. When
+# # AzureRbac, queries the AzureActivity table.
+#
+# .EXAMPLE
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode LogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -RoleSchema EntraId -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
+#
+# # Runs the pipeline in LogAnalytics mode with Entra ID output.
+# # Queries the AuditLogs table for Entra ID directory audit events,
+# # maps activities to microsoft.directory/* actions (preserving
+# # camelCase), and generates unifiedRoleDefinition JSON. The workspace
+# # must receive Entra ID audit logs via diagnostic settings.
+#
+# .EXAMPLE
+# $objResult = & (Join-Path -Path $HOME -ChildPath 'repos/GloryRole/src/Invoke-RoleMiningPipeline.ps1') -InputMode EntraId -Start (Get-Date).AddDays(-30) -End (Get-Date) -OutputPath (Join-Path -Path $HOME -ChildPath 'output/entra-role-mining')
+#
+# # Runs the pipeline in EntraId mode. Queries Microsoft Graph for
+# # Entra ID directory audit logs over the last 30 days, clusters
+# # admin activities, and generates Entra ID custom role definitions.
+# # RoleSchema defaults to 'EntraId' (Graph directory audit is a
+# # schema-constrained source).
 #
 # .NOTES
 # Supported PowerShell versions:
@@ -135,22 +208,25 @@
 #   - macOS (PowerShell 7.x only)
 #   - Linux (PowerShell 7.x only)
 #
-# This script supports positional parameters in declaration order.
-# Position 0: InputMode
-# Position 1: OutputPath
-# All remaining parameters should be specified by name.
+# This script does not support positional parameters. All parameters
+# must be specified by name (enforced by
+# `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 1.4.20260413.3
+# Version: 2.1.20260415.6
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
     [Parameter(Mandatory = $true)]
-    [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics')]
+    [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics', 'EntraId')]
     [string]$InputMode,
 
     [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [string]$OutputPath,
+
+    [ValidateSet('AzureRbac', 'EntraId')]
+    [string]$RoleSchema,
 
     [string]$CsvPath,
 
@@ -162,6 +238,9 @@ param (
     [int]$MaxRecordHint = 5000,
 
     [string]$WorkspaceId,
+
+    [string[]]$EntraIdFilterCategory,
+    [string]$EntraIdRoleNamePrefix = 'GloryRole',
 
     [int]$MinDistinctPrincipals = 2,
     [double]$MinTotalCount = 10,
@@ -192,10 +271,15 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Resolve-LocalizableStringValue.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertFrom-AzActivityLogRecord.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-AzActivityAdminEvent.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-EntraIdResourceAction.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertFrom-EntraIdAuditRecord.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdAuditEvent.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdAuditEventFromLogAnalytics.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromLogAnalytics.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Import-PrincipalActionCountFromCsv.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Remove-DuplicateCanonicalEvent.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-PrincipalActionCount.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'ConvertTo-PrincipalDisplayNameMap.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Measure-PrincipalActionCountQuality.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-ActionStatFromCount.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Remove-RareAction.ps1')
@@ -213,24 +297,88 @@ $strScriptDirectory = $PSScriptRoot
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Invoke-AutoKSelection.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'Get-ClusterActionSet.ps1')
 . (Join-Path -Path $strScriptDirectory -ChildPath 'New-AzureRoleDefinitionJson.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'New-EntraIdRoleDefinitionJson.ps1')
+. (Join-Path -Path $strScriptDirectory -ChildPath 'Get-EntraIdRoleDisplayName.ps1')
 #endregion SourceFiles ########################################################
 
-# Ensure output directory exists
-if (-not (Test-Path -Path $OutputPath)) {
-    [void](New-Item -Path $OutputPath -ItemType Directory -Force)
+# Resolve OutputPath to an absolute path against PowerShell's $PWD so that
+# downstream .NET File API calls (WriteAllLines / WriteAllText) do not
+# resolve relative paths against [Environment]::CurrentDirectory, which may
+# differ from $PWD (e.g. C:\windows\system32 on Windows).
+$OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+
+# Ensure output directory exists. Using [System.IO.Directory]::CreateDirectory
+# rather than New-Item because New-Item does not support -LiteralPath (the
+# parameter does not exist on this cmdlet in any supported PowerShell version),
+# so New-Item -Path would interpret wildcard characters ([, ], *, ?) in a
+# user-supplied $OutputPath as patterns. $OutputPath is already resolved to
+# an absolute path above, so the .NET API's [Environment]::CurrentDirectory
+# semantics are not a concern here.
+if (-not (Test-Path -LiteralPath $OutputPath)) {
+    [void][System.IO.Directory]::CreateDirectory($OutputPath)
 }
 
-# File writeability preflight
-$strWriteTestPath = Join-Path -Path $OutputPath -ChildPath '.write_test'
+# File writeability preflight. Uses a GUID-suffixed filename so the probe
+# never collides with a user file in $OutputPath, plus [System.IO.File]::Open
+# with FileMode.CreateNew as a belt-and-suspenders safeguard so an existing
+# file at $strWriteTestPath is never truncated (CreateNew throws on existence
+# instead of overwriting). Uses .NET APIs rather than New-Item / Remove-Item
+# because New-Item does not support -LiteralPath, so its -Path would interpret
+# wildcard characters ([, ], *, ?) in $strWriteTestPath (which inherits any
+# such characters from the user-supplied $OutputPath). $strWriteTestPath is
+# absolute (derived from the already-resolved $OutputPath), so the .NET
+# API's [Environment]::CurrentDirectory semantics do not apply.
+$strWriteTestPath = Join-Path -Path $OutputPath -ChildPath ('.write_test_{0}.tmp' -f [Guid]::NewGuid().ToString('N'))
 try {
-    [void](New-Item -Path $strWriteTestPath -ItemType File -Force -ErrorAction Stop)
-    Remove-Item -LiteralPath $strWriteTestPath -Force -ErrorAction Stop
+    [System.IO.File]::Open($strWriteTestPath, [System.IO.FileMode]::CreateNew).Dispose()
+    [System.IO.File]::Delete($strWriteTestPath)
 } catch {
     throw ("Cannot write to output directory '{0}': {1}" -f $OutputPath, $_.Exception.Message)
 }
 
 try {
-    Write-Debug ("Parameters received: InputMode={0}, OutputPath={1}" -f $InputMode, $OutputPath)
+    # Resolve -RoleSchema using default-where-constrained semantics.
+    # Schema-constrained sources (ActivityLog, EntraId) default to the
+    # only role schema they can meaningfully produce. Schema-neutral
+    # sources (CSV, LogAnalytics) require the caller to state the
+    # schema explicitly; the tool does not default to a particular
+    # platform, so that CSV / LogAnalytics callers treating AzureRbac,
+    # EntraId (and future AwsIam / GcpIam / ActiveDirectory) as equal
+    # citizens are not silently routed to a default platform.
+    if (-not $PSBoundParameters.ContainsKey('RoleSchema')) {
+        switch ($InputMode) {
+            'ActivityLog' { $RoleSchema = 'AzureRbac' }
+            'EntraId' { $RoleSchema = 'EntraId' }
+            default {
+                throw ("RoleSchema is required when InputMode is '{0}'. Pass -RoleSchema 'AzureRbac' or -RoleSchema 'EntraId' to select which role-definition schema to emit." -f $InputMode)
+            }
+        }
+    } else {
+        # Compatibility check: schema-constrained sources reject
+        # incompatible RoleSchema values so the caller gets a clear
+        # error instead of silently producing a role-definition JSON
+        # that the target API would reject.
+        switch ($InputMode) {
+            'ActivityLog' {
+                if ($RoleSchema -ne 'AzureRbac') {
+                    throw ("RoleSchema '{0}' is incompatible with InputMode 'ActivityLog'. The Azure Activity Log cmdlet only produces Azure RBAC actions, so only -RoleSchema 'AzureRbac' is valid (or omit -RoleSchema to use the default)." -f $RoleSchema)
+                }
+            }
+            'EntraId' {
+                if ($RoleSchema -ne 'EntraId') {
+                    throw ("RoleSchema '{0}' is incompatible with InputMode 'EntraId'. Microsoft Graph directory audit logs only produce microsoft.directory/* actions, so only -RoleSchema 'EntraId' is valid (or omit -RoleSchema to use the default)." -f $RoleSchema)
+                }
+            }
+        }
+    }
+
+    Write-Debug ("Parameters received: InputMode={0}, RoleSchema={1}, OutputPath={2}" -f $InputMode, $RoleSchema, $OutputPath)
+
+    # Principal display-name lookup built during ingestion. Maps
+    # PrincipalKey (GUID / AppId) to a human-readable name (UPN for
+    # users, or the key itself for apps). Populated only for modes
+    # that produce canonical events with PrincipalUPN metadata.
+    $hashPrincipalDisplayName = @{}
 
     #region Stage 1: Ingest
     Write-Verbose "Stage 1: Ingesting data (mode: ${InputMode})..."
@@ -241,7 +389,7 @@ try {
             if ([string]::IsNullOrWhiteSpace($CsvPath)) {
                 throw "CsvPath is required when InputMode is CSV."
             }
-            $arrCounts = @(Import-PrincipalActionCountFromCsv -Path $CsvPath)
+            $arrCounts = @(Import-PrincipalActionCountFromCsv -Path $CsvPath -RoleSchema $RoleSchema)
         }
 
         'ActivityLog' {
@@ -268,6 +416,13 @@ try {
             $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
             Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
 
+            # Build principal display-name lookup from deduplicated events.
+            # Helper centralizes the UPN-preferred / PrincipalKey-fallback
+            # precedence so both ActivityLog and EntraId branches stay in
+            # lockstep if those rules change.
+            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+            Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+
             $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
         }
 
@@ -279,12 +434,69 @@ try {
                 throw "Start and End are required when InputMode is LogAnalytics."
             }
 
-            $hashLogAnalyticsParams = @{
-                WorkspaceId = $WorkspaceId
+            if ($RoleSchema -eq 'EntraId') {
+                # Entra ID path: query the AuditLogs table, map
+                # activities to microsoft.directory/* actions
+                # PowerShell-side (preserves camelCase), then feed
+                # canonical events through the same dedup -> display-
+                # name -> count pipeline as the direct EntraId InputMode.
+                $hashLogAnalyticsEntraParams = @{
+                    WorkspaceId = $WorkspaceId
+                    Start = $Start
+                    End = $End
+                }
+                if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
+                    $hashLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory
+                }
+                $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics @hashLogAnalyticsEntraParams)
+
+                Write-Verbose ("  Raw Entra ID events from Log Analytics: {0}" -f $arrEvents.Count)
+
+                $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+                Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
+
+                $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+                Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+
+                $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
+            } else {
+                # Azure RBAC path: query the AzureActivity table with
+                # pre-aggregation and lowercasing in KQL.
+                $hashLogAnalyticsParams = @{
+                    WorkspaceId = $WorkspaceId
+                    Start = $Start
+                    End = $End
+                }
+                $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashLogAnalyticsParams)
+            }
+        }
+
+        'EntraId' {
+            if ($null -eq $Start -or $null -eq $End) {
+                throw "Start and End are required when InputMode is EntraId."
+            }
+
+            $hashEntraIdParams = @{
                 Start = $Start
                 End = $End
             }
-            $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashLogAnalyticsParams)
+            if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
+                $hashEntraIdParams['FilterCategory'] = $EntraIdFilterCategory
+            }
+            $arrEvents = @(Get-EntraIdAuditEvent @hashEntraIdParams)
+
+            Write-Verbose ("  Raw Entra ID events collected: {0}" -f $arrEvents.Count)
+
+            $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
+            Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
+
+            # Build principal display-name map from Entra ID events.
+            # Shares the same helper as the ActivityLog branch so
+            # display-name precedence rules cannot drift between modes.
+            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+            Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+
+            $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
         }
     }
 
@@ -303,11 +515,29 @@ try {
                     "Re-run with -Verbose for per-subscription diagnostics.") -f ($SubscriptionIds -join ', '), $Start, $End
             }
             'LogAnalytics' {
-                $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}'. Common causes: " +
-                    "(1) not authenticated to Azure - run Connect-AzAccount; " +
-                    "(2) the workspace had no matching activity records between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; or " +
-                    "(3) the workspace ID is incorrect or inaccessible. " +
-                    "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                if ($RoleSchema -eq 'EntraId') {
+                    $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}' (AuditLogs table, RoleSchema=EntraId). Common causes: " +
+                        "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                        "(2) the workspace does not receive Entra ID directory audit logs (check diagnostic settings); " +
+                        "(3) the AuditLogs table had no successful events between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; " +
+                        "(4) the specified FilterCategory values did not match any events; or " +
+                        "(5) none of the activities mapped to a microsoft.directory/* action. " +
+                        "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                } else {
+                    $strIngestHint = ("No data was ingested from Log Analytics workspace '{0}' (AzureActivity table, RoleSchema=AzureRbac). Common causes: " +
+                        "(1) not authenticated to Azure - run Connect-AzAccount; " +
+                        "(2) the workspace had no matching activity records between {1:yyyy-MM-dd} and {2:yyyy-MM-dd}; or " +
+                        "(3) the workspace ID is incorrect or inaccessible. " +
+                        "Re-run with -Verbose for diagnostics.") -f $WorkspaceId, $Start, $End
+                }
+            }
+            'EntraId' {
+                $strIngestHint = ("No data was ingested from Entra ID audit logs. Common causes: " +
+                    "(1) not authenticated to Microsoft Graph - run Connect-MgGraph -Scopes 'AuditLog.Read.All'; " +
+                    "(2) the tenant had no successful directory audit events between {0:yyyy-MM-dd} and {1:yyyy-MM-dd}; " +
+                    "(3) the specified FilterCategory values did not match any events; or " +
+                    "(4) none of the events resolved to a principal and a mapped action. " +
+                    "Re-run with -Verbose for diagnostics.") -f $Start, $End
             }
             default {
                 $strIngestHint = ("No data was ingested from CSV file '{0}'. Verify the file exists, " +
@@ -444,55 +674,99 @@ try {
     # Edit-ReadActionCount to the pruned set if TF-IDF was used. Since we
     # overwrote $arrCounts, use the cluster assignments against the current
     # counts which still have the correct PrincipalKey->Action mapping.
-    $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objAutoK.BestModel.Assignments)
+    $hashClusterActionParams = @{
+        Counts = $arrCounts
+        AssignmentsMap = $objAutoK.BestModel.Assignments
+    }
+    if ($hashPrincipalDisplayName.Count -gt 0) {
+        $hashClusterActionParams['PrincipalDisplayNameMap'] = $hashPrincipalDisplayName
+    }
+    $arrClusterActions = @(Get-ClusterActionSet @hashClusterActionParams)
     #endregion Stage 9: Generate cluster action sets
 
     #region Stage 10: Export artifacts
     Write-Verbose "Stage 10: Exporting artifacts..."
 
+    # Use UTF-8 without BOM for every generated artifact so the output
+    # is byte-identical across Windows PowerShell 5.1 and PowerShell
+    # 7+. Set-Content / Export-Csv / Out-File defaults differ between
+    # those hosts (Windows PowerShell 5.1 emits ANSI/ASCII by default
+    # for some cmdlets and UTF-16LE for others), so the pipeline
+    # bypasses those cmdlets and writes every artifact through the
+    # .NET File API with a single shared encoding.
+    $objUtf8NoBomEncoding = New-Object System.Text.UTF8Encoding($false)
+
     # principal_action_counts.csv
     $strCountsPath = Join-Path -Path $OutputPath -ChildPath 'principal_action_counts.csv'
-    $arrCounts | Export-Csv -Path $strCountsPath -NoTypeInformation
+    $arrCountsCsvLines = @($arrCounts | ConvertTo-Csv -NoTypeInformation)
+    [System.IO.File]::WriteAllLines($strCountsPath, [string[]]$arrCountsCsvLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strCountsPath)
 
     # features.txt
     $strFeaturesPath = Join-Path -Path $OutputPath -ChildPath 'features.txt'
-    $objFeatureIndex.FeatureNames | Set-Content -Path $strFeaturesPath
+    $arrFeatureLines = @($objFeatureIndex.FeatureNames)
+    [System.IO.File]::WriteAllLines($strFeaturesPath, [string[]]$arrFeatureLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strFeaturesPath)
 
     # quality.json
     $strQualityPath = Join-Path -Path $OutputPath -ChildPath 'quality.json'
-    $objQuality | Select-Object -Property Principals, Actions, NonZeroEntries, Density |
-        ConvertTo-Json -Depth 4 |
-        Set-Content -Path $strQualityPath
+    $strQualityJson = $objQuality |
+        Select-Object -Property Principals, Actions, NonZeroEntries, Density |
+        ConvertTo-Json -Depth 4
+    [System.IO.File]::WriteAllText($strQualityPath, [string]$strQualityJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strQualityPath)
 
     # autoK_candidates.csv
     $strAutoKPath = Join-Path -Path $OutputPath -ChildPath 'autoK_candidates.csv'
-    $objAutoK.Candidates | Export-Csv -Path $strAutoKPath -NoTypeInformation
+    $arrAutoKCsvLines = @($objAutoK.Candidates | ConvertTo-Csv -NoTypeInformation)
+    [System.IO.File]::WriteAllLines($strAutoKPath, [string[]]$arrAutoKCsvLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strAutoKPath)
 
     # clusters.json
     $strClustersPath = Join-Path -Path $OutputPath -ChildPath 'clusters.json'
-    $arrClusterActions | ConvertTo-Json -Depth 4 | Set-Content -Path $strClustersPath
+    $strClustersJson = $arrClusterActions | ConvertTo-Json -Depth 4
+    [System.IO.File]::WriteAllText($strClustersPath, [string]$strClustersJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strClustersPath)
 
-    # Role JSON per cluster
-    foreach ($objCluster in $arrClusterActions) {
-        $strRoleName = ("{0}-{1}" -f $RoleNamePrefix, $objCluster.ClusterId)
-        $strDescription = ("Auto-generated least-privilege role from cluster {0} with {1} actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
+    # Role JSON per cluster. Gated on $RoleSchema (not $InputMode) so
+    # that schema-neutral sources (CSV, LogAnalytics) can emit either
+    # Azure RBAC or Entra ID role definitions based on the caller's
+    # explicit -RoleSchema choice.
+    if ($RoleSchema -eq 'EntraId') {
+        # Entra ID custom role definitions (unifiedRoleDefinition format).
+        foreach ($objCluster in $arrClusterActions) {
+            $strRoleName = Get-EntraIdRoleDisplayName -ResourceActions $objCluster.Actions -ClusterId $objCluster.ClusterId -Prefix $EntraIdRoleNamePrefix
+            $strDescription = ("Auto-generated least-privilege Entra ID role from cluster {0} with {1} resource actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
 
-        $hashRoleParams = @{
-            RoleName = $strRoleName
-            Description = $strDescription
-            Actions = $objCluster.Actions
-            AssignableScopes = $AssignableScopes
+            $hashRoleParams = @{
+                RoleName = $strRoleName
+                Description = $strDescription
+                ResourceActions = $objCluster.Actions
+            }
+            $strRoleJson = New-EntraIdRoleDefinitionJson @hashRoleParams
+
+            $strRolePath = Join-Path -Path $OutputPath -ChildPath ("entra_role_cluster_{0}.json" -f $objCluster.ClusterId)
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)
+            Write-Verbose ("  Exported: {0}" -f $strRolePath)
         }
-        $strRoleJson = New-AzureRoleDefinitionJson @hashRoleParams
+    } else {
+        # Azure RBAC custom role definitions.
+        foreach ($objCluster in $arrClusterActions) {
+            $strRoleName = ("{0}-{1}" -f $RoleNamePrefix, $objCluster.ClusterId)
+            $strDescription = ("Auto-generated least-privilege role from cluster {0} with {1} actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
 
-        $strRolePath = Join-Path -Path $OutputPath -ChildPath ("role_cluster_{0}.json" -f $objCluster.ClusterId)
-        $strRoleJson | Set-Content -Path $strRolePath
-        Write-Verbose ("  Exported: {0}" -f $strRolePath)
+            $hashRoleParams = @{
+                RoleName = $strRoleName
+                Description = $strDescription
+                Actions = $objCluster.Actions
+                AssignableScopes = $AssignableScopes
+            }
+            $strRoleJson = New-AzureRoleDefinitionJson @hashRoleParams
+
+            $strRolePath = Join-Path -Path $OutputPath -ChildPath ("role_cluster_{0}.json" -f $objCluster.ClusterId)
+            [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)
+            Write-Verbose ("  Exported: {0}" -f $strRolePath)
+        }
     }
     #endregion Stage 10: Export artifacts
 
