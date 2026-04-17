@@ -525,7 +525,7 @@ Describe "Invoke-RoleMiningPipeline" {
         It "Resolves the relative path against PowerShell PWD and exports artifacts correctly" {
             # Arrange - create a temporary directory to use as PWD
             $strTempBase = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
-            [void](New-Item -Path $strTempBase -ItemType Directory -Force -ErrorAction Stop)
+            [void][System.IO.Directory]::CreateDirectory($strTempBase)
             $strRelativeOutput = 'sub_output'
             $strExpectedAbsolute = Join-Path -Path $strTempBase -ChildPath $strRelativeOutput
 
