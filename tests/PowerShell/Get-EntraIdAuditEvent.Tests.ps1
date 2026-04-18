@@ -337,6 +337,70 @@ Describe "Get-EntraIdAuditEvent" {
             $hashUnmapped.Count | Should -Be 0
         }
 
+        It "Does not track records dropped for missing principal as unmapped" {
+            # Arrange - success + unmapped activity, but InitiatedBy is
+            # null, so the record is dropped for principal failure. The
+            # accumulator MUST NOT count this as an unmapped activity
+            # because the primary reason for dropping was data quality,
+            # not mapping coverage.
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $hashUnmapped = @{}
+
+            $objMockNoPrincipal = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Self-service password reset flow activity progress'
+                Category = 'UserManagement'
+                InitiatedBy = $null
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockNoPrincipal) }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult.Count | Should -Be 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+
+        It "Does not track records dropped for unparseable ActivityDateTime as unmapped" {
+            # Arrange - success + principal + unmapped activity, but
+            # ActivityDateTime is not parseable. The record is dropped
+            # for date failure and MUST NOT be counted as unmapped.
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $hashUnmapped = @{}
+
+            $objMockBadDate = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Self-service password reset flow activity progress'
+                Category = 'UserManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'user@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = 'not-a-real-date'
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockBadDate) }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult.Count | Should -Be 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+
         It "Does not populate accumulator when parameter is not provided" {
             # Arrange
             $dtStart = (Get-Date).AddDays(-1)

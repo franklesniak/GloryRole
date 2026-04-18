@@ -77,7 +77,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.1.20260418.0
+    # Version: 1.2.20260418.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -149,61 +149,40 @@ function Get-EntraIdAuditEvent {
 
             Write-Verbose ("  Raw audit records retrieved: {0}" -f $arrRaw.Count)
 
+            # Delegate accumulator tracking to ConvertFrom-EntraIdAuditRecord
+            # so the record's eligibility (success, principal, valid
+            # date) is verified in a single place before the mapping
+            # check. This prevents records dropped for reasons other
+            # than missing mapping (non-success, no InitiatedBy,
+            # unparseable ActivityDateTime) from being miscounted as
+            # unmapped activities.
+            $hashConvertParams = @{
+                Record = $null
+            }
+            if ($null -ne $UnmappedActivityAccumulator) {
+                $hashConvertParams['UnmappedActivityAccumulator'] = $UnmappedActivityAccumulator
+            }
+
             $intEmitted = 0
             $intSkipped = 0
-            $intUnmapped = 0
             foreach ($objRecord in $arrRaw) {
-                $objEvent = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+                $hashConvertParams['Record'] = $objRecord
+                $objEvent = ConvertFrom-EntraIdAuditRecord @hashConvertParams
                 if ($null -eq $objEvent) {
                     $intSkipped++
-
-                    # Track unmapped activities when an accumulator is
-                    # provided. A record is an "unmapped activity" when
-                    # it passed the success and principal checks but the
-                    # mapping returned $null. Check: result is success,
-                    # ActivityDisplayName is present, then call
-                    # ConvertTo-EntraIdResourceAction (cheap hashtable
-                    # lookup because the mapping table is cached).
-                    if ($null -ne $UnmappedActivityAccumulator -and
-                        $null -ne $objRecord.Result -and
-                        [string]$objRecord.Result -eq 'success' -and
-                        $null -ne $objRecord.ActivityDisplayName -and
-                        -not [string]::IsNullOrWhiteSpace([string]$objRecord.ActivityDisplayName)) {
-
-                        $strTestAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName ([string]$objRecord.ActivityDisplayName) -Category ([string]$objRecord.Category)
-                        if ($null -eq $strTestAction) {
-                            $intUnmapped++
-                            $strAccKey = ("{0}|{1}" -f ([string]$objRecord.ActivityDisplayName).Trim(), [string]$objRecord.Category)
-                            if ($UnmappedActivityAccumulator.ContainsKey($strAccKey)) {
-                                $UnmappedActivityAccumulator[$strAccKey].Count++
-                            } else {
-                                $strSampleCorrelation = ''
-                                if ($null -ne $objRecord.CorrelationId) {
-                                    $strSampleCorrelation = [string]$objRecord.CorrelationId
-                                }
-                                $strSampleRecordId = ''
-                                if ($null -ne $objRecord.Id) {
-                                    $strSampleRecordId = [string]$objRecord.Id
-                                }
-                                $UnmappedActivityAccumulator[$strAccKey] = [pscustomobject]@{
-                                    ActivityDisplayName = ([string]$objRecord.ActivityDisplayName).Trim()
-                                    Category = [string]$objRecord.Category
-                                    Count = 1
-                                    SampleCorrelationId = $strSampleCorrelation
-                                    SampleRecordId = $strSampleRecordId
-                                }
-                            }
-                        }
-                    }
-
                     continue
                 }
                 $intEmitted++
                 $objEvent
             }
 
-            if ($intUnmapped -gt 0) {
-                Write-Verbose ("  Unmapped activities: {0}" -f $intUnmapped)
+            if ($null -ne $UnmappedActivityAccumulator -and $UnmappedActivityAccumulator.Count -gt 0) {
+                $intUnmappedDistinct = $UnmappedActivityAccumulator.Count
+                $intUnmappedTotal = 0
+                foreach ($objEntry in $UnmappedActivityAccumulator.Values) {
+                    $intUnmappedTotal += $objEntry.Count
+                }
+                Write-Verbose ("  Unmapped activities: {0} occurrences across {1} distinct names" -f $intUnmappedTotal, $intUnmappedDistinct)
             }
             Write-Verbose ("  Events emitted: {0}, Records skipped: {1}" -f $intEmitted, $intSkipped)
         } catch {
