@@ -459,20 +459,23 @@ Describe "Get-ClusterActionSet" {
             $arrResult | Should -Not -BeNullOrEmpty
             $arrResult.Count | Should -Be 2
 
-            $arrCluster0 = $arrResult | Where-Object { $_.ClusterId -eq 0 }
-            $arrCluster0 | Should -Not -BeNullOrEmpty
-            $arrCluster0.Actions | Should -Not -BeNullOrEmpty
-            $arrCluster0.Actions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
-            $arrCluster0.Actions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
+            $objCluster0 = $arrResult | Where-Object { $_.ClusterId -eq 0 }
+            $objCluster0 | Should -Not -BeNullOrEmpty
+            $objCluster0.Actions | Should -Not -BeNullOrEmpty
+            # Case-sensitive positive assertions: the expected camelCase
+            # segments must be present verbatim (Should -Contain is
+            # case-insensitive and would mask a downcasing regression).
+            ($objCluster0.Actions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeTrue
+            ($objCluster0.Actions -ccontains 'microsoft.directory/servicePrincipals/standard/read') | Should -BeTrue
             # Verify downcased forms are absent (case-sensitive check)
-            ($arrCluster0.Actions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
-            ($arrCluster0.Actions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+            ($objCluster0.Actions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+            ($objCluster0.Actions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
 
-            $arrCluster1 = $arrResult | Where-Object { $_.ClusterId -eq 1 }
-            $arrCluster1 | Should -Not -BeNullOrEmpty
-            $arrCluster1.Actions | Should -Not -BeNullOrEmpty
-            $arrCluster1.Actions | Should -Contain 'microsoft.directory/conditionalAccessPolicies/create'
-            ($arrCluster1.Actions -ccontains 'microsoft.directory/conditionalaccesspolicies/create') | Should -BeFalse
+            $objCluster1 = $arrResult | Where-Object { $_.ClusterId -eq 1 }
+            $objCluster1 | Should -Not -BeNullOrEmpty
+            $objCluster1.Actions | Should -Not -BeNullOrEmpty
+            ($objCluster1.Actions -ccontains 'microsoft.directory/conditionalAccessPolicies/create') | Should -BeTrue
+            ($objCluster1.Actions -ccontains 'microsoft.directory/conditionalaccesspolicies/create') | Should -BeFalse
         }
     }
 }
