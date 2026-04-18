@@ -36,6 +36,15 @@ function Get-EntraIdAuditEvent {
     # 'GroupManagement', 'UserManagement', 'RoleManagement'). When
     # specified, only records matching these categories are retrieved.
     # When omitted, all categories are returned.
+    # .PARAMETER UnmappedActivityAccumulator
+    # Optional. A [hashtable] reference that, when provided, receives
+    # entries for each unmapped Entra ID activity encountered during
+    # ingestion. Keys are "ActivityDisplayName|Category" composite
+    # strings. Values are PSCustomObjects with ActivityDisplayName,
+    # Category, Count, SampleCorrelationId, and SampleRecordId
+    # properties. The caller creates the hashtable and passes it in;
+    # this function populates it as a side effect. When omitted,
+    # unmapped activities are silently skipped as before.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -44,6 +53,11 @@ function Get-EntraIdAuditEvent {
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-7) -End (Get-Date) -FilterCategory @('GroupManagement', 'UserManagement'))
     # # Retrieves only GroupManagement and UserManagement events from
     # # the last 7 days.
+    # .EXAMPLE
+    # $hashUnmapped = @{}
+    # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
+    # # $hashUnmapped now contains entries for each unmapped activity
+    # # with Count, Category, and sample IDs for diagnostics.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -63,18 +77,20 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.3.20260418.0
 
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [datetime]$Start,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [datetime]$End,
 
-        [string[]]$FilterCategory
+        [string[]]$FilterCategory,
+
+        [hashtable]$UnmappedActivityAccumulator
     )
 
     process {
@@ -133,10 +149,25 @@ function Get-EntraIdAuditEvent {
 
             Write-Verbose ("  Raw audit records retrieved: {0}" -f $arrRaw.Count)
 
+            # Delegate accumulator tracking to ConvertFrom-EntraIdAuditRecord
+            # so the record's eligibility (success, principal, valid
+            # date) is verified in a single place before the mapping
+            # check. This prevents records dropped for reasons other
+            # than missing mapping (non-success, no InitiatedBy,
+            # unparseable ActivityDateTime) from being miscounted as
+            # unmapped activities.
+            $hashConvertParams = @{
+                Record = $null
+            }
+            if ($null -ne $UnmappedActivityAccumulator) {
+                $hashConvertParams['UnmappedActivityAccumulator'] = $UnmappedActivityAccumulator
+            }
+
             $intEmitted = 0
             $intSkipped = 0
             foreach ($objRecord in $arrRaw) {
-                $objEvent = ConvertFrom-EntraIdAuditRecord -Record $objRecord
+                $hashConvertParams['Record'] = $objRecord
+                $objEvent = ConvertFrom-EntraIdAuditRecord @hashConvertParams
                 if ($null -eq $objEvent) {
                     $intSkipped++
                     continue
@@ -145,6 +176,14 @@ function Get-EntraIdAuditEvent {
                 $objEvent
             }
 
+            if ($null -ne $UnmappedActivityAccumulator -and $UnmappedActivityAccumulator.Count -gt 0) {
+                $intUnmappedDistinct = $UnmappedActivityAccumulator.Count
+                $intUnmappedTotal = 0
+                foreach ($objEntry in $UnmappedActivityAccumulator.Values) {
+                    $intUnmappedTotal += $objEntry.Count
+                }
+                Write-Verbose ("  Unmapped activities: {0} occurrences across {1} distinct names" -f $intUnmappedTotal, $intUnmappedDistinct)
+            }
             Write-Verbose ("  Events emitted: {0}, Records skipped: {1}" -f $intEmitted, $intSkipped)
         } catch {
             Write-Debug ("Get-EntraIdAuditEvent failed: {0}" -f $_.Exception.Message)

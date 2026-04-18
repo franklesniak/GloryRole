@@ -21,6 +21,19 @@ function ConvertFrom-EntraIdAuditRecord {
     # custom role definitions.
     # .PARAMETER Record
     # A single record object from Get-MgAuditLogDirectoryAudit output.
+    # .PARAMETER UnmappedActivityAccumulator
+    # Optional. A [hashtable] reference that, when provided, receives
+    # entries for each unmapped Entra ID activity this function declines
+    # to emit **because the mapping returned $null** (i.e., the record
+    # otherwise passed the success and principal eligibility checks).
+    # Keys are "ActivityDisplayName|Category" composite strings. Values
+    # are PSCustomObjects with ActivityDisplayName, Category, Count,
+    # SampleCorrelationId, and SampleRecordId properties. The caller
+    # creates the hashtable and passes it in; this function populates
+    # it as a side effect. Records skipped for other reasons (non-success
+    # result, unresolved principal, missing/unparseable ActivityDateTime)
+    # are NOT tracked so the unmapped count reflects true mapping-table
+    # coverage gaps rather than data-quality skips.
     # .EXAMPLE
     # $objEvent = ConvertFrom-EntraIdAuditRecord -Record $arrAudits[0]
     # # Returns a CanonicalEntraIdEvent PSCustomObject or $null.
@@ -59,13 +72,15 @@ function ConvertFrom-EntraIdAuditRecord {
     # This function supports positional parameters:
     #   Position 0: Record
     #
-    # Version: 1.0.20260415.2
+    # Version: 1.1.20260418.0
 
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
-        [Parameter(Mandatory = $true)]
-        [object]$Record
+        [Parameter(Mandatory = $true, Position = 0)]
+        [object]$Record,
+
+        [hashtable]$UnmappedActivityAccumulator
     )
 
     process {
@@ -124,7 +139,7 @@ function ConvertFrom-EntraIdAuditRecord {
                 Write-Verbose ("Resolved principal type: {0}" -f $strPrincipalType)
             }
 
-            # Map activity to a microsoft.directory/* resource action
+            # Collect activity and category for the mapping step below.
             $strActivityDisplayName = $null
             if ($null -ne $Record.ActivityDisplayName) {
                 $strActivityDisplayName = [string]$Record.ActivityDisplayName
@@ -135,19 +150,10 @@ function ConvertFrom-EntraIdAuditRecord {
                 $strCategory = [string]$Record.Category
             }
 
-            $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName $strActivityDisplayName -Category $strCategory
-            if ([string]::IsNullOrWhiteSpace($strAction)) {
-                if ($boolVerbose) {
-                    Write-Verbose "Action is null or whitespace after mapping; returning null."
-                }
-                return $null
-            }
-            if ($boolVerbose) {
-                Write-Verbose ("Mapped action: {0}" -f $strAction)
-            }
-
-            # Build the canonical event object. The DC-6 contract
-            # requires TimeGenerated to be a [datetime] so that
+            # Parse ActivityDateTime BEFORE the mapping check so that
+            # records with missing/unparseable timestamps are dropped
+            # without being counted as unmapped activities. The DC-6
+            # contract requires TimeGenerated to be a [datetime] so that
             # downstream consumers (e.g., Sort-Object TimeGenerated in
             # Remove-DuplicateCanonicalEvent) can compare values. Graph
             # records may expose ActivityDateTime as a [datetime],
@@ -193,6 +199,50 @@ function ConvertFrom-EntraIdAuditRecord {
                 }
 
                 $objDateTimeGenerated = $objParsedActivityDateTimeOffset.UtcDateTime
+            }
+
+            # Map activity to a microsoft.directory/* resource action.
+            # A $null/whitespace result means the activity is not in the
+            # mapping table. At this point the record has already passed
+            # success, principal, and date checks, so the ONLY remaining
+            # reason for a $null emission is a mapping-table coverage
+            # gap. That makes this the correct place to track the
+            # unmapped activity in the caller-provided accumulator.
+            $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName $strActivityDisplayName -Category $strCategory
+            if ([string]::IsNullOrWhiteSpace($strAction)) {
+                if ($boolVerbose) {
+                    Write-Verbose "Action is null or whitespace after mapping; returning null."
+                }
+
+                if ($null -ne $UnmappedActivityAccumulator -and
+                    -not [string]::IsNullOrWhiteSpace($strActivityDisplayName)) {
+
+                    $strAccKey = ("{0}|{1}" -f $strActivityDisplayName.Trim(), [string]$strCategory)
+                    if ($UnmappedActivityAccumulator.ContainsKey($strAccKey)) {
+                        $UnmappedActivityAccumulator[$strAccKey].Count++
+                    } else {
+                        $strSampleCorrelation = ''
+                        if ($null -ne $Record.CorrelationId) {
+                            $strSampleCorrelation = [string]$Record.CorrelationId
+                        }
+                        $strSampleRecordId = ''
+                        if ($null -ne $Record.Id) {
+                            $strSampleRecordId = [string]$Record.Id
+                        }
+                        $UnmappedActivityAccumulator[$strAccKey] = [pscustomobject]@{
+                            ActivityDisplayName = $strActivityDisplayName.Trim()
+                            Category = [string]$strCategory
+                            Count = 1
+                            SampleCorrelationId = $strSampleCorrelation
+                            SampleRecordId = $strSampleRecordId
+                        }
+                    }
+                }
+
+                return $null
+            }
+            if ($boolVerbose) {
+                Write-Verbose ("Mapped action: {0}" -f $strAction)
             }
 
             $strCorrelationId = $null

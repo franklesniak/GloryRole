@@ -276,4 +276,207 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             $arrResult[0].PrincipalUPN | Should -BeNullOrEmpty
         }
     }
+
+    Context "When UnmappedActivityAccumulator is provided" {
+        It "Populates the accumulator for unmapped activities" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'admin@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T11:00:00Z'
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert - only mapped event is returned
+            $arrResult | Should -HaveCount 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-guid-001'
+
+            # Assert - accumulator has the unmapped activity
+            $hashUnmapped.Count | Should -Be 1
+            $strExpectedKey = 'Self-service password reset flow activity progress|UserManagement'
+            $hashUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
+            $hashUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
+            $hashUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
+            $hashUnmapped[$strExpectedKey].Count | Should -Be 1
+            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-002'
+            $hashUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'rec-002'
+        }
+
+        It "Increments count for repeated unmapped activities" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'User registered security info'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user1@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T11:00:00Z'
+                    OperationName = 'User registered security info'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-002'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user2@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-002'
+                    RecordId = 'rec-002'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert - no mapped events
+            $arrResult | Should -HaveCount 0
+
+            # Assert - accumulator has one entry with count 2
+            $hashUnmapped.Count | Should -Be 1
+            $strExpectedKey = 'User registered security info|UserManagement'
+            $hashUnmapped[$strExpectedKey].Count | Should -Be 2
+            # Sample IDs come from the first occurrence
+            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-001'
+        }
+
+        It "Does not populate accumulator when parameter is not provided" {
+            # Arrange
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = '2026-02-15T10:30:00Z'
+                    OperationName = 'User registered security info'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-001'
+                    RecordId = 'rec-001'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act - should not throw even though unmapped activities exist
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+        }
+
+        It "Does not track rows with unparseable TimeGenerated as unmapped" {
+            # Arrange - row has an unmapped activity but its
+            # TimeGenerated string cannot be parsed. The row is dropped
+            # for a timestamp/data-quality reason, not for a mapping
+            # coverage gap, so the accumulator MUST NOT be touched.
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = 'not-a-real-date'
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-bad-1'
+                    RecordId = 'rec-bad-1'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+
+        It "Does not track rows with missing TimeGenerated as unmapped" {
+            # Arrange - same scenario, but TimeGenerated is null. The
+            # row MUST be dropped for data-quality reasons, not counted
+            # as unmapped.
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = $null
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-null-1'
+                    RecordId = 'rec-null-1'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+    }
 }

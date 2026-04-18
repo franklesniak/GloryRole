@@ -73,6 +73,28 @@ function ConvertTo-EntraIdResourceAction {
     # generated fallback string. This ensures that only real
     # assignable permissions appear in role mining output.
     #
+    # ## How to add a new mapping
+    #
+    # 1. Identify the ActivityDisplayName value from Entra ID audit
+    #    logs (e.g., via the Azure portal Audit logs blade, Microsoft
+    #    Graph, or the entra_unmapped_activities.csv artifact).
+    # 2. Determine the corresponding microsoft.directory/* resource
+    #    action string. Cross-reference the Microsoft Graph API
+    #    documentation for unifiedRoleDefinition
+    #    allowedResourceActions:
+    #    https://learn.microsoft.com/en-us/graph/api/resources/unifiedroledefinition
+    # 3. Verify the action is a real assignable permission by checking
+    #    against the output of:
+    #    (Get-MgRoleManagementDirectoryRoleDefinition -All).RolePermissions.AllowedResourceActions | Sort-Object -Unique
+    #    Or by creating a test Entra ID custom role with that action
+    #    and confirming it is accepted.
+    # 4. Add a new entry to the $hashActivityMap hashtable in this
+    #    file. The key MUST be the lowercase, trimmed activity display
+    #    name. The value is the microsoft.directory/* action string
+    #    (preserving camelCase segments).
+    # 5. Run existing Pester tests to ensure no regressions, and add
+    #    a test case for the new mapping.
+    #
     # Supported on Windows PowerShell 5.1 (.NET Framework 4.6.2+) and
     # PowerShell 7.4.x / 7.5.x / 7.6.x (Windows, macOS, Linux).
     #
@@ -80,7 +102,7 @@ function ConvertTo-EntraIdResourceAction {
     #   Position 0: ActivityDisplayName
     #   Position 1: Category
     #
-    # Version: 1.2.20260415.0
+    # Version: 1.2.20260418.0
 
     [CmdletBinding()]
     [OutputType([string])]

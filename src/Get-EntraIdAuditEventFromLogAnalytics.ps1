@@ -48,6 +48,15 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # 'GroupManagement', 'UserManagement', 'RoleManagement'). When
     # specified, only records matching these categories are retrieved
     # via the KQL query. When omitted, all categories are returned.
+    # .PARAMETER UnmappedActivityAccumulator
+    # Optional. A [hashtable] reference that, when provided, receives
+    # entries for each unmapped Entra ID activity encountered during
+    # ingestion. Keys are "ActivityDisplayName|Category" composite
+    # strings. Values are PSCustomObjects with ActivityDisplayName,
+    # Category, Count, SampleCorrelationId, and SampleRecordId
+    # properties. The caller creates the hashtable and passes it in;
+    # this function populates it as a side effect. When omitted,
+    # unmapped activities are silently skipped as before.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -57,6 +66,11 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-7) -End (Get-Date) -FilterCategory @('GroupManagement', 'UserManagement'))
     # # Retrieves only GroupManagement and UserManagement events from
     # # the last 7 days in the specified workspace.
+    # .EXAMPLE
+    # $hashUnmapped = @{}
+    # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
+    # # $hashUnmapped now contains entries for each unmapped activity
+    # # with Count, Category, and sample IDs for diagnostics.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -74,24 +88,26 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     #   Position 1: Start
     #   Position 2: End
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.2.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
         Justification = '"LogAnalytics" here is the proper name of the Azure Log Analytics service, not a plural noun; renaming would obscure the function''s target service.')]
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [string]$WorkspaceId,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [datetime]$Start,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 2)]
         [datetime]$End,
 
-        [string[]]$FilterCategory
+        [string[]]$FilterCategory,
+
+        [hashtable]$UnmappedActivityAccumulator
     )
 
     process {
@@ -170,6 +186,7 @@ $strCategoryFilter
 
             $intEmitted = 0
             $intSkipped = 0
+            $intUnmapped = 0
             foreach ($objRow in $arrRows) {
                 $strOperationName = [string]$objRow.OperationName
                 $strCategory = $null
@@ -177,18 +194,12 @@ $strCategoryFilter
                     $strCategory = [string]$objRow.Category
                 }
 
-                # Map activity display name to a microsoft.directory/*
-                # resource action. Unmapped activities return $null and
-                # are silently skipped (same as Get-EntraIdAuditEvent).
-                $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName $strOperationName -Category $strCategory
-                if ([string]::IsNullOrWhiteSpace($strAction)) {
-                    $intSkipped++
-                    continue
-                }
-
-                # Parse TimeGenerated from the KQL result. Log Analytics
-                # returns dates as ISO-8601 strings; normalize to UTC
-                # [datetime] to match the DC-6 contract.
+                # Parse TimeGenerated from the KQL result BEFORE the
+                # mapping check so rows with missing/unparseable
+                # timestamps are dropped without being counted as
+                # unmapped activities. Log Analytics returns dates as
+                # ISO-8601 strings; normalize to UTC [datetime] to
+                # match the DC-6 contract.
                 $objTimeGenerated = $null
                 if ($null -ne $objRow.TimeGenerated) {
                     $strTimeGenerated = [string]$objRow.TimeGenerated
@@ -208,6 +219,49 @@ $strCategoryFilter
 
                 if ($null -eq $objTimeGenerated) {
                     $intSkipped++
+                    continue
+                }
+
+                # Map activity display name to a microsoft.directory/*
+                # resource action. Unmapped activities return $null and
+                # are silently skipped (same as Get-EntraIdAuditEvent).
+                # At this point the row has already passed the KQL
+                # success + principal + OperationName filters AND the
+                # client-side TimeGenerated parse, so the ONLY
+                # remaining reason for a $null/empty mapping is a true
+                # mapping-table coverage gap.
+                $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName $strOperationName -Category $strCategory
+                if ([string]::IsNullOrWhiteSpace($strAction)) {
+                    $intSkipped++
+
+                    # Track unmapped activities when an accumulator is
+                    # provided.
+                    if ($null -ne $UnmappedActivityAccumulator -and
+                        -not [string]::IsNullOrWhiteSpace($strOperationName)) {
+
+                        $intUnmapped++
+                        $strAccKey = ("{0}|{1}" -f $strOperationName.Trim(), $strCategory)
+                        if ($UnmappedActivityAccumulator.ContainsKey($strAccKey)) {
+                            $UnmappedActivityAccumulator[$strAccKey].Count++
+                        } else {
+                            $strSampleCorrelation = ''
+                            if ($null -ne $objRow.CorrelationId) {
+                                $strSampleCorrelation = [string]$objRow.CorrelationId
+                            }
+                            $strSampleRecordId = ''
+                            if ($null -ne $objRow.RecordId) {
+                                $strSampleRecordId = [string]$objRow.RecordId
+                            }
+                            $UnmappedActivityAccumulator[$strAccKey] = [pscustomobject]@{
+                                ActivityDisplayName = $strOperationName.Trim()
+                                Category = $strCategory
+                                Count = 1
+                                SampleCorrelationId = $strSampleCorrelation
+                                SampleRecordId = $strSampleRecordId
+                            }
+                        }
+                    }
+
                     continue
                 }
 
@@ -248,6 +302,9 @@ $strCategoryFilter
                 }
             }
 
+            if ($intUnmapped -gt 0) {
+                Write-Verbose ("  Unmapped activities: {0}" -f $intUnmapped)
+            }
             Write-Verbose ("  Events emitted: {0}, Records skipped: {1}" -f $intEmitted, $intSkipped)
         } catch {
             Write-Debug ("Get-EntraIdAuditEventFromLogAnalytics failed: {0}" -f $_.Exception.Message)
