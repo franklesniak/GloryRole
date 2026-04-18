@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 function Get-EntraIdAuditEvent {
     # .SYNOPSIS
     # Collects canonical admin events from Entra ID directory audit logs
-    # via Microsoft Graph API with pagination.
+    # via Microsoft Graph API with pagination and transient-failure retry.
     # .DESCRIPTION
     # Retrieves Entra ID directory audit records via
     # Get-MgAuditLogDirectoryAudit from the Microsoft.Graph.Reports
@@ -15,6 +15,30 @@ function Get-EntraIdAuditEvent {
     # Pagination is handled automatically by requesting all pages from
     # the Graph API. The function uses -All to retrieve complete results.
     #
+    # **Transient-failure resilience (retry/backoff).**
+    # The Microsoft.Graph PowerShell SDK (v2.x, Kiota-based) includes
+    # built-in HTTP-level retry for 429/503/504 responses (default: 3
+    # retries with exponential backoff, respecting Retry-After headers).
+    # This function adds a complementary GloryRole-level retry loop
+    # around the entire cmdlet invocation to handle failures that the
+    # SDK cannot recover from internally:
+    # - Network-layer failures (DNS, TCP, TLS)
+    # - SDK-exhausted throttle errors (429 after SDK internal retries)
+    # - Transient server errors persisting beyond SDK retry budget
+    # The outer retry uses exponential backoff with random jitter to
+    # avoid synchronized retry storms. Retry count and base delay are
+    # configurable via -MaxRetries and -RetryBaseDelaySeconds. Retry
+    # progress is visible via Write-Verbose and Write-Debug.
+    #
+    # **Time-window subdivision: not required.**
+    # Unlike Azure Activity Log (which has a MaxRecord cap that can
+    # silently truncate results and benefits from adaptive time-slicing
+    # in Get-AzActivityAdminEvent), the Microsoft Graph directoryAudits
+    # endpoint uses server-side OData pagination via -All. The SDK
+    # transparently follows @odata.nextLink tokens until all pages are
+    # retrieved, so there is no truncation risk and no benefit to
+    # subdividing the query time window at the GloryRole level.
+    #
     # Two distinct failure modes apply to individual records:
     # - **Intentional skips.** Records that do not meet the
     #   canonicalization criteria (e.g., non-success result, missing
@@ -25,8 +49,8 @@ function Get-EntraIdAuditEvent {
     #   -ErrorAction; skips are the normal non-error path.
     # - **Exceptions.** Terminating errors from Microsoft Graph
     #   (e.g., connection failures, authorization failures) or from
-    #   ConvertFrom-EntraIdAuditRecord are always propagated to the
-    #   caller, regardless of -ErrorAction setting.
+    #   ConvertFrom-EntraIdAuditRecord are propagated to the caller
+    #   after retry exhaustion, regardless of -ErrorAction setting.
     # .PARAMETER Start
     # The start of the time range to query.
     # .PARAMETER End
@@ -45,6 +69,17 @@ function Get-EntraIdAuditEvent {
     # properties. The caller creates the hashtable and passes it in;
     # this function populates it as a side effect. When omitted,
     # unmapped activities are silently skipped as before.
+    # .PARAMETER MaxRetries
+    # Optional. Maximum number of retry attempts for transient Graph
+    # API failures. Default is 3. Set to 0 to disable retries. Each
+    # retry uses exponential backoff with jitter. The total number of
+    # Graph API call attempts is MaxRetries + 1 (one initial attempt
+    # plus up to MaxRetries retries).
+    # .PARAMETER RetryBaseDelaySeconds
+    # Optional. Base delay in seconds for exponential backoff between
+    # retries. Default is 2. The actual delay for retry N (0-based) is
+    # (2^N * RetryBaseDelaySeconds) + random_jitter_0_to_1s. For
+    # example, with default settings: ~2s, ~4s, ~8s for retries 1-3.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -58,6 +93,11 @@ function Get-EntraIdAuditEvent {
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
     # # $hashUnmapped now contains entries for each unmapped activity
     # # with Count, Category, and sample IDs for diagnostics.
+    # .EXAMPLE
+    # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -MaxRetries 5 -RetryBaseDelaySeconds 3)
+    # # Retrieves events with up to 5 retries on transient Graph API
+    # # failures, using 3 seconds as the base delay for exponential
+    # # backoff. Actual delays: ~3s, ~6s, ~12s, ~24s, ~48s plus jitter.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -70,6 +110,24 @@ function Get-EntraIdAuditEvent {
     # Requires ConvertFrom-EntraIdAuditRecord and
     # ConvertTo-EntraIdResourceAction to be loaded.
     #
+    # Microsoft.Graph SDK retry characterization (v2.x, Kiota-based):
+    # The SDK's Kiota HTTP handler retries on HTTP 429, 503, and 504
+    # responses. Default retry limit: 3 attempts. It respects
+    # Retry-After headers and uses exponential backoff between
+    # attempts. Retries are transparent to the caller; the SDK
+    # surfaces the final error only after exhausting its internal
+    # budget. This function's retry loop operates at the cmdlet
+    # invocation level, complementing (not replacing) the SDK's
+    # HTTP-level retry.
+    #
+    # Time-window subdivision rationale:
+    # The Graph directoryAudits endpoint paginates via
+    # @odata.nextLink (fetched automatically by -All). Unlike
+    # Get-AzActivityLog (which has a MaxRecord cap that can silently
+    # truncate results), Graph pagination guarantees complete result
+    # sets. Adaptive time-slicing would not improve completeness and
+    # was therefore deliberately omitted for Entra ID ingestion.
+    #
     # Supported on Windows PowerShell 5.1 (.NET Framework 4.6.2+) and
     # PowerShell 7.4.x / 7.5.x / 7.6.x (Windows, macOS, Linux).
     #
@@ -77,7 +135,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.3.20260418.0
+    # Version: 1.4.20260418.0
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -90,7 +148,11 @@ function Get-EntraIdAuditEvent {
 
         [string[]]$FilterCategory,
 
-        [hashtable]$UnmappedActivityAccumulator
+        [hashtable]$UnmappedActivityAccumulator,
+
+        [int]$MaxRetries = 3,
+
+        [double]$RetryBaseDelaySeconds = 2
     )
 
     process {
@@ -133,18 +195,42 @@ function Get-EntraIdAuditEvent {
             }
 
             # Suppress verbose output from Microsoft.Graph module which
-            # can be extremely noisy during pagination.
+            # can be extremely noisy during pagination. The retry loop
+            # wraps the cmdlet call with exponential backoff + jitter
+            # for transient failures that survive the SDK's internal
+            # HTTP-level retry (see .NOTES for SDK characterization).
             $objVerbosePreferenceAtStartOfBlock = $VerbosePreference
             $arrRaw = $null
-            try {
-                $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
-                $arrRaw = @(Get-MgAuditLogDirectoryAudit @hashParams)
-                $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
-            } catch {
-                Write-Debug ("Get-MgAuditLogDirectoryAudit query failed: {0}" -f $_.Exception.Message)
-                throw
-            } finally {
-                $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+            $intAttempt = 0
+            $boolSucceeded = $false
+            while (-not $boolSucceeded) {
+                $intAttempt++
+                try {
+                    $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
+                    $arrRaw = @(Get-MgAuditLogDirectoryAudit @hashParams)
+                    $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+                    $boolSucceeded = $true
+                    if ($intAttempt -gt 1) {
+                        Write-Verbose ("  Graph API call succeeded on attempt {0}" -f $intAttempt)
+                    }
+                } catch {
+                    $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+                    $intRetryNumber = $intAttempt - 1
+                    if ($intRetryNumber -ge $MaxRetries) {
+                        Write-Debug ("Graph API retry exhausted after {0} retries: {1}" -f $MaxRetries, $_.Exception.Message)
+                        Write-Verbose ("  Graph API call failed after {0} retries. Giving up." -f $MaxRetries)
+                        throw
+                    }
+                    $dblBackoff = [math]::Pow(2, $intRetryNumber) * $RetryBaseDelaySeconds
+                    $dblJitter = (Get-Random -Minimum 0 -Maximum 1000) / 1000.0
+                    $dblDelay = $dblBackoff + $dblJitter
+                    $intTotalAttempts = $MaxRetries + 1
+                    Write-Verbose ("  Graph API call failed (attempt {0}/{1}): {2}. Retrying in {3:F1}s..." -f $intAttempt, $intTotalAttempts, $_.Exception.Message, $dblDelay)
+                    Write-Debug ("  Retry backoff: base={0:F1}s, jitter={1:F3}s, total={2:F1}s" -f $dblBackoff, $dblJitter, $dblDelay)
+                    Start-Sleep -Milliseconds ([int]($dblDelay * 1000))
+                } finally {
+                    $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+                }
             }
 
             Write-Verbose ("  Raw audit records retrieved: {0}" -f $arrRaw.Count)
