@@ -19,7 +19,7 @@ function Get-EntraIdAuditEvent {
     # The Microsoft.Graph PowerShell SDK (v2.x, Kiota-based) includes
     # built-in HTTP-level retry for 429/503/504 responses (default: 3
     # retries with exponential backoff, respecting Retry-After headers).
-    # This function adds a complementary GloryRole-level retry loop
+    # This function adds a complementary function-level retry loop
     # around the entire cmdlet invocation to handle failures that the
     # SDK cannot recover from internally:
     # - Network-layer failures (DNS, TCP, TLS)
