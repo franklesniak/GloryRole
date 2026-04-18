@@ -74,10 +74,10 @@ function ConvertFrom-EntraIdAuditRecord {
     #
     # Version: 1.1.20260418.0
 
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [object]$Record,
 
         [hashtable]$UnmappedActivityAccumulator
