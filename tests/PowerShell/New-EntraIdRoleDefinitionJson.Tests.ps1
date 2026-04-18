@@ -139,7 +139,7 @@ Describe "New-EntraIdRoleDefinitionJson" {
             $arrActions = @('microsoft.directory/oauth2permissiongrants/allproperties/update')
 
             # Act / Assert - the function should emit a warning
-            $strJson = New-EntraIdRoleDefinitionJson `
+            $arrOutput = New-EntraIdRoleDefinitionJson `
                 -RoleName 'WarnTest' `
                 -Description 'D' `
                 -ResourceActions $arrActions `
@@ -148,7 +148,7 @@ Describe "New-EntraIdRoleDefinitionJson" {
             # The 3>&1 redirect merges the warning stream into the
             # output stream. At least one element should be a
             # WarningRecord mentioning the downcased segment.
-            $arrWarnings = @($strJson | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -BeGreaterThan 0
             $arrWarnings[0].Message | Should -BeLike '*oauth2permissiongrants*'
         }
@@ -158,14 +158,14 @@ Describe "New-EntraIdRoleDefinitionJson" {
             $arrActions = @('microsoft.directory/serviceprincipals/standard/read')
 
             # Act
-            $strJson = New-EntraIdRoleDefinitionJson `
+            $arrOutput = New-EntraIdRoleDefinitionJson `
                 -RoleName 'WarnTest' `
                 -Description 'D' `
                 -ResourceActions $arrActions `
                 3>&1
 
             # Assert
-            $arrWarnings = @($strJson | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -BeGreaterThan 0
             $arrWarnings[0].Message | Should -BeLike '*serviceprincipals*'
         }
@@ -179,14 +179,14 @@ Describe "New-EntraIdRoleDefinitionJson" {
             )
 
             # Act
-            $strJson = New-EntraIdRoleDefinitionJson `
+            $arrOutput = New-EntraIdRoleDefinitionJson `
                 -RoleName 'NoWarnTest' `
                 -Description 'D' `
                 -ResourceActions $arrActions `
                 3>&1
 
             # Assert - no warnings should be emitted
-            $arrWarnings = @($strJson | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -Be 0
         }
 
@@ -200,14 +200,14 @@ Describe "New-EntraIdRoleDefinitionJson" {
             )
 
             # Act
-            $strJson = New-EntraIdRoleDefinitionJson `
+            $arrOutput = New-EntraIdRoleDefinitionJson `
                 -RoleName 'LowercaseNatural' `
                 -Description 'D' `
                 -ResourceActions $arrActions `
                 3>&1
 
             # Assert
-            $arrWarnings = @($strJson | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -Be 0
         }
 

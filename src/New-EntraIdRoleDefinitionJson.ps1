@@ -97,6 +97,11 @@ function New-EntraIdRoleDefinitionJson {
             # camelCase resource type segments contain uppercase letters
             # that MUST be preserved; the Microsoft Graph
             # unifiedRoleDefinition API rejects all-lowercase forms.
+            #
+            # Source: resource type segments extracted from the
+            # ConvertTo-EntraIdResourceAction.ps1 mapping table. Review
+            # and update this list when new Entra ID resource types are
+            # added to the mapping table.
             # ---------------------------------------------------------------
             $arrKnownCamelCaseSegments = @(
                 'oAuth2PermissionGrants'
