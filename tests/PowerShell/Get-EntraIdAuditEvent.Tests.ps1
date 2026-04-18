@@ -191,4 +191,180 @@ Describe "Get-EntraIdAuditEvent" {
             { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd } | Should -Throw
         }
     }
+
+    Context "When UnmappedActivityAccumulator is provided" {
+        It "Populates the accumulator for unmapped activities" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $hashUnmapped = @{}
+
+            $objMockMapped = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            $objMockUnmapped = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Self-service password reset flow activity progress'
+                Category = 'UserManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-2'
+                        UserPrincipalName = 'user@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(2)
+                CorrelationId = 'corr-2'
+                Id = 'id-2'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockMapped, $objMockUnmapped) }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert - only mapped event is returned
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-obj-1'
+
+            # Assert - accumulator has the unmapped activity
+            $hashUnmapped.Count | Should -Be 1
+            $strExpectedKey = 'Self-service password reset flow activity progress|UserManagement'
+            $hashUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
+            $hashUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
+            $hashUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
+            $hashUnmapped[$strExpectedKey].Count | Should -Be 1
+            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-2'
+            $hashUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'id-2'
+        }
+
+        It "Increments count for repeated unmapped activities" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $hashUnmapped = @{}
+
+            $objMockUnmapped1 = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'User registered security info'
+                Category = 'UserManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'user1@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            $objMockUnmapped2 = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'User registered security info'
+                Category = 'UserManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-2'
+                        UserPrincipalName = 'user2@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(2)
+                CorrelationId = 'corr-2'
+                Id = 'id-2'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockUnmapped1, $objMockUnmapped2) }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert - no mapped events
+            $arrResult.Count | Should -Be 0
+
+            # Assert - accumulator has one entry with count 2
+            $hashUnmapped.Count | Should -Be 1
+            $strExpectedKey = 'User registered security info|UserManagement'
+            $hashUnmapped[$strExpectedKey].Count | Should -Be 2
+            # Sample IDs come from the first occurrence
+            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-1'
+        }
+
+        It "Does not track non-success records as unmapped" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+            $hashUnmapped = @{}
+
+            $objMockFailed = [pscustomobject]@{
+                Result = 'failure'
+                ActivityDisplayName = 'Some unknown activity'
+                Category = 'Other'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockFailed) }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult.Count | Should -Be 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+
+        It "Does not populate accumulator when parameter is not provided" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            $objMockUnmapped = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'User registered security info'
+                Category = 'UserManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'user@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit { return @($objMockUnmapped) }
+
+            # Act - should not throw even though unmapped activities exist
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult.Count | Should -Be 0
+        }
+    }
 }
