@@ -18,8 +18,9 @@ function New-EntraIdRoleDefinitionJson {
     # validation pass on each resource action. If a
     # microsoft.directory/* action string appears to contain an
     # accidentally downcased camelCase segment (e.g.,
-    # oauth2permissiongrants instead of oAuth2PermissionGrants), a
-    # Write-Warning is emitted for each such action. This catches the
+    # oauth2permissiongrants instead of oAuth2PermissionGrants), one
+    # or more Write-Warning messages may be emitted for that action
+    # (one per distinct downcased known segment). This catches the
     # common mistake of piping Entra ID actions through a lowercase
     # normalizer intended only for Azure RBAC. JSON generation still
     # proceeds so that the caller can inspect the output, but the
@@ -64,7 +65,7 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.3.20260418.0
+    # Version: 1.4.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

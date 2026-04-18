@@ -146,14 +146,16 @@ Describe "New-EntraIdRoleDefinitionJson" {
                 3>&1
 
             # The 3>&1 redirect merges the warning stream into the
-            # output stream. At least one warning should mention the
-            # downcased segment. An action with multiple downcased
-            # segments can produce multiple warnings, so filter the
-            # collection rather than indexing [0] (which would be
-            # sensitive to $arrKnownCamelCaseSegments ordering).
+            # output stream. At least one warning must identify the
+            # expected camelCase segment specifically. Filtering on
+            # "expected 'oAuth2PermissionGrants'" (from the warning
+            # format string) proves the oAuth2PermissionGrants guardrail
+            # fired, rather than matching the action string which would
+            # also satisfy a warning emitted for a different downcased
+            # segment in the same action.
             $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -BeGreaterThan 0
-            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*oauth2permissiongrants*' })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'oAuth2PermissionGrants'*" })
             $arrMatchingWarnings | Should -Not -BeNullOrEmpty
         }
 
@@ -168,9 +170,11 @@ Describe "New-EntraIdRoleDefinitionJson" {
                 -ResourceActions $arrActions `
                 3>&1
 
-            # Assert - filter by substring (order-independent)
+            # Assert - filter on "expected 'servicePrincipals'" so the
+            # assertion proves the servicePrincipals guardrail fired
+            # rather than matching the action string.
             $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
-            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*serviceprincipals*' })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'servicePrincipals'*" })
             $arrMatchingWarnings | Should -Not -BeNullOrEmpty
         }
 
@@ -191,9 +195,12 @@ Describe "New-EntraIdRoleDefinitionJson" {
                 -ResourceActions $arrActions `
                 3>&1
 
-            # Assert - at least one warning mentions 'allproperties'
+            # Assert - filter on "expected 'allProperties'" so the test
+            # fails specifically if allProperties is ever removed from
+            # $arrKnownCamelCaseSegments. Matching the action substring
+            # 'allproperties' would not catch that regression.
             $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
-            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*allproperties*' })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'allProperties'*" })
             $arrMatchingWarnings | Should -Not -BeNullOrEmpty
         }
 
