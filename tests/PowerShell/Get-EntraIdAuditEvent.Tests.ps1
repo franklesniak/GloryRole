@@ -621,5 +621,42 @@ Describe "Get-EntraIdAuditEvent" {
             $strAllVerbose | Should -Match 'Retrying in'
             $strAllVerbose | Should -Match 'succeeded on attempt 2'
         }
+
+        It "Throws immediately on non-retriable HTTP 401 without retrying" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                $objException = [System.Exception]::new("Unauthorized")
+                $objException | Add-Member -MemberType NoteProperty -Name 'Response' -Value ([pscustomobject]@{ StatusCode = 401 })
+                throw $objException
+            }
+
+            # Act / Assert - 401 is non-retriable; the classifier
+            # must surface the failure on the first attempt without
+            # backoff or additional Graph call attempts.
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 3 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -Exactly
+            Should -Invoke Start-Sleep -Times 0 -Exactly
+        }
+
+        It "Throws immediately on CommandNotFoundException without retrying" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                throw [System.Management.Automation.CommandNotFoundException]::new("The module is not loaded.")
+            }
+
+            # Act / Assert - CommandNotFoundException indicates a
+            # permanent local configuration problem (e.g.,
+            # Microsoft.Graph.Reports not loaded); the classifier
+            # must fail fast without invoking Start-Sleep.
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 3 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -Exactly
+            Should -Invoke Start-Sleep -Times 0 -Exactly
+        }
     }
 }

@@ -31,16 +31,22 @@ function Get-EntraIdAuditEvent {
     # progress is visible via Write-Verbose and Write-Debug.
     #
     # **Exception classification.** The retry loop distinguishes
-    # transient from permanent failures when an HTTP status code is
-    # recoverable from the thrown exception. Non-retriable 4xx codes
-    # (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not
-    # Found, etc.) bypass the retry loop and propagate to the caller
-    # immediately so permanent failures surface without backoff
-    # delay. 408 (Request Timeout) and 429 (Too Many Requests) remain
-    # retriable alongside all 5xx status codes, network-layer errors
-    # that do not expose an HTTP status, and any exception whose
-    # status code cannot be extracted (which falls through to the
-    # retry path as a safe default).
+    # transient from permanent failures on two axes. First,
+    # PowerShell-level permanent exceptions
+    # (System.Management.Automation.CommandNotFoundException,
+    # System.Management.Automation.ParameterBindingException) bypass
+    # the retry loop immediately — these indicate local configuration
+    # problems (missing Microsoft.Graph.Reports module, bad parameter
+    # input) that retrying cannot fix. Second, when an HTTP status
+    # code is recoverable from the thrown exception, non-retriable
+    # 4xx codes (400 Bad Request, 401 Unauthorized, 403 Forbidden,
+    # 404 Not Found, etc.) also bypass the retry loop so permanent
+    # remote failures surface without backoff delay. 408 (Request
+    # Timeout) and 429 (Too Many Requests) remain retriable alongside
+    # all 5xx status codes, network-layer errors that do not expose
+    # an HTTP status, and any exception whose status code cannot be
+    # extracted (which falls through to the retry path as a safe
+    # default).
     #
     # **Time-window subdivision: not required.**
     # Unlike Azure Activity Log (which has a MaxRecord cap that can
@@ -155,7 +161,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.4
+    # Version: 1.4.20260418.5
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -237,6 +243,21 @@ function Get-EntraIdAuditEvent {
                     }
                 } catch {
                     $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+                    # Classify: rethrow PowerShell-level permanent
+                    # exceptions immediately. These arise from local
+                    # configuration problems (a missing module, a
+                    # parameter-binding error) rather than transient
+                    # Graph API conditions, so retrying them only
+                    # delays the real error and does not improve
+                    # outcomes. Checked before the HTTP-status
+                    # extraction below because these exception types
+                    # do not carry a Response.StatusCode.
+                    if ($_.Exception -is [System.Management.Automation.CommandNotFoundException] -or
+                        $_.Exception -is [System.Management.Automation.ParameterBindingException]) {
+                        Write-Debug ("Graph API call failed with permanent PowerShell exception {0}: {1}" -f $_.Exception.GetType().FullName, $_.Exception.Message)
+                        Write-Verbose ("  Graph API call failed with permanent PowerShell error ({0}). Not retrying." -f $_.Exception.GetType().Name)
+                        throw
+                    }
                     # Classify: rethrow non-retriable HTTP 4xx status
                     # codes immediately. 400 Bad Request, 401
                     # Unauthorized, 403 Forbidden, 404 Not Found, and
