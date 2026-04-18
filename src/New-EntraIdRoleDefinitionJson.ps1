@@ -65,7 +65,7 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.4.20260418.0
+    # Version: 1.5.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -96,14 +96,17 @@ function New-EntraIdRoleDefinitionJson {
             # ---------------------------------------------------------------
             # Defensive validation: detect accidentally downcased camelCase
             # segments in microsoft.directory/* actions. These known
-            # camelCase resource type segments contain uppercase letters
-            # that MUST be preserved; the Microsoft Graph
-            # unifiedRoleDefinition API rejects all-lowercase forms.
+            # camelCase path segments contain uppercase letters that MUST
+            # be preserved; the Microsoft Graph unifiedRoleDefinition API
+            # rejects all-lowercase forms.
             #
-            # Source: resource type segments extracted from the
-            # ConvertTo-EntraIdResourceAction.ps1 mapping table. Review
-            # and update this list when new Entra ID resource types are
-            # added to the mapping table.
+            # Source: known camelCase path segments extracted from the
+            # ConvertTo-EntraIdResourceAction.ps1 mapping table, including
+            # nested path segments (e.g., allProperties, allTasks,
+            # assignLicense) in addition to top-level resource-type
+            # segments (e.g., servicePrincipals, conditionalAccessPolicies).
+            # Review and update this list when the mapping table gains
+            # new camelCase path segments that must be preserved.
             # ---------------------------------------------------------------
             $arrKnownCamelCaseSegments = @(
                 'accessReviews'
