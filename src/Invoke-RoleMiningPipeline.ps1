@@ -603,11 +603,11 @@ try {
             Write-Verbose ("  Unmapped activity percentage: {0:F1}% ({1}/{2})" -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords)
 
             if ($dblUnmappedPercent -gt $UnmappedActivityWarningThreshold) {
-                Write-Warning ("Entra ID unmapped activities: {0:F1}% ({1} of {2} successful audit records) did not map to a microsoft.directory/* action. " +
+                Write-Warning (("Entra ID unmapped activities: {0:F1}% ({1} of {2} successful audit records) did not map to a microsoft.directory/* action. " +
                     "This exceeds the warning threshold of {3}%. Some activities may represent coverage gaps in the mapping table. " +
                     "Review the entra_unmapped_activities.csv artifact for details. " +
                     "To add new mappings, see the mapping table in ConvertTo-EntraIdResourceAction.ps1. " +
-                    "Adjust the threshold via -UnmappedActivityWarningThreshold.") -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords, $UnmappedActivityWarningThreshold
+                    "Adjust the threshold via -UnmappedActivityWarningThreshold.") -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords, $UnmappedActivityWarningThreshold)
             }
         }
     }
