@@ -35,7 +35,7 @@ function Get-EntraIdAuditEvent {
     # PowerShell-level permanent exceptions
     # (System.Management.Automation.CommandNotFoundException,
     # System.Management.Automation.ParameterBindingException) bypass
-    # the retry loop immediately — these indicate local configuration
+    # the retry loop immediately -- these indicate local configuration
     # problems (missing Microsoft.Graph.Reports module, bad parameter
     # input) that retrying cannot fix. Second, when an HTTP status
     # code is recoverable from the thrown exception, non-retriable
@@ -161,7 +161,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.5
+    # Version: 1.4.20260418.6
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -270,7 +270,7 @@ function Get-EntraIdAuditEvent {
                     # strict mode the property access throws when the
                     # member is absent, so wrap the lookup in
                     # try/catch and treat any failure-to-extract as
-                    # "unclassifiable, keep retrying" — preserving
+                    # "unclassifiable, keep retrying" -- preserving
                     # the previous retry-everything behavior as a
                     # safe fallback. 408 Request Timeout and 429 Too
                     # Many Requests remain retriable alongside all
@@ -320,7 +320,7 @@ function Get-EntraIdAuditEvent {
                     # retry handler.
                     $intMaxSleepMilliseconds = [int]::MaxValue
                     $dblRemainingSleepMilliseconds = $dblDelay * 1000.0
-                    while ($dblRemainingSleepMilliseconds -gt 0) {
+                    while ($dblRemainingSleepMilliseconds -ge 1) {
                         $intSleepChunkMilliseconds = [int][math]::Min($dblRemainingSleepMilliseconds, [double]$intMaxSleepMilliseconds)
                         # Clamp the chunk to at least 1 ms so sub-1 ms
                         # remaining values still make forward progress
