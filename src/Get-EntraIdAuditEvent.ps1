@@ -141,7 +141,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.2
+    # Version: 1.4.20260418.3
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -233,6 +233,17 @@ function Get-EntraIdAuditEvent {
                     $dblJitter = (Get-Random -Minimum 0 -Maximum 1000) / 1000.0
                     $dblDelay = $dblBackoff + $dblJitter
                     $intTotalAttempts = $MaxRetries + 1
+                    # Guard against a non-finite computed delay before
+                    # any diagnostics or sleep. [math]::Pow(2, N) can
+                    # overflow to [double]::PositiveInfinity for very
+                    # large N, and the subsequent multiplication and
+                    # addition would also yield Infinity (or NaN). A
+                    # chunked sleep over Infinity would never
+                    # terminate; fail fast with a clear error.
+                    if ([double]::IsInfinity($dblDelay) -or [double]::IsNaN($dblDelay)) {
+                        Write-Debug ("Retry aborted: non-finite backoff ({0} s). Last error: {1}" -f $dblDelay, $_.Exception.Message)
+                        throw ("Retry backoff computed a non-finite delay ({0} s) from -MaxRetries={1}, -RetryBaseDelaySeconds={2}. Reduce these parameters so 2^N * base + jitter stays finite." -f $dblDelay, $MaxRetries, $RetryBaseDelaySeconds)
+                    }
                     Write-Verbose ("  Graph API call failed (attempt {0}/{1}): {2}. Retrying in {3:F1}s..." -f $intAttempt, $intTotalAttempts, $_.Exception.Message, $dblDelay)
                     Write-Debug ("  Retry backoff: base={0:F1}s, jitter={1:F3}s, total={2:F1}s" -f $dblBackoff, $dblJitter, $dblDelay)
                     # Sleep in chunks bounded by [int]::MaxValue
@@ -247,6 +258,12 @@ function Get-EntraIdAuditEvent {
                     $dblRemainingSleepMilliseconds = $dblDelay * 1000.0
                     while ($dblRemainingSleepMilliseconds -gt 0) {
                         $intSleepChunkMilliseconds = [int][math]::Min($dblRemainingSleepMilliseconds, [double]$intMaxSleepMilliseconds)
+                        # Clamp the chunk to at least 1 ms so sub-1 ms
+                        # remaining values still make forward progress
+                        # after the [int] cast truncates toward zero.
+                        if ($intSleepChunkMilliseconds -lt 1) {
+                            $intSleepChunkMilliseconds = 1
+                        }
                         Start-Sleep -Milliseconds $intSleepChunkMilliseconds
                         $dblRemainingSleepMilliseconds -= $intSleepChunkMilliseconds
                     }
