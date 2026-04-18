@@ -5,6 +5,20 @@ BeforeAll {
 
     $script:strScriptPath = Join-Path -Path $strSrcRoot -ChildPath 'Invoke-RoleMiningPipeline.ps1'
     $script:strCsvPath = Join-Path -Path $strSamplesRoot -ChildPath 'principal_action_counts.csv'
+
+    # Stub function that mimics the Microsoft.Graph.Reports cmdlet
+    # signature so Pester can Mock it for EntraId-mode pipeline tests
+    # without importing the module in CI.
+    function Get-MgAuditLogDirectoryAudit {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'Parameters exist to mirror the stubbed cmdlet signature so Pester Mocks bind correctly.')]
+        [CmdletBinding()]
+        param(
+            [string]$Filter,
+            [switch]$All
+        )
+    }
 }
 
 Describe "Invoke-RoleMiningPipeline" {
@@ -549,6 +563,413 @@ Describe "Invoke-RoleMiningPipeline" {
                     Remove-Item -LiteralPath $strTempBase -Recurse -Force
                 }
             }
+        }
+    }
+
+    Context "When running in EntraId mode with unmapped activities (REQ-EXP-002)" {
+        # These tests exercise the pipeline-level diagnostics for
+        # unmapped Entra ID activities: warning threshold behavior,
+        # quality.json fields, and entra_unmapped_activities.csv
+        # export with descending-count sort order.
+        #
+        # The tests mock Get-MgAuditLogDirectoryAudit (stubbed in the
+        # top-level BeforeAll) so the pipeline sees a deterministic
+        # record set without needing Microsoft Graph connectivity.
+        # Prune thresholds are lowered so 2 principals with 1 event
+        # each survive stage 3 pruning.
+        BeforeEach {
+            $script:dtEntraStart = (Get-Date).AddDays(-1)
+            $script:dtEntraEnd = Get-Date
+
+            $script:strEntraOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+        }
+
+        AfterEach {
+            if (Test-Path -LiteralPath $script:strEntraOutputPath) {
+                Remove-Item -LiteralPath $script:strEntraOutputPath -Recurse -Force
+            }
+        }
+
+        It "Emits a threshold-triggered Write-Warning when unmapped percentage exceeds the default threshold" {
+            # Arrange - 2 principals, each performing 1 mapped activity
+            # and 1 unmapped activity. 2/4 = 50% unmapped, which
+            # exceeds the default 15% threshold.
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(3)
+                    CorrelationId = 'corr-3'
+                    Id = 'id-3'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(4)
+                    CorrelationId = 'corr-4'
+                    Id = 'id-4'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $arrWarnings = @()
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -WarningVariable arrWarnings -WarningAction SilentlyContinue
+
+            # Assert - at least one warning mentions unmapped activities
+            $arrWarningMessages = @($arrWarnings | ForEach-Object { [string]$_ })
+            ($arrWarningMessages -join "`n") | Should -Match 'unmapped activities'
+            ($arrWarningMessages -join "`n") | Should -Match '50\.0%'
+        }
+
+        It "Does not emit a warning when unmapped percentage is below the custom threshold" {
+            # Arrange - same mock; threshold raised to 99% so 50% does not trigger
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(3)
+                    CorrelationId = 'corr-3'
+                    Id = 'id-3'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $arrWarnings = @()
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -UnmappedActivityWarningThreshold 99 `
+                -WarningVariable arrWarnings -WarningAction SilentlyContinue
+
+            # Assert
+            $arrWarningMessages = @($arrWarnings | ForEach-Object { [string]$_ })
+            ($arrWarningMessages -join "`n") | Should -Not -Match 'unmapped activities'
+        }
+
+        It "Populates EntraUnmappedActivityCount and EntraUnmappedDistinctActivities in quality.json" {
+            # Arrange - 2 principals, 2 mapped + 3 unmapped (2 distinct)
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(3)
+                    CorrelationId = 'corr-3'
+                    Id = 'id-3'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(4)
+                    CorrelationId = 'corr-4'
+                    Id = 'id-4'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'User registered security info'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(5)
+                    CorrelationId = 'corr-5'
+                    Id = 'id-5'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -WarningAction SilentlyContinue
+
+            # Assert - quality.json contains the new fields with expected values
+            $strQualityPath = Join-Path -Path $script:strEntraOutputPath -ChildPath 'quality.json'
+            (Test-Path -LiteralPath $strQualityPath) | Should -BeTrue
+            $objQuality = Get-Content -LiteralPath $strQualityPath -Raw | ConvertFrom-Json
+            $objQuality.EntraUnmappedActivityCount | Should -Be 3
+            $objQuality.EntraUnmappedDistinctActivities | Should -Be 2
+        }
+
+        It "Omits EntraUnmapped* fields from quality.json when there are no unmapped activities" {
+            # Arrange - 2 principals, all activities mapped
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -WarningAction SilentlyContinue
+
+            # Assert - quality.json exists but does NOT contain the Entra unmapped fields
+            $strQualityPath = Join-Path -Path $script:strEntraOutputPath -ChildPath 'quality.json'
+            (Test-Path -LiteralPath $strQualityPath) | Should -BeTrue
+            $objQuality = Get-Content -LiteralPath $strQualityPath -Raw | ConvertFrom-Json
+            $arrProps = @($objQuality.PSObject.Properties.Name)
+            $arrProps | Should -Not -Contain 'EntraUnmappedActivityCount'
+            $arrProps | Should -Not -Contain 'EntraUnmappedDistinctActivities'
+        }
+
+        It "Exports entra_unmapped_activities.csv sorted by descending Count" {
+            # Arrange - 2 principals; one unmapped activity appears 3x,
+            # another appears 1x. CSV rows MUST come out 3-count first.
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'User registered security info'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(3)
+                    CorrelationId = 'rare-1'
+                    Id = 'rare-id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(4)
+                    CorrelationId = 'freq-1'
+                    Id = 'freq-id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(5)
+                    CorrelationId = 'freq-2'
+                    Id = 'freq-id-2'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(6)
+                    CorrelationId = 'freq-3'
+                    Id = 'freq-id-3'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -WarningAction SilentlyContinue
+
+            # Assert - CSV is exported and sorted by descending Count
+            $strUnmappedPath = Join-Path -Path $script:strEntraOutputPath -ChildPath 'entra_unmapped_activities.csv'
+            (Test-Path -LiteralPath $strUnmappedPath) | Should -BeTrue
+            $arrRows = @(Import-Csv -LiteralPath $strUnmappedPath)
+            $arrRows.Count | Should -Be 2
+            $arrRows[0].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
+            [int]$arrRows[0].Count | Should -Be 3
+            $arrRows[1].ActivityDisplayName | Should -Be 'User registered security info'
+            [int]$arrRows[1].Count | Should -Be 1
+            # Ensure descending order invariant holds
+            ([int]$arrRows[0].Count) | Should -BeGreaterOrEqual ([int]$arrRows[1].Count)
+        }
+
+        It "Does not export entra_unmapped_activities.csv when there are no unmapped activities" {
+            # Arrange - all activities mapped
+            $arrMock = @(
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-1'; UserPrincipalName = 'a@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(1)
+                    CorrelationId = 'corr-1'
+                    Id = 'id-1'
+                },
+                [pscustomobject]@{
+                    Result = 'success'
+                    ActivityDisplayName = 'Add user'
+                    Category = 'UserManagement'
+                    InitiatedBy = [pscustomobject]@{
+                        User = [pscustomobject]@{ Id = 'user-2'; UserPrincipalName = 'b@contoso.com' }
+                        App = $null
+                    }
+                    ActivityDateTime = $script:dtEntraStart.AddHours(2)
+                    CorrelationId = 'corr-2'
+                    Id = 'id-2'
+                }
+            )
+            Mock Get-MgAuditLogDirectoryAudit { return $arrMock }
+
+            # Act
+            $null = & $script:strScriptPath -InputMode EntraId -Start $script:dtEntraStart -End $script:dtEntraEnd `
+                -OutputPath $script:strEntraOutputPath -MinDistinctPrincipals 1 -MinTotalCount 1 `
+                -WarningAction SilentlyContinue
+
+            # Assert - CSV must not exist
+            $strUnmappedPath = Join-Path -Path $script:strEntraOutputPath -ChildPath 'entra_unmapped_activities.csv'
+            (Test-Path -LiteralPath $strUnmappedPath) | Should -BeFalse
         }
     }
 }
