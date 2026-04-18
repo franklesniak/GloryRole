@@ -146,11 +146,15 @@ Describe "New-EntraIdRoleDefinitionJson" {
                 3>&1
 
             # The 3>&1 redirect merges the warning stream into the
-            # output stream. At least one element should be a
-            # WarningRecord mentioning the downcased segment.
+            # output stream. At least one warning should mention the
+            # downcased segment. An action with multiple downcased
+            # segments can produce multiple warnings, so filter the
+            # collection rather than indexing [0] (which would be
+            # sensitive to $arrKnownCamelCaseSegments ordering).
             $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
             $arrWarnings.Count | Should -BeGreaterThan 0
-            $arrWarnings[0].Message | Should -BeLike '*oauth2permissiongrants*'
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*oauth2permissiongrants*' })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
         }
 
         It "Emits Write-Warning for a downcased servicePrincipals segment" {
@@ -164,10 +168,33 @@ Describe "New-EntraIdRoleDefinitionJson" {
                 -ResourceActions $arrActions `
                 3>&1
 
-            # Assert
+            # Assert - filter by substring (order-independent)
             $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
-            $arrWarnings.Count | Should -BeGreaterThan 0
-            $arrWarnings[0].Message | Should -BeLike '*serviceprincipals*'
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*serviceprincipals*' })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
+        }
+
+        It "Emits Write-Warning when only a nested segment (allProperties) is downcased on a naturally-lowercase resource" {
+            # Arrange - 'domains' is naturally lowercase and therefore
+            # must not warn on its own, but 'allProperties' is camelCase
+            # and must be flagged when it appears as 'allproperties'.
+            # This guards against the failure mode where a caller
+            # correctly preserves the resource-type segment but routes
+            # the action through a lowercase normalizer that collapses
+            # the nested segments.
+            $arrActions = @('microsoft.directory/domains/allproperties/update')
+
+            # Act
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'WarnTest' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # Assert - at least one warning mentions 'allproperties'
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like '*allproperties*' })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
         }
 
         It "Does not emit Write-Warning for correctly cased actions" {
