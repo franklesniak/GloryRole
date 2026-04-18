@@ -30,6 +30,18 @@ function Get-EntraIdAuditEvent {
     # configurable via -MaxRetries and -RetryBaseDelaySeconds. Retry
     # progress is visible via Write-Verbose and Write-Debug.
     #
+    # **Exception classification.** The retry loop distinguishes
+    # transient from permanent failures when an HTTP status code is
+    # recoverable from the thrown exception. Non-retriable 4xx codes
+    # (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not
+    # Found, etc.) bypass the retry loop and propagate to the caller
+    # immediately so permanent failures surface without backoff
+    # delay. 408 (Request Timeout) and 429 (Too Many Requests) remain
+    # retriable alongside all 5xx status codes, network-layer errors
+    # that do not expose an HTTP status, and any exception whose
+    # status code cannot be extracted (which falls through to the
+    # retry path as a safe default).
+    #
     # **Time-window subdivision: not required.**
     # Unlike Azure Activity Log (which has a MaxRecord cap that can
     # silently truncate results and benefits from adaptive time-slicing
@@ -84,8 +96,10 @@ function Get-EntraIdAuditEvent {
     # .PARAMETER RetryBaseDelaySeconds
     # Optional. Base delay in seconds for exponential backoff between
     # retries. Default is 2. The actual delay for retry N (0-based) is
-    # (2^N * RetryBaseDelaySeconds) + random_jitter_0_to_1s. For
-    # example, with default settings: ~2s, ~4s, ~8s for retries 1-3.
+    # (2^N * RetryBaseDelaySeconds) + jitter, where jitter is a random
+    # value in the half-open interval [0 s, 1 s) (0 inclusive, 1
+    # exclusive). For example, with default settings: ~2s, ~4s, ~8s
+    # for retries 1-3.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -141,7 +155,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.3
+    # Version: 1.4.20260418.4
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -223,6 +237,35 @@ function Get-EntraIdAuditEvent {
                     }
                 } catch {
                     $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
+                    # Classify: rethrow non-retriable HTTP 4xx status
+                    # codes immediately. 400 Bad Request, 401
+                    # Unauthorized, 403 Forbidden, 404 Not Found, and
+                    # similar codes indicate permanent failures that
+                    # will not resolve on retry; backing off only
+                    # delays the error and obscures the real cause.
+                    # The Microsoft.Graph SDK (Kiota-based v2.x)
+                    # exposes HTTP status via the exception's
+                    # Response.StatusCode chain when available; under
+                    # strict mode the property access throws when the
+                    # member is absent, so wrap the lookup in
+                    # try/catch and treat any failure-to-extract as
+                    # "unclassifiable, keep retrying" — preserving
+                    # the previous retry-everything behavior as a
+                    # safe fallback. 408 Request Timeout and 429 Too
+                    # Many Requests remain retriable alongside all
+                    # 5xx codes and network-layer errors.
+                    $intHttpStatus = 0
+                    try {
+                        $intHttpStatus = [int]($_.Exception.Response.StatusCode)
+                    } catch {
+                        $intHttpStatus = 0
+                    }
+                    if ($intHttpStatus -ge 400 -and $intHttpStatus -lt 500 -and
+                        $intHttpStatus -ne 408 -and $intHttpStatus -ne 429) {
+                        Write-Debug ("Graph API non-retriable HTTP {0}: {1}" -f $intHttpStatus, $_.Exception.Message)
+                        Write-Verbose ("  Graph API call failed with non-retriable HTTP {0}. Not retrying." -f $intHttpStatus)
+                        throw
+                    }
                     $intRetryNumber = $intAttempt - 1
                     if ($intRetryNumber -ge $MaxRetries) {
                         Write-Debug ("Graph API retry exhausted after {0} retries: {1}" -f $MaxRetries, $_.Exception.Message)
