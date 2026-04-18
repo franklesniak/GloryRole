@@ -141,7 +141,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.1
+    # Version: 1.4.20260418.2
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -235,7 +235,21 @@ function Get-EntraIdAuditEvent {
                     $intTotalAttempts = $MaxRetries + 1
                     Write-Verbose ("  Graph API call failed (attempt {0}/{1}): {2}. Retrying in {3:F1}s..." -f $intAttempt, $intTotalAttempts, $_.Exception.Message, $dblDelay)
                     Write-Debug ("  Retry backoff: base={0:F1}s, jitter={1:F3}s, total={2:F1}s" -f $dblBackoff, $dblJitter, $dblDelay)
-                    Start-Sleep -Milliseconds ([int]($dblDelay * 1000))
+                    # Sleep in chunks bounded by [int]::MaxValue
+                    # milliseconds. Extreme configurations (e.g., a
+                    # large MaxRetries combined with a large base
+                    # delay) can produce a delay in milliseconds that
+                    # exceeds the [int] range accepted by Start-Sleep
+                    # -Milliseconds; casting directly would overflow
+                    # and surface a confusing error from inside the
+                    # retry handler.
+                    $intMaxSleepMilliseconds = [int]::MaxValue
+                    $dblRemainingSleepMilliseconds = $dblDelay * 1000.0
+                    while ($dblRemainingSleepMilliseconds -gt 0) {
+                        $intSleepChunkMilliseconds = [int][math]::Min($dblRemainingSleepMilliseconds, [double]$intMaxSleepMilliseconds)
+                        Start-Sleep -Milliseconds $intSleepChunkMilliseconds
+                        $dblRemainingSleepMilliseconds -= $intSleepChunkMilliseconds
+                    }
                 } finally {
                     $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
                 }
