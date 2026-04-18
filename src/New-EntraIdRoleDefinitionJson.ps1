@@ -13,6 +13,18 @@ function New-EntraIdRoleDefinitionJson {
     # The JSON follows the Microsoft Graph unifiedRoleDefinition schema
     # with rolePermissions containing allowedResourceActions in the
     # microsoft.directory/* namespace.
+    #
+    # Before generating JSON, the function performs a defensive
+    # validation pass on each resource action. If a
+    # microsoft.directory/* action string appears to contain an
+    # accidentally downcased camelCase segment (e.g.,
+    # oauth2permissiongrants instead of oAuth2PermissionGrants), a
+    # Write-Warning is emitted for each such action. This catches the
+    # common mistake of piping Entra ID actions through a lowercase
+    # normalizer intended only for Azure RBAC. JSON generation still
+    # proceeds so that the caller can inspect the output, but the
+    # resulting role definition will likely be rejected by the
+    # Microsoft Graph API.
     # .PARAMETER RoleName
     # The display name for the custom Entra ID role.
     # .PARAMETER Description
@@ -52,7 +64,7 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.1.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -79,6 +91,72 @@ function New-EntraIdRoleDefinitionJson {
         Write-Verbose ("Generating Entra ID role definition JSON for role: {0}" -f $RoleName)
 
         try {
+            # ---------------------------------------------------------------
+            # Defensive validation: detect accidentally downcased camelCase
+            # segments in microsoft.directory/* actions. These known
+            # camelCase resource type segments contain uppercase letters
+            # that MUST be preserved; the Microsoft Graph
+            # unifiedRoleDefinition API rejects all-lowercase forms.
+            # ---------------------------------------------------------------
+            $arrKnownCamelCaseSegments = @(
+                'oAuth2PermissionGrants'
+                'servicePrincipals'
+                'conditionalAccessPolicies'
+                'roleAssignments'
+                'roleDefinitions'
+                'administrativeUnits'
+                'accessReviews'
+                'applicationPolicies'
+                'applicationTemplates'
+                'attributeSets'
+                'authorizationPolicy'
+                'certificateBasedDeviceAuthConfigurations'
+                'connectorGroups'
+                'crossTenantAccessPolicy'
+                'customAuthenticationExtensions'
+                'customSecurityAttributeDefinitions'
+                'deletedItems'
+                'deviceManagementPolicies'
+                'deviceRegistrationPolicy'
+                'deviceTemplates'
+                'entitlementManagement'
+                'externalUserProfiles'
+                'groupSettings'
+                'hybridAuthenticationPolicy'
+                'identityProtection'
+                'identityProviders'
+                'lifecycleWorkflows'
+                'loginOrganizationBranding'
+                'multiTenantOrganization'
+                'namedLocations'
+                'passwordHashSync'
+                'pendingExternalUserProfiles'
+                'permissionGrantPolicies'
+                'privilegedIdentityManagement'
+                'roleEligibilityScheduleRequest'
+                'scopedRoleMemberships'
+                'servicePrincipalCreationPolicies'
+                'tenantGovernance'
+                'userCredentialPolicies'
+                'verifiableCredentials'
+                'b2cTrustFrameworkKeySet'
+                'b2cTrustFrameworkPolicy'
+                'inviteGuest'
+            )
+
+            foreach ($strAction in $ResourceActions) {
+                if ($strAction -like 'microsoft.directory/*') {
+                    foreach ($strSegment in $arrKnownCamelCaseSegments) {
+                        $strLower = $strSegment.ToLowerInvariant()
+                        if ($strSegment -cne $strLower -and
+                            ($strAction -clike ('*/' + $strLower + '/*') -or
+                            $strAction -clike ('*/' + $strLower))) {
+                            Write-Warning ("Resource action '{0}' appears to contain an accidentally downcased segment '{1}' (expected '{2}'). Entra ID microsoft.directory/* actions MUST preserve camelCase. This role definition will likely be rejected by the Microsoft Graph API." -f $strAction, $strLower, $strSegment)
+                        }
+                    }
+                }
+            }
+
             $hashRole = [ordered]@{
                 displayName = $RoleName
                 description = $Description

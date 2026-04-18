@@ -437,4 +437,42 @@ Describe "Get-ClusterActionSet" {
             $arrResult[1].PrincipalDisplayNames[0] | Should -Be 'bob@contoso.com'
         }
     }
+
+    Context "Entra ID camelCase action preservation" {
+        It "Preserves camelCase segments in microsoft.directory/* actions through clustering" {
+            # Arrange - Entra ID actions with camelCase segments that must
+            # survive clustering without being downcased.
+            $arrCounts = @(
+                [pscustomobject]@{ PrincipalKey = 'admin-001'; Action = 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'; Count = 10 }
+                [pscustomobject]@{ PrincipalKey = 'admin-001'; Action = 'microsoft.directory/servicePrincipals/standard/read'; Count = 5 }
+                [pscustomobject]@{ PrincipalKey = 'admin-002'; Action = 'microsoft.directory/conditionalAccessPolicies/create'; Count = 3 }
+            )
+            $hashAssignments = @{
+                'admin-001' = 0
+                'admin-002' = 1
+            }
+
+            # Act
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+
+            # Assert - camelCase segments are preserved verbatim
+            $arrResult | Should -Not -BeNullOrEmpty
+            $arrResult.Count | Should -Be 2
+
+            $arrCluster0 = $arrResult | Where-Object { $_.ClusterId -eq 0 }
+            $arrCluster0 | Should -Not -BeNullOrEmpty
+            $arrCluster0.Actions | Should -Not -BeNullOrEmpty
+            $arrCluster0.Actions | Should -Contain 'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+            $arrCluster0.Actions | Should -Contain 'microsoft.directory/servicePrincipals/standard/read'
+            # Verify downcased forms are absent (case-sensitive check)
+            ($arrCluster0.Actions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+            ($arrCluster0.Actions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+
+            $arrCluster1 = $arrResult | Where-Object { $_.ClusterId -eq 1 }
+            $arrCluster1 | Should -Not -BeNullOrEmpty
+            $arrCluster1.Actions | Should -Not -BeNullOrEmpty
+            $arrCluster1.Actions | Should -Contain 'microsoft.directory/conditionalAccessPolicies/create'
+            ($arrCluster1.Actions -ccontains 'microsoft.directory/conditionalaccesspolicies/create') | Should -BeFalse
+        }
+    }
 }
