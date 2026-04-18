@@ -604,10 +604,10 @@ try {
 
             if ($dblUnmappedPercent -gt $UnmappedActivityWarningThreshold) {
                 Write-Warning (("Entra ID unmapped activities: {0:F1}% ({1} of {2} successful audit records) did not map to a microsoft.directory/* action. " +
-                    "This exceeds the warning threshold of {3}%. Some activities may represent coverage gaps in the mapping table. " +
-                    "Review the entra_unmapped_activities.csv artifact for details. " +
-                    "To add new mappings, see the mapping table in ConvertTo-EntraIdResourceAction.ps1. " +
-                    "Adjust the threshold via -UnmappedActivityWarningThreshold.") -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords, $UnmappedActivityWarningThreshold)
+                        "This exceeds the warning threshold of {3}%. Some activities may represent coverage gaps in the mapping table. " +
+                        "Review the entra_unmapped_activities.csv artifact for details. " +
+                        "To add new mappings, see the mapping table in ConvertTo-EntraIdResourceAction.ps1. " +
+                        "Adjust the threshold via -UnmappedActivityWarningThreshold.") -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords, $UnmappedActivityWarningThreshold)
             }
         }
     }
@@ -773,7 +773,7 @@ try {
     [System.IO.File]::WriteAllLines($strFeaturesPath, [string[]]$arrFeatureLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strFeaturesPath)
 
-    # quality.json — include unmapped Entra ID activity stats when available
+    # quality.json -- include unmapped Entra ID activity stats when available
     $strQualityPath = Join-Path -Path $OutputPath -ChildPath 'quality.json'
     $hashQualityExport = [ordered]@{
         Principals = $objQuality.Principals
@@ -801,13 +801,13 @@ try {
     [System.IO.File]::WriteAllText($strClustersPath, [string]$strClustersJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strClustersPath)
 
-    # entra_unmapped_activities.csv — exported only when the Entra ID
+    # entra_unmapped_activities.csv -- exported only when the Entra ID
     # ingestion path recorded at least one unmapped activity. Sorted
     # by descending Count so the most frequent gaps appear first.
     if ($intTotalUnmappedCount -gt 0) {
         $strUnmappedPath = Join-Path -Path $OutputPath -ChildPath 'entra_unmapped_activities.csv'
         $arrUnmappedSorted = @($hashUnmappedActivities.Values |
-            Sort-Object -Property Count -Descending)
+                Sort-Object -Property Count -Descending)
         $arrUnmappedCsvLines = @($arrUnmappedSorted | ConvertTo-Csv -NoTypeInformation)
         [System.IO.File]::WriteAllLines($strUnmappedPath, [string[]]$arrUnmappedCsvLines, $objUtf8NoBomEncoding)
         Write-Verbose ("  Exported: {0}" -f $strUnmappedPath)
