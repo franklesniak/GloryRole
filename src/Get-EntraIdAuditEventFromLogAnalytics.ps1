@@ -88,21 +88,21 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     #   Position 1: Start
     #   Position 2: End
     #
-    # Version: 1.1.20260418.0
+    # Version: 1.2.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
         Justification = '"LogAnalytics" here is the proper name of the Azure Log Analytics service, not a plural noun; renaming would obscure the function''s target service.')]
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [string]$WorkspaceId,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [datetime]$Start,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 2)]
         [datetime]$End,
 
         [string[]]$FilterCategory,
@@ -194,16 +194,48 @@ $strCategoryFilter
                     $strCategory = [string]$objRow.Category
                 }
 
+                # Parse TimeGenerated from the KQL result BEFORE the
+                # mapping check so rows with missing/unparseable
+                # timestamps are dropped without being counted as
+                # unmapped activities. Log Analytics returns dates as
+                # ISO-8601 strings; normalize to UTC [datetime] to
+                # match the DC-6 contract.
+                $objTimeGenerated = $null
+                if ($null -ne $objRow.TimeGenerated) {
+                    $strTimeGenerated = [string]$objRow.TimeGenerated
+                    if (-not [string]::IsNullOrWhiteSpace($strTimeGenerated)) {
+                        $objParsedOffset = [datetimeoffset]::MinValue
+                        $boolParsed = [datetimeoffset]::TryParse(
+                            $strTimeGenerated,
+                            [System.Globalization.CultureInfo]::InvariantCulture,
+                            [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal,
+                            [ref]$objParsedOffset
+                        )
+                        if ($boolParsed) {
+                            $objTimeGenerated = $objParsedOffset.UtcDateTime
+                        }
+                    }
+                }
+
+                if ($null -eq $objTimeGenerated) {
+                    $intSkipped++
+                    continue
+                }
+
                 # Map activity display name to a microsoft.directory/*
                 # resource action. Unmapped activities return $null and
                 # are silently skipped (same as Get-EntraIdAuditEvent).
+                # At this point the row has already passed the KQL
+                # success + principal + OperationName filters AND the
+                # client-side TimeGenerated parse, so the ONLY
+                # remaining reason for a $null/empty mapping is a true
+                # mapping-table coverage gap.
                 $strAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName $strOperationName -Category $strCategory
                 if ([string]::IsNullOrWhiteSpace($strAction)) {
                     $intSkipped++
 
                     # Track unmapped activities when an accumulator is
-                    # provided. All rows reaching this point already
-                    # passed the success and principal checks in KQL.
+                    # provided.
                     if ($null -ne $UnmappedActivityAccumulator -and
                         -not [string]::IsNullOrWhiteSpace($strOperationName)) {
 
@@ -230,31 +262,6 @@ $strCategoryFilter
                         }
                     }
 
-                    continue
-                }
-
-                # Parse TimeGenerated from the KQL result. Log Analytics
-                # returns dates as ISO-8601 strings; normalize to UTC
-                # [datetime] to match the DC-6 contract.
-                $objTimeGenerated = $null
-                if ($null -ne $objRow.TimeGenerated) {
-                    $strTimeGenerated = [string]$objRow.TimeGenerated
-                    if (-not [string]::IsNullOrWhiteSpace($strTimeGenerated)) {
-                        $objParsedOffset = [datetimeoffset]::MinValue
-                        $boolParsed = [datetimeoffset]::TryParse(
-                            $strTimeGenerated,
-                            [System.Globalization.CultureInfo]::InvariantCulture,
-                            [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal,
-                            [ref]$objParsedOffset
-                        )
-                        if ($boolParsed) {
-                            $objTimeGenerated = $objParsedOffset.UtcDateTime
-                        }
-                    }
-                }
-
-                if ($null -eq $objTimeGenerated) {
-                    $intSkipped++
                     continue
                 }
 

@@ -409,5 +409,74 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             # Assert
             $arrResult | Should -HaveCount 0
         }
+
+        It "Does not track rows with unparseable TimeGenerated as unmapped" {
+            # Arrange - row has an unmapped activity but its
+            # TimeGenerated string cannot be parsed. The row is dropped
+            # for a timestamp/data-quality reason, not for a mapping
+            # coverage gap, so the accumulator MUST NOT be touched.
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = 'not-a-real-date'
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-bad-1'
+                    RecordId = 'rec-bad-1'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+            $hashUnmapped.Count | Should -Be 0
+        }
+
+        It "Does not track rows with missing TimeGenerated as unmapped" {
+            # Arrange - same scenario, but TimeGenerated is null. The
+            # row MUST be dropped for data-quality reasons, not counted
+            # as unmapped.
+            $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
+            $dtStart = [datetime]'2026-01-01'
+            $dtEnd = [datetime]'2026-03-20'
+            $hashUnmapped = @{}
+
+            $objMockResults = @(
+                [pscustomobject]@{
+                    TimeGenerated = $null
+                    OperationName = 'Self-service password reset flow activity progress'
+                    Category = 'UserManagement'
+                    PrincipalKey = 'user-guid-001'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'user@contoso.com'
+                    AppId = ''
+                    CorrelationId = 'corr-null-1'
+                    RecordId = 'rec-null-1'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = $objMockResults }
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+
+            # Assert
+            $arrResult | Should -HaveCount 0
+            $hashUnmapped.Count | Should -Be 0
+        }
     }
 }
