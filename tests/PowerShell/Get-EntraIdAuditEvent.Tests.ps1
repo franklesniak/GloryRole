@@ -187,8 +187,9 @@ Describe "Get-EntraIdAuditEvent" {
 
             Mock Get-MgAuditLogDirectoryAudit { throw "Graph API connection failed" }
 
-            # Act / Assert
-            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd } | Should -Throw
+            # Act / Assert - disable retries so the error propagates
+            # immediately without waiting through backoff delays.
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 0 } | Should -Throw
         }
     }
 
@@ -429,6 +430,234 @@ Describe "Get-EntraIdAuditEvent" {
 
             # Assert
             $arrResult.Count | Should -Be 0
+        }
+    }
+
+    Context "When Graph API fails transiently then succeeds (retry/backoff)" {
+        BeforeEach {
+            Mock Start-Sleep { }
+        }
+
+        It "Retries and returns results on subsequent success" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            $objMockRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            $script:intCallCount = 0
+            Mock Get-MgAuditLogDirectoryAudit {
+                $script:intCallCount++
+                if ($script:intCallCount -le 2) {
+                    throw "Service Unavailable"
+                }
+                return @($objMockRecord)
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd)
+
+            # Assert
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-obj-1'
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 3 -Exactly
+            Should -Invoke Start-Sleep -Times 2 -Exactly
+        }
+
+        It "Throws after exhausting MaxRetries" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                throw "Service Unavailable"
+            }
+
+            # Act / Assert - with MaxRetries=2, total attempts = 3
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 2 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 3 -Exactly
+            Should -Invoke Start-Sleep -Times 2 -Exactly
+        }
+
+        It "Does not retry when MaxRetries is 0" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                throw "Service Unavailable"
+            }
+
+            # Act / Assert - MaxRetries=0 means only the initial attempt
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 0 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -Exactly
+            Should -Invoke Start-Sleep -Times 0 -Exactly
+        }
+
+        It "Succeeds on the last allowed retry attempt" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            $objMockRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            # Fail on first 2 attempts, succeed on 3rd (last allowed
+            # when MaxRetries=2)
+            $script:intCallCount = 0
+            Mock Get-MgAuditLogDirectoryAudit {
+                $script:intCallCount++
+                if ($script:intCallCount -le 2) {
+                    throw "Service Unavailable"
+                }
+                return @($objMockRecord)
+            }
+
+            # Act
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 2)
+
+            # Assert
+            $arrResult.Count | Should -Be 1
+            $arrResult[0].PrincipalKey | Should -Be 'user-obj-1'
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 3 -Exactly
+            Should -Invoke Start-Sleep -Times 2 -Exactly
+        }
+
+        It "Calls Start-Sleep with increasing delay values (exponential backoff)" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            $script:arrSleepMs = @()
+            Mock Start-Sleep {
+                $script:arrSleepMs += $Milliseconds
+            }
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                throw "Service Unavailable"
+            }
+
+            # Suppress jitter for deterministic assertions by mocking
+            # Get-Random to return 0. Jitter adds 0 ms up to but
+            # not including 1000 ms, so delays should be at least
+            # base * 2^N seconds.
+            Mock Get-Random { return 0 }
+
+            # Act - MaxRetries=3, RetryBaseDelaySeconds=2
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 3 -RetryBaseDelaySeconds 2 } | Should -Throw
+
+            # Assert - 3 sleeps with increasing delays
+            $script:arrSleepMs | Should -HaveCount 3
+            # With zero jitter: 2^0 * 2 = 2s, 2^1 * 2 = 4s, 2^2 * 2 = 8s
+            $script:arrSleepMs[0] | Should -Be 2000
+            $script:arrSleepMs[1] | Should -Be 4000
+            $script:arrSleepMs[2] | Should -Be 8000
+        }
+
+        It "Emits verbose retry diagnostics" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            $objMockRecord = [pscustomobject]@{
+                Result = 'success'
+                ActivityDisplayName = 'Add member to group'
+                Category = 'GroupManagement'
+                InitiatedBy = [pscustomobject]@{
+                    User = [pscustomobject]@{
+                        Id = 'user-obj-1'
+                        UserPrincipalName = 'admin@contoso.com'
+                    }
+                    App = $null
+                }
+                ActivityDateTime = $dtStart.AddHours(1)
+                CorrelationId = 'corr-1'
+                Id = 'id-1'
+            }
+
+            $script:intCallCount = 0
+            Mock Get-MgAuditLogDirectoryAudit {
+                $script:intCallCount++
+                if ($script:intCallCount -eq 1) {
+                    throw "Service Unavailable"
+                }
+                return @($objMockRecord)
+            }
+
+            # Act - capture verbose output
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -Verbose 4>&1)
+
+            # Assert - verbose stream should contain retry messages.
+            # Separate pipeline objects from verbose records.
+            $arrVerboseMessages = @($arrResult | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] })
+            $arrVerboseMessages | Should -Not -BeNullOrEmpty
+            $strAllVerbose = ($arrVerboseMessages | ForEach-Object { $_.Message }) -join "`n"
+            $strAllVerbose | Should -Match 'Retrying in'
+            $strAllVerbose | Should -Match 'succeeded on attempt 2'
+        }
+
+        It "Throws immediately on non-retriable HTTP 401 without retrying" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                $objException = [System.Exception]::new("Unauthorized")
+                $objException | Add-Member -MemberType NoteProperty -Name 'Response' -Value ([pscustomobject]@{ StatusCode = 401 })
+                throw $objException
+            }
+
+            # Act / Assert - 401 is non-retriable; the classifier
+            # must surface the failure on the first attempt without
+            # backoff or additional Graph call attempts.
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 3 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -Exactly
+            Should -Invoke Start-Sleep -Times 0 -Exactly
+        }
+
+        It "Throws immediately on CommandNotFoundException without retrying" {
+            # Arrange
+            $dtStart = (Get-Date).AddDays(-1)
+            $dtEnd = Get-Date
+
+            Mock Get-MgAuditLogDirectoryAudit {
+                throw [System.Management.Automation.CommandNotFoundException]::new("The module is not loaded.")
+            }
+
+            # Act / Assert - CommandNotFoundException indicates a
+            # permanent local configuration problem (e.g.,
+            # Microsoft.Graph.Reports not loaded); the classifier
+            # must fail fast without invoking Start-Sleep.
+            { Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -MaxRetries 3 } | Should -Throw
+            Should -Invoke Get-MgAuditLogDirectoryAudit -Times 1 -Exactly
+            Should -Invoke Start-Sleep -Times 0 -Exactly
         }
     }
 }
