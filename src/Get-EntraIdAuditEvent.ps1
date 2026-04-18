@@ -47,10 +47,16 @@ function Get-EntraIdAuditEvent {
     #   are silently skipped and counted in the verbose "Records
     #   skipped" tally. This behavior is NOT controlled by
     #   -ErrorAction; skips are the normal non-error path.
-    # - **Exceptions.** Terminating errors from Microsoft Graph
-    #   (e.g., connection failures, authorization failures) or from
-    #   ConvertFrom-EntraIdAuditRecord are propagated to the caller
-    #   after retry exhaustion, regardless of -ErrorAction setting.
+    # - **Exceptions.** Two distinct propagation paths apply:
+    #   - Terminating errors from the Microsoft Graph call
+    #     (e.g., connection failures, authorization failures, or
+    #     throttling that persists beyond the SDK's internal retry
+    #     budget) are retried per -MaxRetries and propagate to the
+    #     caller only after retry exhaustion.
+    #   - Terminating errors from ConvertFrom-EntraIdAuditRecord
+    #     (invoked after the Graph call succeeds) are not retried
+    #     and propagate to the caller immediately.
+    #   Both paths propagate regardless of -ErrorAction setting.
     # .PARAMETER Start
     # The start of the time range to query.
     # .PARAMETER End
@@ -135,7 +141,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.0
+    # Version: 1.4.20260418.1
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -150,8 +156,10 @@ function Get-EntraIdAuditEvent {
 
         [hashtable]$UnmappedActivityAccumulator,
 
+        [ValidateRange(0, [int]::MaxValue)]
         [int]$MaxRetries = 3,
 
+        [ValidateRange(0, [double]::MaxValue)]
         [double]$RetryBaseDelaySeconds = 2
     )
 

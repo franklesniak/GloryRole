@@ -564,8 +564,8 @@ Describe "Get-EntraIdAuditEvent" {
                 throw "Service Unavailable"
             }
 
-            # Suppress jitter for deterministic assertions by seeding
-            # the random number generator. Jitter adds 0-1s, so delays
+            # Suppress jitter for deterministic assertions by mocking
+            # Get-Random to return 0. Jitter adds 0-1s, so delays
             # should be at least base * 2^N seconds.
             Mock Get-Random { return 0 }
 
