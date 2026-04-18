@@ -161,7 +161,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.6
+    # Version: 1.4.20260418.7
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -322,12 +322,6 @@ function Get-EntraIdAuditEvent {
                     $dblRemainingSleepMilliseconds = $dblDelay * 1000.0
                     while ($dblRemainingSleepMilliseconds -ge 1) {
                         $intSleepChunkMilliseconds = [int][math]::Min($dblRemainingSleepMilliseconds, [double]$intMaxSleepMilliseconds)
-                        # Clamp the chunk to at least 1 ms so sub-1 ms
-                        # remaining values still make forward progress
-                        # after the [int] cast truncates toward zero.
-                        if ($intSleepChunkMilliseconds -lt 1) {
-                            $intSleepChunkMilliseconds = 1
-                        }
                         Start-Sleep -Milliseconds $intSleepChunkMilliseconds
                         $dblRemainingSleepMilliseconds -= $intSleepChunkMilliseconds
                     }

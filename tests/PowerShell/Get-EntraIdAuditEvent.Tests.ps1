@@ -565,8 +565,9 @@ Describe "Get-EntraIdAuditEvent" {
             }
 
             # Suppress jitter for deterministic assertions by mocking
-            # Get-Random to return 0. Jitter adds 0-1s, so delays
-            # should be at least base * 2^N seconds.
+            # Get-Random to return 0. Jitter adds 0 ms up to but
+            # not including 1000 ms, so delays should be at least
+            # base * 2^N seconds.
             Mock Get-Random { return 0 }
 
             # Act - MaxRetries=3, RetryBaseDelaySeconds=2
