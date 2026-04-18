@@ -91,6 +91,15 @@
 # so the default produces names like "GloryRole-User Manager-0" or
 # "GloryRole-EntraCluster-0".
 #
+# .PARAMETER UnmappedActivityWarningThreshold
+# Percentage threshold (0-100) for emitting a warning when unmapped
+# Entra ID activities exceed this fraction of total successful audit
+# records. Default is 15. A non-zero unmapped count is expected
+# because the mapping table intentionally excludes self-service and
+# informational activities. This threshold distinguishes expected
+# non-administrative skips from potential coverage gaps. Set to 100
+# to suppress the warning entirely.
+#
 # .PARAMETER MinDistinctPrincipals
 # Pruning threshold: minimum number of distinct principals that must
 # have performed an action for it to be retained. Default is 2.
@@ -212,7 +221,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.1.20260415.6
+# Version: 2.2.20260418.0
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -241,6 +250,9 @@ param (
 
     [string[]]$EntraIdFilterCategory,
     [string]$EntraIdRoleNamePrefix = 'GloryRole',
+
+    [ValidateRange(0, 100)]
+    [double]$UnmappedActivityWarningThreshold = 15,
 
     [int]$MinDistinctPrincipals = 2,
     [double]$MinTotalCount = 10,
@@ -380,6 +392,12 @@ try {
     # that produce canonical events with PrincipalUPN metadata.
     $hashPrincipalDisplayName = @{}
 
+    # Accumulator for unmapped Entra ID activities. Populated by
+    # Get-EntraIdAuditEvent / Get-EntraIdAuditEventFromLogAnalytics
+    # when the Entra ID ingestion path is active. Each entry contains
+    # ActivityDisplayName, Category, Count, and sample IDs.
+    $hashUnmappedActivities = @{}
+
     #region Stage 1: Ingest
     Write-Verbose "Stage 1: Ingesting data (mode: ${InputMode})..."
 
@@ -444,6 +462,7 @@ try {
                     WorkspaceId = $WorkspaceId
                     Start = $Start
                     End = $End
+                    UnmappedActivityAccumulator = $hashUnmappedActivities
                 }
                 if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
                     $hashLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory
@@ -479,6 +498,7 @@ try {
             $hashEntraIdParams = @{
                 Start = $Start
                 End = $End
+                UnmappedActivityAccumulator = $hashUnmappedActivities
             }
             if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
                 $hashEntraIdParams['FilterCategory'] = $EntraIdFilterCategory
@@ -547,6 +567,51 @@ try {
         throw $strIngestHint
     }
     #endregion Stage 1: Ingest
+
+    #region Unmapped Entra ID activity diagnostics
+    # Process the unmapped-activity accumulator populated during Entra ID
+    # ingestion. This block runs for EntraId and LogAnalytics+EntraId paths.
+    $intTotalUnmappedCount = 0
+    $intDistinctUnmappedActivities = $hashUnmappedActivities.Count
+    foreach ($objUnmappedEntry in $hashUnmappedActivities.Values) {
+        $intTotalUnmappedCount += $objUnmappedEntry.Count
+    }
+
+    if ($intTotalUnmappedCount -gt 0) {
+        Write-Verbose ("  Unmapped Entra ID activities: {0} occurrences across {1} distinct activity names" -f $intTotalUnmappedCount, $intDistinctUnmappedActivities)
+
+        # Calculate unmapped percentage relative to
+        # (emitted events + unmapped occurrences). Note: $arrEvents
+        # contains only the successfully mapped events at this point,
+        # and $intTotalUnmappedCount is the count of unmapped records.
+        # For CSV mode, $hashUnmappedActivities is empty so this block
+        # is skipped.
+        $intTotalAuditRecords = 0
+        switch ($InputMode) {
+            'EntraId' {
+                $intTotalAuditRecords = $arrEvents.Count + $intTotalUnmappedCount
+            }
+            'LogAnalytics' {
+                if ($RoleSchema -eq 'EntraId') {
+                    $intTotalAuditRecords = $arrEvents.Count + $intTotalUnmappedCount
+                }
+            }
+        }
+
+        if ($intTotalAuditRecords -gt 0) {
+            $dblUnmappedPercent = ($intTotalUnmappedCount / $intTotalAuditRecords) * 100
+            Write-Verbose ("  Unmapped activity percentage: {0:F1}% ({1}/{2})" -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords)
+
+            if ($dblUnmappedPercent -gt $UnmappedActivityWarningThreshold) {
+                Write-Warning ("Entra ID unmapped activities: {0:F1}% ({1} of {2} successful audit records) did not map to a microsoft.directory/* action. " +
+                    "This exceeds the warning threshold of {3}%. Some activities may represent coverage gaps in the mapping table. " +
+                    "Review the entra_unmapped_activities.csv artifact for details. " +
+                    "To add new mappings, see the mapping table in ConvertTo-EntraIdResourceAction.ps1. " +
+                    "Adjust the threshold via -UnmappedActivityWarningThreshold.") -f $dblUnmappedPercent, $intTotalUnmappedCount, $intTotalAuditRecords, $UnmappedActivityWarningThreshold
+            }
+        }
+    }
+    #endregion Unmapped Entra ID activity diagnostics
 
     #region Stage 2: Quality Gate
     Write-Verbose "Stage 2: Quality gate..."
@@ -708,11 +773,19 @@ try {
     [System.IO.File]::WriteAllLines($strFeaturesPath, [string[]]$arrFeatureLines, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strFeaturesPath)
 
-    # quality.json
+    # quality.json — include unmapped Entra ID activity stats when available
     $strQualityPath = Join-Path -Path $OutputPath -ChildPath 'quality.json'
-    $strQualityJson = $objQuality |
-        Select-Object -Property Principals, Actions, NonZeroEntries, Density |
-        ConvertTo-Json -Depth 4
+    $hashQualityExport = [ordered]@{
+        Principals = $objQuality.Principals
+        Actions = $objQuality.Actions
+        NonZeroEntries = $objQuality.NonZeroEntries
+        Density = $objQuality.Density
+    }
+    if ($intTotalUnmappedCount -gt 0) {
+        $hashQualityExport['EntraUnmappedActivityCount'] = $intTotalUnmappedCount
+        $hashQualityExport['EntraUnmappedDistinctActivities'] = $intDistinctUnmappedActivities
+    }
+    $strQualityJson = [pscustomobject]$hashQualityExport | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText($strQualityPath, [string]$strQualityJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strQualityPath)
 
@@ -727,6 +800,18 @@ try {
     $strClustersJson = $arrClusterActions | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText($strClustersPath, [string]$strClustersJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strClustersPath)
+
+    # entra_unmapped_activities.csv — exported only when the Entra ID
+    # ingestion path recorded at least one unmapped activity. Sorted
+    # by descending Count so the most frequent gaps appear first.
+    if ($intTotalUnmappedCount -gt 0) {
+        $strUnmappedPath = Join-Path -Path $OutputPath -ChildPath 'entra_unmapped_activities.csv'
+        $arrUnmappedSorted = @($hashUnmappedActivities.Values |
+            Sort-Object -Property Count -Descending)
+        $arrUnmappedCsvLines = @($arrUnmappedSorted | ConvertTo-Csv -NoTypeInformation)
+        [System.IO.File]::WriteAllLines($strUnmappedPath, [string[]]$arrUnmappedCsvLines, $objUtf8NoBomEncoding)
+        Write-Verbose ("  Exported: {0}" -f $strUnmappedPath)
+    }
 
     # Role JSON per cluster. Gated on $RoleSchema (not $InputMode) so
     # that schema-neutral sources (CSV, LogAnalytics) can emit either

@@ -267,6 +267,26 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
   (Entra ID) per cluster.
   - **Verification:** Integration test.
 
+- **REQ-EXP-002:** When the Entra ID ingestion path encounters audit records
+  whose `ActivityDisplayName` does not map to a `microsoft.directory/*`
+  resource action, the system MUST:
+  (a) export an `entra_unmapped_activities.csv` artifact listing each
+  unmapped `ActivityDisplayName`, its `Category`, occurrence `Count`, and a
+  sample `CorrelationId` / `RecordId` for troubleshooting;
+  (b) include `EntraUnmappedActivityCount` and
+  `EntraUnmappedDistinctActivities` in the `quality.json` artifact;
+  (c) emit a `Write-Warning` when the unmapped-activity percentage exceeds a
+  configurable threshold (default 15%, adjustable via
+  `-UnmappedActivityWarningThreshold`). A non-zero unmapped count is
+  expected because the mapping table intentionally excludes self-service and
+  informational activities. The threshold distinguishes expected
+  non-administrative skips from potential coverage gaps.
+  - **Rationale:** Turns silent mapping incompleteness into visible,
+    actionable diagnostics and creates a feedback loop for expanding the
+    mapping table over time.
+  - **Verification:** Unit test with mock ingestion output verifying artifact
+    presence, quality.json fields, and threshold-triggered warnings.
+
 ### Compatibility
 
 - **REQ-COM-001:** Scripts MUST NOT use PS7-only operators (`??`, ternary

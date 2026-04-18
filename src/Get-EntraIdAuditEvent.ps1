@@ -36,6 +36,15 @@ function Get-EntraIdAuditEvent {
     # 'GroupManagement', 'UserManagement', 'RoleManagement'). When
     # specified, only records matching these categories are retrieved.
     # When omitted, all categories are returned.
+    # .PARAMETER UnmappedActivityAccumulator
+    # Optional. A [hashtable] reference that, when provided, receives
+    # entries for each unmapped Entra ID activity encountered during
+    # ingestion. Keys are "ActivityDisplayName|Category" composite
+    # strings. Values are PSCustomObjects with ActivityDisplayName,
+    # Category, Count, SampleCorrelationId, and SampleRecordId
+    # properties. The caller creates the hashtable and passes it in;
+    # this function populates it as a side effect. When omitted,
+    # unmapped activities are silently skipped as before.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -44,6 +53,11 @@ function Get-EntraIdAuditEvent {
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-7) -End (Get-Date) -FilterCategory @('GroupManagement', 'UserManagement'))
     # # Retrieves only GroupManagement and UserManagement events from
     # # the last 7 days.
+    # .EXAMPLE
+    # $hashUnmapped = @{}
+    # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
+    # # $hashUnmapped now contains entries for each unmapped activity
+    # # with Count, Category, and sample IDs for diagnostics.
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -63,7 +77,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.1.20260418.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -74,7 +88,9 @@ function Get-EntraIdAuditEvent {
         [Parameter(Mandatory = $true)]
         [datetime]$End,
 
-        [string[]]$FilterCategory
+        [string[]]$FilterCategory,
+
+        [hashtable]$UnmappedActivityAccumulator
     )
 
     process {
@@ -135,16 +151,60 @@ function Get-EntraIdAuditEvent {
 
             $intEmitted = 0
             $intSkipped = 0
+            $intUnmapped = 0
             foreach ($objRecord in $arrRaw) {
                 $objEvent = ConvertFrom-EntraIdAuditRecord -Record $objRecord
                 if ($null -eq $objEvent) {
                     $intSkipped++
+
+                    # Track unmapped activities when an accumulator is
+                    # provided. A record is an "unmapped activity" when
+                    # it passed the success and principal checks but the
+                    # mapping returned $null. Check: result is success,
+                    # ActivityDisplayName is present, then call
+                    # ConvertTo-EntraIdResourceAction (cheap hashtable
+                    # lookup because the mapping table is cached).
+                    if ($null -ne $UnmappedActivityAccumulator -and
+                        $null -ne $objRecord.Result -and
+                        [string]$objRecord.Result -eq 'success' -and
+                        $null -ne $objRecord.ActivityDisplayName -and
+                        -not [string]::IsNullOrWhiteSpace([string]$objRecord.ActivityDisplayName)) {
+
+                        $strTestAction = ConvertTo-EntraIdResourceAction -ActivityDisplayName ([string]$objRecord.ActivityDisplayName) -Category ([string]$objRecord.Category)
+                        if ($null -eq $strTestAction) {
+                            $intUnmapped++
+                            $strAccKey = ("{0}|{1}" -f ([string]$objRecord.ActivityDisplayName).Trim(), [string]$objRecord.Category)
+                            if ($UnmappedActivityAccumulator.ContainsKey($strAccKey)) {
+                                $UnmappedActivityAccumulator[$strAccKey].Count++
+                            } else {
+                                $strSampleCorrelation = ''
+                                if ($null -ne $objRecord.CorrelationId) {
+                                    $strSampleCorrelation = [string]$objRecord.CorrelationId
+                                }
+                                $strSampleRecordId = ''
+                                if ($null -ne $objRecord.Id) {
+                                    $strSampleRecordId = [string]$objRecord.Id
+                                }
+                                $UnmappedActivityAccumulator[$strAccKey] = [pscustomobject]@{
+                                    ActivityDisplayName = ([string]$objRecord.ActivityDisplayName).Trim()
+                                    Category = [string]$objRecord.Category
+                                    Count = 1
+                                    SampleCorrelationId = $strSampleCorrelation
+                                    SampleRecordId = $strSampleRecordId
+                                }
+                            }
+                        }
+                    }
+
                     continue
                 }
                 $intEmitted++
                 $objEvent
             }
 
+            if ($intUnmapped -gt 0) {
+                Write-Verbose ("  Unmapped activities: {0}" -f $intUnmapped)
+            }
             Write-Verbose ("  Events emitted: {0}, Records skipped: {1}" -f $intEmitted, $intSkipped)
         } catch {
             Write-Debug ("Get-EntraIdAuditEvent failed: {0}" -f $_.Exception.Message)
