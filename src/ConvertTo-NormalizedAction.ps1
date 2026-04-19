@@ -2,12 +2,24 @@ Set-StrictMode -Version Latest
 
 function ConvertTo-NormalizedAction {
     # .SYNOPSIS
-    # Normalizes an Azure action string to lowercase with whitespace trimmed.
+    # Normalizes an Azure RBAC action string to lowercase with whitespace
+    # trimmed.
     # .DESCRIPTION
-    # Takes a raw Azure action string (e.g., from Authorization.Action) and
-    # returns it in a canonical lowercase, trimmed form suitable for
-    # consistent comparison and aggregation. Returns $null if the input is
-    # null or whitespace-only.
+    # Takes a raw Azure RBAC action string (e.g., from
+    # Authorization.Action) and returns it in a canonical lowercase,
+    # trimmed form suitable for consistent comparison and aggregation.
+    # Returns $null if the input is null or whitespace-only.
+    #
+    # WARNING - Azure RBAC only: This function applies culture-invariant
+    # lowercasing and MUST NOT be used for Entra ID
+    # microsoft.directory/* actions. Entra ID resource action strings
+    # contain camelCase segments (e.g., oAuth2PermissionGrants,
+    # servicePrincipals, conditionalAccessPolicies) that the Microsoft
+    # Graph unifiedRoleDefinition API requires to be preserved exactly.
+    # Lowercasing these segments produces invalid role definitions that
+    # the API will reject. For Entra ID paths, use trim-only
+    # normalization (see Import-PrincipalActionCountFromCsv with
+    # -RoleSchema EntraId).
     # .PARAMETER Action
     # The raw action string to normalize.
     # .EXAMPLE
@@ -26,7 +38,14 @@ function ConvertTo-NormalizedAction {
     # .OUTPUTS
     # [string] The normalized action string, or $null if input is blank.
     # .NOTES
-    # Version: 1.2.20260410.0
+    # WARNING: This function is intended for Azure RBAC actions only.
+    # Do NOT call this function on Entra ID microsoft.directory/* action
+    # strings. Entra ID actions contain camelCase segments (such as
+    # oAuth2PermissionGrants and servicePrincipals) that must be
+    # preserved verbatim. Lowercasing them produces invalid role
+    # definitions rejected by the Microsoft Graph API.
+    #
+    # Version: 1.3.20260418.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x

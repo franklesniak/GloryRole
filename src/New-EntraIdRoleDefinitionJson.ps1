@@ -13,6 +13,19 @@ function New-EntraIdRoleDefinitionJson {
     # The JSON follows the Microsoft Graph unifiedRoleDefinition schema
     # with rolePermissions containing allowedResourceActions in the
     # microsoft.directory/* namespace.
+    #
+    # Before generating JSON, the function performs a defensive
+    # validation pass on each resource action. If a
+    # microsoft.directory/* action string appears to contain an
+    # accidentally downcased camelCase segment (e.g.,
+    # oauth2permissiongrants instead of oAuth2PermissionGrants), one
+    # or more Write-Warning messages may be emitted for that action
+    # (one per distinct downcased known segment). This catches the
+    # common mistake of piping Entra ID actions through a lowercase
+    # normalizer intended only for Azure RBAC. JSON generation still
+    # proceeds so that the caller can inspect the output, but the
+    # resulting role definition will likely be rejected by the
+    # Microsoft Graph API.
     # .PARAMETER RoleName
     # The display name for the custom Entra ID role.
     # .PARAMETER Description
@@ -52,26 +65,27 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.5.20260418.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
         Justification = 'The "New-" verb constructs an in-memory JSON string; no external or system state is modified, so ShouldProcess support is not applicable.')]
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([string])]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
         [string]$RoleName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [ValidateNotNullOrEmpty()]
         [string]$Description,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 2)]
         [ValidateNotNullOrEmpty()]
         [string[]]$ResourceActions,
 
+        [Parameter()]
         [bool]$IsEnabled = $true
     )
 
@@ -79,6 +93,115 @@ function New-EntraIdRoleDefinitionJson {
         Write-Verbose ("Generating Entra ID role definition JSON for role: {0}" -f $RoleName)
 
         try {
+            # ---------------------------------------------------------------
+            # Defensive validation: detect accidentally downcased camelCase
+            # segments in microsoft.directory/* actions. These known
+            # camelCase path segments contain uppercase letters that MUST
+            # be preserved; the Microsoft Graph unifiedRoleDefinition API
+            # rejects all-lowercase forms.
+            #
+            # Source: known camelCase path segments extracted from the
+            # ConvertTo-EntraIdResourceAction.ps1 mapping table, including
+            # nested path segments (e.g., allProperties, allTasks,
+            # assignLicense) in addition to top-level resource-type
+            # segments (e.g., servicePrincipals, conditionalAccessPolicies).
+            # Review and update this list when the mapping table gains
+            # new camelCase path segments that must be preserved.
+            # ---------------------------------------------------------------
+            $arrKnownCamelCaseSegments = @(
+                'accessReviews'
+                'administrativeUnits'
+                'allProperties'
+                'allTasks'
+                'appRoleAssignment'
+                'appRoles'
+                'applicationPolicies'
+                'applicationProxy'
+                'applicationProxyAuthentication'
+                'applicationProxySslCertificate'
+                'applicationProxyUrlSettings'
+                'applicationTemplates'
+                'assignLicense'
+                'assignedLabels'
+                'attributeSets'
+                'authenticationMethods'
+                'authorizationInfo'
+                'authorizationPolicy'
+                'b2bCollaboration'
+                'b2cTrustFrameworkKeySet'
+                'b2cTrustFrameworkPolicy'
+                'certificateBasedDeviceAuthConfigurations'
+                'conditionalAccessPolicies'
+                'connectorGroups'
+                'convertExternalToInternalMemberUser'
+                'crossTenantAccessPolicy'
+                'customAuthenticationExtensions'
+                'customSecurityAttributeDefinitions'
+                'customSecurityAttributes'
+                'deletedItems'
+                'deviceManagementPolicies'
+                'deviceRegistrationPolicy'
+                'deviceTemplates'
+                'dirSync'
+                'dynamicMembershipRule'
+                'entitlementManagement'
+                'extensionAttributeSet1'
+                'extensionProperties'
+                'externalUserProfiles'
+                'federationConfiguration'
+                'groupSettings'
+                'groupType'
+                'hybridAuthenticationPolicy'
+                'identityProtection'
+                'identityProviders'
+                'identitySynchronization'
+                'invalidateAllRefreshTokens'
+                'inviteGuest'
+                'joinRequest'
+                'lifeCycleInfo'
+                'lifecycleWorkflows'
+                'loginOrganizationBranding'
+                'multiTenantOrganization'
+                'namedLocations'
+                'oAuth2PermissionGrants'
+                'onPremWriteBack'
+                'organizationDetails'
+                'passwordHashSync'
+                'pendingExternalUserProfiles'
+                'permissionGrantPolicies'
+                'policyTemplates'
+                'privilegedIdentityManagement'
+                'registeredOwners'
+                'registeredUsers'
+                'reprocessLicenseAssignment'
+                'roleAssignments'
+                'roleDefinitions'
+                'roleEligibilityScheduleRequest'
+                'scopedRoleMemberships'
+                'servicePrincipalCreationPolicies'
+                'servicePrincipals'
+                'strongAuthentication'
+                'tenantDefault'
+                'tenantGovernance'
+                'usageLocation'
+                'userCredentialPolicies'
+                'userPrincipalName'
+                'verifiableCredentials'
+            )
+
+            foreach ($strAction in $ResourceActions) {
+                if ($strAction -like 'microsoft.directory/*') {
+                    foreach ($strSegment in $arrKnownCamelCaseSegments) {
+                        $strLower = $strSegment.ToLowerInvariant()
+                        if ($strSegment -cne $strLower -and
+                            ($strAction -clike ('*/' + $strLower + '/*') -or
+                            $strAction -clike ('*/' + $strLower))) {
+                            Write-Warning ("Resource action '{0}' appears to contain an accidentally downcased segment '{1}' (expected '{2}'). Entra ID microsoft.directory/* actions MUST preserve camelCase. This role definition will likely be rejected by the Microsoft Graph API." -f $strAction, $strLower, $strSegment)
+                        }
+                    }
+                }
+            }
+
             $hashRole = [ordered]@{
                 displayName = $RoleName
                 description = $Description

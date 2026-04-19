@@ -131,4 +131,161 @@ Describe "New-EntraIdRoleDefinitionJson" {
             } | Should -Throw
         }
     }
+
+    Context "Defensive validation for accidentally downcased camelCase actions" {
+        It "Emits Write-Warning for a downcased oAuth2PermissionGrants segment" {
+            # Arrange - deliberately downcased form that would result from
+            # accidentally piping through ConvertTo-NormalizedAction
+            $arrActions = @('microsoft.directory/oauth2permissiongrants/allproperties/update')
+
+            # Act / Assert - the function should emit a warning
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'WarnTest' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # The 3>&1 redirect merges the warning stream into the
+            # output stream. At least one warning must identify the
+            # expected camelCase segment specifically. Filtering on
+            # "expected 'oAuth2PermissionGrants'" (from the warning
+            # format string) proves the oAuth2PermissionGrants guardrail
+            # fired, rather than matching the action string which would
+            # also satisfy a warning emitted for a different downcased
+            # segment in the same action.
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings.Count | Should -BeGreaterThan 0
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'oAuth2PermissionGrants'*" })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
+        }
+
+        It "Emits Write-Warning for a downcased servicePrincipals segment" {
+            # Arrange
+            $arrActions = @('microsoft.directory/serviceprincipals/standard/read')
+
+            # Act
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'WarnTest' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # Assert - filter on "expected 'servicePrincipals'" so the
+            # assertion proves the servicePrincipals guardrail fired
+            # rather than matching the action string.
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'servicePrincipals'*" })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
+        }
+
+        It "Emits Write-Warning when only a nested segment (allProperties) is downcased on a naturally-lowercase resource" {
+            # Arrange - 'domains' is naturally lowercase and therefore
+            # must not warn on its own, but 'allProperties' is camelCase
+            # and must be flagged when it appears as 'allproperties'.
+            # This guards against the failure mode where a caller
+            # correctly preserves the resource-type segment but routes
+            # the action through a lowercase normalizer that collapses
+            # the nested segments.
+            $arrActions = @('microsoft.directory/domains/allproperties/update')
+
+            # Act
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'WarnTest' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # Assert - filter on "expected 'allProperties'" so the test
+            # fails specifically if allProperties is ever removed from
+            # $arrKnownCamelCaseSegments. Matching the action substring
+            # 'allproperties' would not catch that regression.
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrMatchingWarnings = @($arrWarnings | Where-Object { $_.Message -like "*expected 'allProperties'*" })
+            $arrMatchingWarnings | Should -Not -BeNullOrEmpty
+        }
+
+        It "Does not emit Write-Warning for correctly cased actions" {
+            # Arrange - properly cased camelCase actions
+            $arrActions = @(
+                'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+                'microsoft.directory/servicePrincipals/standard/read'
+                'microsoft.directory/conditionalAccessPolicies/create'
+            )
+
+            # Act
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'NoWarnTest' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # Assert - no warnings should be emitted
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings.Count | Should -Be 0
+        }
+
+        It "Does not emit Write-Warning for all-lowercase segments that are naturally lowercase" {
+            # Arrange - segments like 'users', 'groups', 'applications' are
+            # already all-lowercase in their canonical form
+            $arrActions = @(
+                'microsoft.directory/users/basic/update'
+                'microsoft.directory/groups/members/update'
+                'microsoft.directory/applications/create'
+            )
+
+            # Act
+            $arrOutput = New-EntraIdRoleDefinitionJson `
+                -RoleName 'LowercaseNatural' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                3>&1
+
+            # Assert
+            $arrWarnings = @($arrOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+            $arrWarnings.Count | Should -Be 0
+        }
+
+        It "Still produces valid JSON even when warnings are emitted" {
+            # Arrange - downcased action that triggers a warning
+            $arrActions = @('microsoft.directory/oauth2permissiongrants/allproperties/update')
+
+            # Act - capture only the success stream (suppress warnings)
+            $strJson = New-EntraIdRoleDefinitionJson `
+                -RoleName 'StillValid' `
+                -Description 'D' `
+                -ResourceActions $arrActions `
+                -WarningAction SilentlyContinue
+
+            # Assert - output is valid JSON
+            $objParsed = $strJson | ConvertFrom-Json
+            $objParsed | Should -Not -BeNullOrEmpty
+            $objParsed.displayName | Should -Be 'StillValid'
+            $objParsed.rolePermissions[0].allowedResourceActions | Should -Contain 'microsoft.directory/oauth2permissiongrants/allproperties/update'
+        }
+
+        It "Preserves camelCase actions verbatim in the JSON output" {
+            # Arrange - correctly cased Entra ID actions
+            $arrActions = @(
+                'microsoft.directory/oAuth2PermissionGrants/allProperties/update'
+                'microsoft.directory/servicePrincipals/standard/read'
+            )
+
+            # Act
+            $strJson = New-EntraIdRoleDefinitionJson `
+                -RoleName 'CamelCaseRole' `
+                -Description 'Preserves casing' `
+                -ResourceActions $arrActions
+
+            $objParsed = $strJson | ConvertFrom-Json
+
+            # Assert - case-sensitive containment
+            $arrEmittedActions = @($objParsed.rolePermissions[0].allowedResourceActions)
+            $arrEmittedActions | Should -Not -BeNullOrEmpty
+            ($arrEmittedActions -ccontains 'microsoft.directory/oAuth2PermissionGrants/allProperties/update') | Should -BeTrue
+            ($arrEmittedActions -ccontains 'microsoft.directory/servicePrincipals/standard/read') | Should -BeTrue
+            # Downcased forms MUST be absent
+            ($arrEmittedActions -ccontains 'microsoft.directory/oauth2permissiongrants/allproperties/update') | Should -BeFalse
+            ($arrEmittedActions -ccontains 'microsoft.directory/serviceprincipals/standard/read') | Should -BeFalse
+        }
+    }
 }
