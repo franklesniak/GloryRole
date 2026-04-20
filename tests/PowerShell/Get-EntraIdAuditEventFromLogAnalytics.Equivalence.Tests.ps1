@@ -12,7 +12,9 @@ BeforeAll {
     $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
     $strFixturesPath = Join-Path -Path $PSScriptRoot -ChildPath '_fixtures'
-    $strGoldenPath = Join-Path -Path $strFixturesPath -ChildPath 'golden'
+    # $script: prefix allows PSScriptAnalyzer to recognize cross-scope usage in
+    # Pester It blocks that reference this path.
+    $script:strGoldenPath = Join-Path -Path $strFixturesPath -ChildPath 'golden'
 
     . (Join-Path -Path $strFixturesPath -ChildPath 'New-SyntheticAuditLogFixture.ps1')
     . (Join-Path -Path $strSrcPath -ChildPath 'ConvertTo-EntraIdResourceAction.ps1')
@@ -41,6 +43,9 @@ BeforeAll {
         # contract may change without notice.
         #
         # Version: 1.0.20260420.0
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', 'FixtureRows',
+            Justification = 'FixtureRows is captured by the Mock closure and used when Pester invokes the mock.')]
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
@@ -263,8 +268,8 @@ BeforeAll {
                     $strActivity = $objAct.ActivityDisplayName
                     $strCategory = $objAct.Category
                     $arrMatchingRows = @($FixtureRows | Where-Object {
-                        $_.OperationName -eq $strActivity -and $_.Category -eq $strCategory
-                    })
+                            $_.OperationName -eq $strActivity -and $_.Category -eq $strCategory
+                        })
 
                     if (-not [string]::IsNullOrEmpty($objAct.SampleCorrelationId)) {
                         $arrMatchingCorr = @($arrMatchingRows | Where-Object { $_.CorrelationId -eq $objAct.SampleCorrelationId })
@@ -305,15 +310,15 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json'))
-            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-displaynames.json'))
-            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-unmapped.json'))
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-unmapped.json'))
             [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
-            Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-triples.json') | Should -BeTrue
         }
 
         It "Regenerates goldens for DuplicateRatio 0.25" {
@@ -327,15 +332,15 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json'))
-            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-displaynames.json'))
-            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-unmapped.json'))
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-unmapped.json'))
             [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
-            Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-triples.json') | Should -BeTrue
         }
 
         It "Regenerates goldens for DuplicateRatio 0.5" {
@@ -349,15 +354,15 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json'))
-            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-displaynames.json'))
-            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-unmapped.json'))
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-unmapped.json'))
             [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
             [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
-            Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-triples.json') | Should -BeTrue
         }
     }
 
@@ -369,7 +374,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "Triples match golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-triples.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -382,7 +387,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "DisplayNameMap matches golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-displaynames.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-displaynames.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -395,7 +400,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "UnmappedAccumulator matches golden baseline (counts and activity names)" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-unmapped.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.0-unmapped.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -415,7 +420,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "Triples match golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-triples.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -428,7 +433,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "DisplayNameMap matches golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-displaynames.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-displaynames.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -441,7 +446,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "UnmappedAccumulator matches golden baseline (counts and activity names)" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-unmapped.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.25-unmapped.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -461,7 +466,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "Triples match golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-triples.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -474,7 +479,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "DisplayNameMap matches golden baseline" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-displaynames.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-displaynames.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act
@@ -487,7 +492,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
         It "UnmappedAccumulator matches golden baseline (counts and activity names)" {
             # Arrange
-            $strGoldenFile = Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-unmapped.json'
+            $strGoldenFile = Join-Path -Path $script:strGoldenPath -ChildPath 'dup0.5-unmapped.json'
             Test-Path -LiteralPath $strGoldenFile | Should -BeTrue
 
             # Act

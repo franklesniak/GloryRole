@@ -67,6 +67,21 @@ function New-SyntheticAuditLogFixture {
     #
     # Version: 1.1.20260420.0
 
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The "New-" verb constructs in-memory synthetic fixture rows; no external or system state is modified, so ShouldProcess support is not applicable.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter', 'NullCorrelationIdRatio',
+        Justification = 'Parameter is captured by the $scriptblockNewOriginalRow closure.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter', 'UnmappedActivityRatio',
+        Justification = 'Parameter is captured by the $scriptblockNewOriginalRow closure.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter', 'CategoryMix',
+        Justification = 'Parameter is captured by the $scriptblockNewOriginalRow closure.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSReviewUnusedParameter', 'ServicePrincipalRatio',
+        Justification = 'Parameter is captured by the $scriptblockNewOriginalRow closure.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param (

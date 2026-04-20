@@ -117,15 +117,15 @@ foreach ($dblDupRatio in $DuplicateRatios) {
         $intWorkingSet = [System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64
 
         [void]($listResults.Add([pscustomobject]@{
-            FixtureSize = $FixtureSize
-            DuplicateRatio = $dblDupRatio
-            Iteration = $intIter
-            RowsReturnedByMock = $arrFixture.Count
-            EventsEmittedFromIngestion = $arrEvents.Count
-            TriplesAfterStageOne = $arrCounts.Count
-            StageOneWallClockMs = $objStopwatch.ElapsedMilliseconds
-            WorkingSetBytes = $intWorkingSet
-        }))
+                    FixtureSize = $FixtureSize
+                    DuplicateRatio = $dblDupRatio
+                    Iteration = $intIter
+                    RowsReturnedByMock = $arrFixture.Count
+                    EventsEmittedFromIngestion = $arrEvents.Count
+                    TriplesAfterStageOne = $arrCounts.Count
+                    StageOneWallClockMs = $objStopwatch.ElapsedMilliseconds
+                    WorkingSetBytes = $intWorkingSet
+                }))
     }
 }
 #endregion Run benchmark iterations
