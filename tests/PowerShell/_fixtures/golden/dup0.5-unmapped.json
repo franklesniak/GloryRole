@@ -1,0 +1,156 @@
+[
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-10",
+    "Category": "GroupManagement",
+    "Count": 3,
+    "SampleCorrelationId": "838fb441-fcf1-5dc2-0e0b-8f61bbefc461",
+    "SampleRecordId": "9208958e-f11d-e666-e1b6-068af32981c7"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-102",
+    "Category": "UserManagement",
+    "Count": 2,
+    "SampleCorrelationId": "f6ec48fe-bdae-9479-3075-f4f4c66257cb",
+    "SampleRecordId": "4d720365-1949-5485-522f-8dfff504af24"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-105",
+    "Category": "GroupManagement",
+    "Count": 3,
+    "SampleCorrelationId": "310760f5-0aff-3119-9288-4cfcaa795d66",
+    "SampleRecordId": "55c70898-08e0-171a-4242-07d1b369aa45"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-11",
+    "Category": "ApplicationManagement",
+    "Count": 2,
+    "SampleCorrelationId": "4d4f3def-a1a8-f63b-386a-e58ac79efce2",
+    "SampleRecordId": "b3ef5348-b7f9-d13c-85ad-23aa3a2e6b8d"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-114",
+    "Category": "RoleManagement",
+    "Count": 3,
+    "SampleCorrelationId": "d5a29f18-bd16-7a50-08cf-a285510d3d4d",
+    "SampleRecordId": "1b001774-e982-56c4-cade-faffab77cd11"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-121",
+    "Category": "RoleManagement",
+    "Count": 2,
+    "SampleCorrelationId": "a218b493-e2f6-4178-6493-bfe1e5e9087c",
+    "SampleRecordId": "45d65ec0-dba9-4a5f-ae4c-77baa5ce784f"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-133",
+    "Category": "UserManagement",
+    "Count": 1,
+    "SampleCorrelationId": "",
+    "SampleRecordId": "c2d14282-d45e-d6a0-ffef-91bbd6230b7e"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-138",
+    "Category": "RoleManagement",
+    "Count": 3,
+    "SampleCorrelationId": "4aef3c7b-aaff-e570-3172-5f31e05e1225",
+    "SampleRecordId": "b560f358-3851-c339-25ac-358e7b383f41"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-14",
+    "Category": "RoleManagement",
+    "Count": 2,
+    "SampleCorrelationId": "accc5944-2006-abf2-b06d-f53f239bdf43",
+    "SampleRecordId": "612c49c0-efa6-d732-35c6-f1dfc9d64f25"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-154",
+    "Category": "RoleManagement",
+    "Count": 3,
+    "SampleCorrelationId": "86f6c1ef-19b2-14d3-8ecf-4c26a0be9b66",
+    "SampleRecordId": "d4f9289a-17a1-3fdf-7a36-ad3ceb35082a"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-167",
+    "Category": "ApplicationManagement",
+    "Count": 2,
+    "SampleCorrelationId": "2faee5e5-fc3b-66f0-554d-2bdb158a6d9a",
+    "SampleRecordId": "44532dbd-b77f-93bd-cb29-ab5f93735e08"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-189",
+    "Category": "RoleManagement",
+    "Count": 2,
+    "SampleCorrelationId": "7c307369-0937-92b6-8f5a-71daf2f329ee",
+    "SampleRecordId": "4a919a9e-8caf-4b2b-ab36-98ebfc500e36"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-192",
+    "Category": "UserManagement",
+    "Count": 2,
+    "SampleCorrelationId": "b5d1a48f-0843-00b0-3cf7-a474680e6d5a",
+    "SampleRecordId": "46dbbb1e-3e59-e850-8244-13132c4f780e"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-209",
+    "Category": "GroupManagement",
+    "Count": 3,
+    "SampleCorrelationId": "44575b4e-9174-d377-ba51-1bb4863513d8",
+    "SampleRecordId": "a7a8029b-78f0-2ceb-4c8b-ce3b623b5d16"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-223",
+    "Category": "ApplicationManagement",
+    "Count": 1,
+    "SampleCorrelationId": "48204952-b3b3-d1a3-ab40-1d3e00b38233",
+    "SampleRecordId": "c8c58eb2-2333-2206-e2cb-99804422873b"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-38",
+    "Category": "GroupManagement",
+    "Count": 3,
+    "SampleCorrelationId": "fef58ba8-f850-736e-e136-b9dfc09fab5c",
+    "SampleRecordId": "1ab42db2-a43b-b316-1a13-031cb588c82b"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-71",
+    "Category": "GroupManagement",
+    "Count": 1,
+    "SampleCorrelationId": "042bf693-4090-8555-e123-1652687f4871",
+    "SampleRecordId": "5e49de9d-110c-97a6-dc86-327b025b1cca"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-74",
+    "Category": "UserManagement",
+    "Count": 2,
+    "SampleCorrelationId": "004bc929-74fb-bbb8-0e2e-64863a288e65",
+    "SampleRecordId": "1e1fc7c0-9665-2e54-2ee4-9db00288f63e"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-77",
+    "Category": "ApplicationManagement",
+    "Count": 5,
+    "SampleCorrelationId": "efe0c874-78ba-bc2d-1f45-8dd69d5c8e62",
+    "SampleRecordId": "0a8bb957-3d32-8ec3-4388-eed39f3ba802"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-84",
+    "Category": "ApplicationManagement",
+    "Count": 2,
+    "SampleCorrelationId": "51f58f01-75b0-b0ca-336a-f1b5cfd6cdea",
+    "SampleRecordId": "bb666db8-9826-4fd9-dfe6-075efca43870"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-87",
+    "Category": "GroupManagement",
+    "Count": 2,
+    "SampleCorrelationId": "70fa208f-963f-615e-9ba8-6515441bdbc2",
+    "SampleRecordId": "4e4d03a2-73f3-db2e-7ae1-557ad707d744"
+  },
+  {
+    "ActivityDisplayName": "SyntheticUnmapped-94",
+    "Category": "GroupManagement",
+    "Count": 1,
+    "SampleCorrelationId": "f66ef364-c25d-c871-1805-5cd1d82fb9a1",
+    "SampleRecordId": "2b5393e0-74a6-b4ad-6a88-0833c9b2ad9c"
+  }
+]

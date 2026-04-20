@@ -29,5 +29,8 @@ Thumbs.db
 *.swp
 *.swo
 
+# Benchmark runtime output
+bench/results/
+
 # Lock files (optional - uncomment to exclude)
 # package-lock.json
