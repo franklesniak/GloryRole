@@ -1,5 +1,3 @@
-Set-StrictMode -Version Latest
-
 function New-SyntheticAuditLogFixture {
     # .SYNOPSIS
     # Generates a deterministic array of synthetic Entra ID audit log
@@ -67,7 +65,7 @@ function New-SyntheticAuditLogFixture {
     # (internal-caller contract only; subject to change):
     #   Position 0: Count
     #
-    # Version: 1.0.20260420.0
+    # Version: 1.1.20260420.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -94,9 +92,14 @@ function New-SyntheticAuditLogFixture {
     )
 
     process {
+        # Scope StrictMode to this function so dot-sourcing the file does not
+        # enable StrictMode in the caller's session.
+        Set-StrictMode -Version Latest
+
         # --- Mapped activity names (subset of ConvertTo-EntraIdResourceAction keys) ---
-        # These are the lowercase keys from the mapping table. We use a
-        # representative subset that covers the four default categories.
+        # These are canonical activity display names. Lookup against the
+        # mapping table lowercases them, and this representative subset
+        # covers the four default categories.
         $arrMappedActivities = @(
             'Add member to group'
             'Remove member from group'
@@ -138,31 +141,29 @@ function New-SyntheticAuditLogFixture {
         $intDuplicateCount = [Math]::Round($Count * $DuplicateRatio)
         $intOriginalCount = $Count - $intDuplicateCount
 
-        # Build the original (non-duplicate) rows first.
-        $arrOriginals = New-Object System.Collections.Generic.List[pscustomobject]
+        # Helper: emit one synthetic original (non-duplicate) row for a given
+        # row index. The index drives SyntheticUnmapped-{n} and user UPN
+        # formatting; all randomness flows through $objRandom in a fixed
+        # order so output is deterministic for a given seed.
+        $scriptblockNewOriginalRow = {
+            param([int]$intRowIndex)
 
-        for ($i = 0; $i -lt $intOriginalCount; $i++) {
-            # Determine if this row is unmapped.
             $dblUnmappedRoll = $objRandom.NextDouble()
             $boolUnmapped = $dblUnmappedRoll -lt $UnmappedActivityRatio
 
-            # Pick category uniformly from CategoryMix.
             $intCategoryIndex = $objRandom.Next(0, $CategoryMix.Count)
             $strCategory = $CategoryMix[$intCategoryIndex]
 
-            # Pick operation name.
             if ($boolUnmapped) {
-                $strOperationName = ('SyntheticUnmapped-{0}' -f $i)
+                $strOperationName = ('SyntheticUnmapped-{0}' -f $intRowIndex)
             } else {
                 $intActivityIndex = $objRandom.Next(0, $arrMappedActivities.Count)
                 $strOperationName = $arrMappedActivities[$intActivityIndex]
             }
 
-            # Determine principal type.
             $dblSpRoll = $objRandom.NextDouble()
             $boolIsServicePrincipal = $dblSpRoll -lt $ServicePrincipalRatio
 
-            # Generate principal identifiers.
             $strPrincipalKey = & $scriptblockNewGuid
             $strPrincipalUPN = ''
             $strAppId = ''
@@ -173,25 +174,22 @@ function New-SyntheticAuditLogFixture {
                 $strAppId = $strPrincipalKey
                 $strPrincipalUPN = ''
             } else {
-                $strPrincipalUPN = ('user-{0}@contoso.example' -f $i)
+                $strPrincipalUPN = ('user-{0}@contoso.example' -f $intRowIndex)
             }
 
-            # Generate CorrelationId (possibly empty).
             $dblNullCorrRoll = $objRandom.NextDouble()
             $strCorrelationId = ''
             if ($dblNullCorrRoll -ge $NullCorrelationIdRatio) {
                 $strCorrelationId = & $scriptblockNewGuid
             }
 
-            # Generate RecordId (always unique).
             $strRecordId = & $scriptblockNewGuid
 
-            # Generate TimeGenerated within the 30-day window.
             $intOffsetSeconds = $objRandom.Next(0, $intWindowSeconds)
             $dtTimeGenerated = $dtReferenceEnd.AddSeconds(-$intOffsetSeconds)
             $strTimeGenerated = $dtTimeGenerated.ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-            $objRow = [pscustomobject]@{
+            return [pscustomobject]@{
                 TimeGenerated = $strTimeGenerated
                 OperationName = $strOperationName
                 Category = $strCategory
@@ -202,8 +200,12 @@ function New-SyntheticAuditLogFixture {
                 CorrelationId = $strCorrelationId
                 RecordId = $strRecordId
             }
+        }
 
-            [void]($arrOriginals.Add($objRow))
+        # Build the original (non-duplicate) rows first.
+        $arrOriginals = New-Object System.Collections.Generic.List[pscustomobject]
+        for ($i = 0; $i -lt $intOriginalCount; $i++) {
+            [void]($arrOriginals.Add((& $scriptblockNewOriginalRow $i)))
         }
 
         # Build duplicate rows by copying parent fields and regenerating
@@ -221,12 +223,23 @@ function New-SyntheticAuditLogFixture {
             }
         }
 
+        # Tracks the next row index to pass to the fallback-original helper
+        # when there are no duplicate candidates available. Starts after the
+        # already-emitted originals so SyntheticUnmapped-{n} and
+        # user-{n}@contoso.example remain unique.
+        $intFallbackIndex = $intOriginalCount
+
         for ($i = 0; $i -lt $intDuplicateCount; $i++) {
             if ($arrDuplicateCandidates.Count -eq 0) {
-                # No candidates available for duplication (e.g., all rows
-                # have empty CorrelationId). Break out of duplicate
-                # generation.
-                break
+                # No candidates available for duplication (e.g.,
+                # -NullCorrelationIdRatio 1.0 left every original with an
+                # empty CorrelationId). Emit an additional original row so
+                # the caller still gets exactly -Count rows as contracted
+                # by the parameter name and the "Emits the requested -Count
+                # of rows" test in New-SyntheticAuditLogFixture.Tests.ps1.
+                [void]($arrAllRows.Add((& $scriptblockNewOriginalRow $intFallbackIndex)))
+                $intFallbackIndex++
+                continue
             }
 
             $intParentIndex = $objRandom.Next(0, $arrDuplicateCandidates.Count)

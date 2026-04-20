@@ -21,7 +21,7 @@
 # Requires the fixture generator from tests/PowerShell/_fixtures/:
 #   New-SyntheticAuditLogFixture.ps1
 #
-# Version: 1.0.20260420.0
+# Version: 1.1.20260420.0
 
 [CmdletBinding()]
 param (
@@ -79,7 +79,7 @@ $listResults = New-Object System.Collections.Generic.List[pscustomobject]
 
 foreach ($dblDupRatio in $DuplicateRatios) {
     for ($intIter = 1; $intIter -le $Iterations; $intIter++) {
-        Write-Host ("Running: FixtureSize={0}, DuplicateRatio={1}, Iteration={2}/{3}" -f $FixtureSize, $dblDupRatio, $intIter, $Iterations)
+        Write-Verbose ("Running: FixtureSize={0}, DuplicateRatio={1}, Iteration={2}/{3}" -f $FixtureSize, $dblDupRatio, $intIter, $Iterations)
 
         # Generate fixture
         $arrFixture = @(New-SyntheticAuditLogFixture -Count $FixtureSize -DuplicateRatio $dblDupRatio -Seed $Seed)
@@ -110,7 +110,11 @@ foreach ($dblDupRatio in $DuplicateRatios) {
         [void]$hashDisplayNames
         [void]$hashUnmapped
 
-        $intPeakWorkingSet = [System.Diagnostics.Process]::GetCurrentProcess().PeakWorkingSet64
+        # WorkingSet64 (not PeakWorkingSet64) gives the current process working
+        # set at the end of this iteration. PeakWorkingSet64 is the lifetime
+        # peak across the whole process, so it would leak across iterations and
+        # make per-(FixtureSize, DuplicateRatio) comparisons misleading.
+        $intWorkingSet = [System.Diagnostics.Process]::GetCurrentProcess().WorkingSet64
 
         [void]($listResults.Add([pscustomobject]@{
             FixtureSize = $FixtureSize
@@ -120,7 +124,7 @@ foreach ($dblDupRatio in $DuplicateRatios) {
             EventsEmittedFromIngestion = $arrEvents.Count
             TriplesAfterStageOne = $arrCounts.Count
             StageOneWallClockMs = $objStopwatch.ElapsedMilliseconds
-            PeakWorkingSetBytes = $intPeakWorkingSet
+            WorkingSetBytes = $intWorkingSet
         }))
     }
 }
@@ -133,9 +137,9 @@ $strCsvPath = Join-Path -Path $strOutputPath -ChildPath $strCsvFilename
 
 $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $arrCsvLines = New-Object System.Collections.Generic.List[string]
-[void]($arrCsvLines.Add('FixtureSize,DuplicateRatio,Iteration,RowsReturnedByMock,EventsEmittedFromIngestion,TriplesAfterStageOne,StageOneWallClockMs,PeakWorkingSetBytes'))
+[void]($arrCsvLines.Add('FixtureSize,DuplicateRatio,Iteration,RowsReturnedByMock,EventsEmittedFromIngestion,TriplesAfterStageOne,StageOneWallClockMs,WorkingSetBytes'))
 foreach ($objRow in $listResults) {
-    [void]($arrCsvLines.Add(('{0},{1},{2},{3},{4},{5},{6},{7}' -f $objRow.FixtureSize, $objRow.DuplicateRatio, $objRow.Iteration, $objRow.RowsReturnedByMock, $objRow.EventsEmittedFromIngestion, $objRow.TriplesAfterStageOne, $objRow.StageOneWallClockMs, $objRow.PeakWorkingSetBytes)))
+    [void]($arrCsvLines.Add(('{0},{1},{2},{3},{4},{5},{6},{7}' -f $objRow.FixtureSize, $objRow.DuplicateRatio, $objRow.Iteration, $objRow.RowsReturnedByMock, $objRow.EventsEmittedFromIngestion, $objRow.TriplesAfterStageOne, $objRow.StageOneWallClockMs, $objRow.WorkingSetBytes)))
 }
 [System.IO.File]::WriteAllLines(
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strCsvPath),
@@ -143,16 +147,15 @@ foreach ($objRow in $listResults) {
     $objUtf8NoBom
 )
 
-Write-Host ""
-Write-Host ("Results written to: {0}" -f $strCsvPath)
+Write-Verbose ("Results written to: {0}" -f $strCsvPath)
 #endregion Write CSV output
 
 #region Emit Markdown summary
-Write-Host ""
-Write-Host "## Benchmark Summary"
-Write-Host ""
-Write-Host "| DuplicateRatio | MedianWallClockMs | P95WallClockMs | MedianRowsReturned | TriplesProduced |"
-Write-Host "|---|---|---|---|---|"
+Write-Output ""
+Write-Output "## Benchmark Summary"
+Write-Output ""
+Write-Output "| DuplicateRatio | MedianWallClockMs | P95WallClockMs | MedianRowsReturned | TriplesProduced |"
+Write-Output "|---|---|---|---|---|"
 
 foreach ($dblDupRatio in $DuplicateRatios) {
     $arrSubset = @($listResults | Where-Object { $_.DuplicateRatio -eq $dblDupRatio })
@@ -175,9 +178,9 @@ foreach ($dblDupRatio in $DuplicateRatios) {
     # Take TriplesProduced from first iteration (deterministic, same across iterations)
     $intTriples = $arrSubset[0].TriplesAfterStageOne
 
-    Write-Host ("| {0} | {1} | {2} | {3} | {4} |" -f $dblDupRatio, $intMedianWallClock, $intP95WallClock, $intMedianRows, $intTriples)
+    Write-Output ("| {0} | {1} | {2} | {3} | {4} |" -f $dblDupRatio, $intMedianWallClock, $intP95WallClock, $intMedianRows, $intTriples)
 }
 
-Write-Host ""
-Write-Host ("Label: {0}, FixtureSize: {1}, Iterations: {2}, Seed: {3}" -f $Label, $FixtureSize, $Iterations, $Seed)
+Write-Output ""
+Write-Output ("Label: {0}, FixtureSize: {1}, Iterations: {2}, Seed: {3}" -f $Label, $FixtureSize, $Iterations, $Seed)
 #endregion Emit Markdown summary

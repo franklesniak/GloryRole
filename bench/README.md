@@ -1,5 +1,17 @@
 # Benchmark Tools for Entra ID Log Analytics Ingestion
 
+- **Status:** Active
+- **Owner:** Repository Maintainers
+- **Last Updated:** 2026-04-20
+- **Scope:** How-to guide for generating synthetic Entra ID audit log fixtures,
+  running the stage-1 ingestion equivalence tests, and running the opt-in
+  offline benchmark. Does not cover the real Azure Log Analytics / Entra ID
+  ingestion path or production benchmarking.
+- **Related:**
+  [franklesniak/GloryRole#19](https://github.com/franklesniak/GloryRole/issues/19),
+  [franklesniak/GloryRole#23](https://github.com/franklesniak/GloryRole/issues/23),
+  [Documentation Writing Style](../.github/instructions/docs.instructions.md)
+
 ## What these tools exist for
 
 These tools measure the performance and correctness of the Entra ID Log Analytics

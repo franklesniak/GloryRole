@@ -100,6 +100,9 @@ BeforeAll {
             [string]$OutputKind
         )
 
+        # Append a trailing LF so on-disk golden files end with a final newline
+        # (required by the repo-wide end-of-file-fixer pre-commit hook) and so
+        # regenerated output compares byte-identical against those files.
         switch ($OutputKind) {
             'Triples' {
                 $arrSorted = @($StageOneResult.Triples | Sort-Object PrincipalKey, Action)
@@ -111,7 +114,7 @@ BeforeAll {
                         PrincipalKey = $objTriple.PrincipalKey
                     }
                 }
-                return (ConvertTo-Json -InputObject $arrForJson -Depth 5)
+                return ((ConvertTo-Json -InputObject $arrForJson -Depth 5) + "`n")
             }
             'DisplayNameMap' {
                 $arrSorted = @()
@@ -121,7 +124,7 @@ BeforeAll {
                         DisplayName = $StageOneResult.DisplayNameMap[$strKey]
                     }
                 }
-                return (ConvertTo-Json -InputObject $arrSorted -Depth 5)
+                return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
             }
             'UnmappedAccumulator' {
                 $arrSorted = @()
@@ -135,7 +138,7 @@ BeforeAll {
                         SampleRecordId = $objEntry.SampleRecordId
                     }
                 }
-                return (ConvertTo-Json -InputObject $arrSorted -Depth 5)
+                return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
             }
         }
     }
@@ -302,9 +305,12 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json'), $strTriplesJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-displaynames.json'), $strDisplayNameJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-unmapped.json'), $strUnmappedJson, $objUtf8NoBom)
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-unmapped.json'))
+            [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
             Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.0-triples.json') | Should -BeTrue
@@ -321,9 +327,12 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json'), $strTriplesJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-displaynames.json'), $strDisplayNameJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-unmapped.json'), $strUnmappedJson, $objUtf8NoBom)
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-unmapped.json'))
+            [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
             Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.25-triples.json') | Should -BeTrue
@@ -340,9 +349,12 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             $strUnmappedJson = ConvertTo-SortedGoldenJson -StageOneResult $objResult -OutputKind 'UnmappedAccumulator'
 
             $objUtf8NoBom = New-Object System.Text.UTF8Encoding($false)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json'), $strTriplesJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-displaynames.json'), $strDisplayNameJson, $objUtf8NoBom)
-            [System.IO.File]::WriteAllText((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-unmapped.json'), $strUnmappedJson, $objUtf8NoBom)
+            $strTriplesFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json'))
+            $strDisplayNameFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-displaynames.json'))
+            $strUnmappedFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-unmapped.json'))
+            [System.IO.File]::WriteAllText($strTriplesFile, $strTriplesJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strDisplayNameFile, $strDisplayNameJson, $objUtf8NoBom)
+            [System.IO.File]::WriteAllText($strUnmappedFile, $strUnmappedJson, $objUtf8NoBom)
 
             # Assert - files were written
             Test-Path -LiteralPath (Join-Path -Path $strGoldenPath -ChildPath 'dup0.5-triples.json') | Should -BeTrue
@@ -362,7 +374,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult00 -OutputKind 'Triples'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -375,7 +387,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult00 -OutputKind 'DisplayNameMap'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -388,7 +400,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult00 -OutputKind 'UnmappedAccumulator'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -408,7 +420,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult025 -OutputKind 'Triples'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -421,7 +433,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult025 -OutputKind 'DisplayNameMap'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -434,7 +446,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult025 -OutputKind 'UnmappedAccumulator'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -454,7 +466,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult05 -OutputKind 'Triples'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -467,7 +479,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult05 -OutputKind 'DisplayNameMap'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
@@ -480,7 +492,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $strActualJson = ConvertTo-SortedGoldenJson -StageOneResult $script:objResult05 -OutputKind 'UnmappedAccumulator'
-            $strExpectedJson = [System.IO.File]::ReadAllText($strGoldenFile)
+            $strExpectedJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($strGoldenFile))
 
             # Assert
             $strActualJson | Should -Be $strExpectedJson
