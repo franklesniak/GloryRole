@@ -28,9 +28,14 @@ function New-SyntheticAuditLogFixture {
     # Fraction of rows that are retry-duplicates of an earlier row
     # sharing the same CorrelationId. Range 0.0-0.95. Default 0.5.
     # .PARAMETER NullCorrelationIdRatio
-    # Fraction of rows with an empty CorrelationId, matching the
-    # documented "Optional GUID" behavior of the AuditLogs schema.
-    # Range 0.0-1.0. Default 0.02.
+    # Fraction of **original** (non-duplicate) rows with an empty
+    # CorrelationId, matching the documented "Optional GUID" behavior of
+    # the AuditLogs schema. Duplicate rows always inherit their parent's
+    # non-empty CorrelationId (an empty CorrelationId would mean the row
+    # could not have been duplicated by the generation logic), so the
+    # overall empty-CorrelationId fraction in the returned set is
+    # approximately (1 - DuplicateRatio) * NullCorrelationIdRatio rather
+    # than NullCorrelationIdRatio alone. Range 0.0-1.0. Default 0.02.
     # .PARAMETER UnmappedActivityRatio
     # Fraction of rows whose OperationName does not appear in the
     # ConvertTo-EntraIdResourceAction mapping table. Range 0.0-1.0.
@@ -65,7 +70,7 @@ function New-SyntheticAuditLogFixture {
     # (internal-caller contract only; subject to change):
     #   Position 0: Count
     #
-    # Version: 1.3.20260421.0
+    # Version: 1.4.20260421.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

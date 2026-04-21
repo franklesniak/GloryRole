@@ -127,11 +127,15 @@ BeforeAll {
                 return ((ConvertTo-Json -InputObject $arrForJson -Depth 5) + "`n")
             }
             'DisplayNameMap' {
+                # Emit fields in alphabetical order (DisplayName before
+                # PrincipalKey) so the JSON field order matches the repo
+                # determinism convention that Triples and
+                # UnmappedAccumulator already follow.
                 $arrSorted = @(
                     foreach ($strKey in ($StageOneResult.DisplayNameMap.Keys | Sort-Object)) {
                         [ordered]@{
-                            PrincipalKey = $strKey
                             DisplayName = $StageOneResult.DisplayNameMap[$strKey]
+                            PrincipalKey = $strKey
                         }
                     }
                 )
