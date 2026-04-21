@@ -109,6 +109,11 @@ BeforeAll {
         # (required by the repo-wide end-of-file-fixer pre-commit hook) and so
         # regenerated output compares byte-identical against those files.
         #
+        # Windows PowerShell's ConvertTo-Json emits CRLF between lines. The
+        # committed goldens are pinned to LF via .gitattributes so byte-exact
+        # comparisons are stable across platforms; normalize the generated
+        # JSON to LF here so Windows runs match the on-disk goldens.
+        #
         # Each kind collects its entries with @(foreach { ... }) instead of
         # $arr += [ordered]@{...} inside a loop to avoid the O(n^2) array-copy
         # cost of repeated += on large golden regenerations.
@@ -124,7 +129,7 @@ BeforeAll {
                         }
                     }
                 )
-                return ((ConvertTo-Json -InputObject $arrForJson -Depth 5) + "`n")
+                return (((ConvertTo-Json -InputObject $arrForJson -Depth 5) -replace "`r`n", "`n") + "`n")
             }
             'DisplayNameMap' {
                 # Emit fields in alphabetical order (DisplayName before
@@ -139,7 +144,7 @@ BeforeAll {
                         }
                     }
                 )
-                return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
+                return (((ConvertTo-Json -InputObject $arrSorted -Depth 5) -replace "`r`n", "`n") + "`n")
             }
             'UnmappedAccumulator' {
                 $arrSorted = @(
@@ -154,7 +159,7 @@ BeforeAll {
                         }
                     }
                 )
-                return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
+                return (((ConvertTo-Json -InputObject $arrSorted -Depth 5) -replace "`r`n", "`n") + "`n")
             }
         }
     }
