@@ -1,6 +1,6 @@
 # Repository Copilot Instructions (Repo-Wide Constitution)
 
-**Version:** 1.1.20260112.0
+**Version:** 1.2.20260422.0
 
 These instructions are authoritative for all changes in this repository.
 
@@ -124,12 +124,13 @@ For each PR-sized change:
 - Do not silently invent behavior when specs or requirements are ambiguous—open an issue or add an explicit "Open Question" instead.
 - Do not create separate "fix formatting" or "fix linting" commits—include all auto-fixes in the same commit as your changes.
 
-## Language-Specific Instructions
+## Modular Instructions
 
-This repository uses modular instruction files for language-specific standards:
+This repository uses modular instruction files covering both language-specific standards and cross-cutting repository rules:
 
-| Language | Instruction File | Applies To |
+| Scope | Instruction File | Applies To |
 | --- | --- | --- |
+| Git attributes | `.github/instructions/gitattributes.instructions.md` | `**/.gitattributes` |
 | Markdown/Docs | `.github/instructions/docs.instructions.md` | `**/*.md` |
 | PowerShell | `.github/instructions/powershell.instructions.md` | `**/*.ps1` |
 
