@@ -108,41 +108,48 @@ BeforeAll {
         # Append a trailing LF so on-disk golden files end with a final newline
         # (required by the repo-wide end-of-file-fixer pre-commit hook) and so
         # regenerated output compares byte-identical against those files.
+        #
+        # Each kind collects its entries with @(foreach { ... }) instead of
+        # $arr += [ordered]@{...} inside a loop to avoid the O(n^2) array-copy
+        # cost of repeated += on large golden regenerations.
         switch ($OutputKind) {
             'Triples' {
                 $arrSorted = @($StageOneResult.Triples | Sort-Object PrincipalKey, Action)
-                $arrForJson = @()
-                foreach ($objTriple in $arrSorted) {
-                    $arrForJson += [ordered]@{
-                        Action = $objTriple.Action
-                        Count = $objTriple.Count
-                        PrincipalKey = $objTriple.PrincipalKey
+                $arrForJson = @(
+                    foreach ($objTriple in $arrSorted) {
+                        [ordered]@{
+                            Action = $objTriple.Action
+                            Count = $objTriple.Count
+                            PrincipalKey = $objTriple.PrincipalKey
+                        }
                     }
-                }
+                )
                 return ((ConvertTo-Json -InputObject $arrForJson -Depth 5) + "`n")
             }
             'DisplayNameMap' {
-                $arrSorted = @()
-                foreach ($strKey in ($StageOneResult.DisplayNameMap.Keys | Sort-Object)) {
-                    $arrSorted += [ordered]@{
-                        PrincipalKey = $strKey
-                        DisplayName = $StageOneResult.DisplayNameMap[$strKey]
+                $arrSorted = @(
+                    foreach ($strKey in ($StageOneResult.DisplayNameMap.Keys | Sort-Object)) {
+                        [ordered]@{
+                            PrincipalKey = $strKey
+                            DisplayName = $StageOneResult.DisplayNameMap[$strKey]
+                        }
                     }
-                }
+                )
                 return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
             }
             'UnmappedAccumulator' {
-                $arrSorted = @()
-                foreach ($strKey in ($StageOneResult.UnmappedAccumulator.Keys | Sort-Object)) {
-                    $objEntry = $StageOneResult.UnmappedAccumulator[$strKey]
-                    $arrSorted += [ordered]@{
-                        ActivityDisplayName = $objEntry.ActivityDisplayName
-                        Category = $objEntry.Category
-                        Count = $objEntry.Count
-                        SampleCorrelationId = $objEntry.SampleCorrelationId
-                        SampleRecordId = $objEntry.SampleRecordId
+                $arrSorted = @(
+                    foreach ($strKey in ($StageOneResult.UnmappedAccumulator.Keys | Sort-Object)) {
+                        $objEntry = $StageOneResult.UnmappedAccumulator[$strKey]
+                        [ordered]@{
+                            ActivityDisplayName = $objEntry.ActivityDisplayName
+                            Category = $objEntry.Category
+                            Count = $objEntry.Count
+                            SampleCorrelationId = $objEntry.SampleCorrelationId
+                            SampleRecordId = $objEntry.SampleRecordId
+                        }
                     }
-                }
+                )
                 return ((ConvertTo-Json -InputObject $arrSorted -Depth 5) + "`n")
             }
         }

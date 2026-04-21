@@ -21,13 +21,14 @@
 # Requires the fixture generator from tests/PowerShell/_fixtures/:
 #   New-SyntheticAuditLogFixture.ps1
 #
-# Version: 1.1.20260420.0
+# Version: 1.2.20260421.0
 
 [CmdletBinding()]
 param (
     [ValidateRange(1, [int]::MaxValue)]
     [int]$FixtureSize = 10000,
 
+    [ValidateRange(0.0, 0.95)]
     [double[]]$DuplicateRatios = @(0.0, 0.25, 0.5),
 
     [ValidateRange(1, [int]::MaxValue)]
@@ -73,6 +74,29 @@ if (-not (Test-Path -LiteralPath $strOutputPath)) {
     [void]([System.IO.Directory]::CreateDirectory($strOutputPath))
 }
 #endregion Ensure output directory exists
+
+#region Pre-flight writeability probe
+# Per powershell.instructions.md "File Writeability Testing": verify the
+# output directory is writable before running the benchmark iterations so a
+# permissions or lock failure surfaces immediately instead of after the
+# full measurement run completes.
+$strWriteProbePath = [System.IO.Path]::Combine(
+    $strOutputPath,
+    ('.write_probe_{0}.tmp' -f [System.Guid]::NewGuid().ToString('N'))
+)
+try {
+    $objWriteProbeStream = [System.IO.File]::Open(
+        $strWriteProbePath,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+    )
+    $objWriteProbeStream.Dispose()
+    [System.IO.File]::Delete($strWriteProbePath)
+} catch {
+    throw ("Benchmark output directory '{0}' is not writable: {1}" -f $strOutputPath, $_.Exception.Message)
+}
+#endregion Pre-flight writeability probe
 
 #region Run benchmark iterations
 $listResults = New-Object System.Collections.Generic.List[pscustomobject]
@@ -154,7 +178,7 @@ Write-Verbose ("Results written to: {0}" -f $strCsvPath)
 Write-Output ""
 Write-Output "## Benchmark Summary"
 Write-Output ""
-Write-Output "| DuplicateRatio | MedianWallClockMs | P95WallClockMs | MedianRowsReturned | TriplesProduced |"
+Write-Output "| DuplicateRatio | MedianWallClockMs | P95WallClockMs | MedianEventsEmitted | TriplesProduced |"
 Write-Output "|---|---|---|---|---|"
 
 foreach ($dblDupRatio in $DuplicateRatios) {
@@ -163,22 +187,35 @@ foreach ($dblDupRatio in $DuplicateRatios) {
         continue
     }
 
-    # Calculate median and P95 for wall clock
+    # Calculate statistical median (average of the two middle values for even
+    # counts; middle value for odd counts) and P95 for wall clock.
     $arrWallClockSorted = @($arrSubset | Sort-Object StageOneWallClockMs | Select-Object -ExpandProperty StageOneWallClockMs)
-    $intMedianIndex = [Math]::Floor($arrWallClockSorted.Count / 2)
-    $intMedianWallClock = $arrWallClockSorted[$intMedianIndex]
+    $intWallClockCount = $arrWallClockSorted.Count
+    $intWallClockUpperMedianIndex = [Math]::Floor($intWallClockCount / 2)
+    if (($intWallClockCount % 2) -eq 0) {
+        $dblMedianWallClock = ($arrWallClockSorted[$intWallClockUpperMedianIndex - 1] + $arrWallClockSorted[$intWallClockUpperMedianIndex]) / 2.0
+    } else {
+        $dblMedianWallClock = $arrWallClockSorted[$intWallClockUpperMedianIndex]
+    }
 
     $intP95Index = [Math]::Min([Math]::Ceiling($arrWallClockSorted.Count * 0.95) - 1, $arrWallClockSorted.Count - 1)
     $intP95WallClock = $arrWallClockSorted[$intP95Index]
 
-    # Median rows returned
+    # Median events emitted from ingestion (the stage-1 input volume after
+    # Get-EntraIdAuditEventFromLogAnalytics processes the mock fixture).
     $arrRowsSorted = @($arrSubset | Sort-Object EventsEmittedFromIngestion | Select-Object -ExpandProperty EventsEmittedFromIngestion)
-    $intMedianRows = $arrRowsSorted[$intMedianIndex]
+    $intRowCount = $arrRowsSorted.Count
+    $intRowsUpperMedianIndex = [Math]::Floor($intRowCount / 2)
+    if (($intRowCount % 2) -eq 0) {
+        $dblMedianEvents = ($arrRowsSorted[$intRowsUpperMedianIndex - 1] + $arrRowsSorted[$intRowsUpperMedianIndex]) / 2.0
+    } else {
+        $dblMedianEvents = $arrRowsSorted[$intRowsUpperMedianIndex]
+    }
 
     # Take TriplesProduced from first iteration (deterministic, same across iterations)
     $intTriples = $arrSubset[0].TriplesAfterStageOne
 
-    Write-Output ("| {0} | {1} | {2} | {3} | {4} |" -f $dblDupRatio, $intMedianWallClock, $intP95WallClock, $intMedianRows, $intTriples)
+    Write-Output ("| {0} | {1} | {2} | {3} | {4} |" -f $dblDupRatio, $dblMedianWallClock, $intP95WallClock, $dblMedianEvents, $intTriples)
 }
 
 Write-Output ""

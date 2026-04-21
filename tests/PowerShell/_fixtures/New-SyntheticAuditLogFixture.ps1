@@ -65,7 +65,7 @@ function New-SyntheticAuditLogFixture {
     # (internal-caller contract only; subject to change):
     #   Position 0: Count
     #
-    # Version: 1.1.20260420.0
+    # Version: 1.2.20260421.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -98,6 +98,7 @@ function New-SyntheticAuditLogFixture {
         [ValidateRange(0.0, 1.0)]
         [double]$UnmappedActivityRatio = 0.1,
 
+        [ValidateNotNullOrEmpty()]
         [string[]]$CategoryMix = @('UserManagement', 'GroupManagement', 'RoleManagement', 'ApplicationManagement'),
 
         [ValidateRange(0.0, 1.0)]
