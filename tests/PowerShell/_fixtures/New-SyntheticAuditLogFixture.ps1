@@ -65,7 +65,7 @@ function New-SyntheticAuditLogFixture {
     # (internal-caller contract only; subject to change):
     #   Position 0: Count
     #
-    # Version: 1.2.20260421.0
+    # Version: 1.3.20260421.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -82,7 +82,7 @@ function New-SyntheticAuditLogFixture {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter', 'ServicePrincipalRatio',
         Justification = 'Parameter is captured by the $scriptblockNewOriginalRow closure.')]
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
     param (
         [Parameter(Position = 0)]
