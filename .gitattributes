@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------------------
+# Byte-exact text artifact protection
+# ---------------------------------------------------------------------------
+# The rules below pin committed text fixtures to LF line endings so that
+# checkouts on Windows hosts with `core.autocrlf=true` do not silently
+# rewrite the on-disk bytes. Any test or tool that performs byte-exact
+# comparison (hash equality, signature verification, snapshot diffing)
+# depends on this stability.
+#
+# The directory-level rules below are broad on purpose: they catch text
+# fixtures regardless of extension (including ad-hoc names like `expected`
+# or `baseline`). Binary file types commonly stored alongside text
+# fixtures (images, archives, media, fonts, compiled artifacts) are
+# declassified further down with Git's built-in `binary` macro so
+# Git does not apply line-ending conversion to them. Later patterns win
+# per-attribute in `.gitattributes`, so the binary overrides take
+# precedence over the directory-wide `text eol=lf` pins.
+# ---------------------------------------------------------------------------
+
+# Text fixtures: pin LF line endings on checkout.
+tests/**/golden/**            text eol=lf
+tests/**/goldens/**           text eol=lf
+tests/**/snapshots/**         text eol=lf
+tests/**/__snapshots__/**     text eol=lf
+tests/**/fixtures/**          text eol=lf
+testdata/**                   text eol=lf
+
+# Binary overrides: prevent the broad rules above (or any default
+# text-detection) from treating these common binary file types as text.
+# The `binary` macro expands to `-text -diff`.
+
+# Images
+*.png                         binary
+*.jpg                         binary
+*.jpeg                        binary
+*.gif                         binary
+*.webp                        binary
+*.bmp                         binary
+*.ico                         binary
+*.tif                         binary
+*.tiff                        binary
+
+# Documents and archives
+*.pdf                         binary
+*.zip                         binary
+*.tar                         binary
+*.gz                          binary
+*.tgz                         binary
+*.bz2                         binary
+*.xz                          binary
+*.7z                          binary
+*.rar                         binary
+
+# Compiled and packaged artifacts
+*.exe                         binary
+*.dll                         binary
+*.so                          binary
+*.dylib                       binary
+*.class                       binary
+*.jar                         binary
+*.wasm                        binary
+*.pyc                         binary
+
+# Audio and video
+*.mp3                         binary
+*.mp4                         binary
+*.mov                         binary
+*.wav                         binary
+*.ogg                         binary
+*.webm                        binary
+*.mkv                         binary
+*.avi                         binary
+*.flac                        binary
+
+# Fonts
+*.ttf                         binary
+*.otf                         binary
+*.woff                        binary
+*.woff2                       binary
+*.eot                         binary

@@ -1,6 +1,6 @@
 # Agent Instructions for Claude Code
 
-**Version:** 1.3.20260415.0
+**Version:** 1.4.20260421.0
 
 This file provides project-specific instructions for Claude Code and compatible AI coding agents operating in this repository. These instructions ensure that agents follow the same coding standards, safety rules, and workflows that apply to all contributors.
 
@@ -27,8 +27,9 @@ This file intentionally keeps only a minimal inline summary of the highest-prior
     - `npm run lint:md`
     - `Invoke-Pester -Path tests/ -Output Detailed`
 
-- **Language-specific instruction files**
+- **Modular instruction files**
   - Read the relevant file under `.github/instructions/` before modifying matching files:
+    - Git attributes: `.github/instructions/gitattributes.instructions.md`
     - Markdown/Docs: `.github/instructions/docs.instructions.md`
     - PowerShell: `.github/instructions/powershell.instructions.md`
 

@@ -1,0 +1,2322 @@
+[
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "00f295a8-4137-7321-5c9e-32652371fd6a"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "016b1869-815d-41a5-e7cf-f04e2d665559"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "016b6d41-72b1-186c-2739-81c252a28ed5"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "02f3cf32-209e-cc3c-7a65-239a8065345d"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "041c8745-c745-d378-986e-d053e33e49c3"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "045e067e-c053-641b-23b8-0983ae61ee69"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "0476a42e-ab78-eff3-5d55-e221e1cc35e4"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "062b4117-3c67-59c7-3d81-b2188357dfc9"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "06905332-7aae-47ae-579f-cc17ac768f3e"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "0788162f-8332-1cd7-0889-f864c561b4ce"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "07b35d1e-ea80-c3dd-5f49-be9c7148fea0"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "081102c3-089b-85c3-745e-7f4266bd6d0c"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "0979df15-1328-e1eb-fda1-008f10a6c1c4"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "0b3fff56-f825-b284-42ad-71b9f1d0bc68"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "0b60e523-0e0a-a4b7-f375-2e12d6b57f24"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "0bcb700f-0b1d-f29c-d0d4-89000376a4ed"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "0cd5dca5-ba11-22c8-5d3c-99cb242e2fda"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "0ce33dc9-df89-afc7-4f10-2b8e078aecde"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "0d179ca5-49a6-c241-daa4-4e368bf846de"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "0dd4abbd-11ae-d5f2-9ab0-44950349af28"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "0de85eeb-237b-102e-82c9-0f58d7332153"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "0dfe02be-8dd1-f04c-e949-738ade25a68a"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "0e697260-3748-f956-a9c8-60b3178af686"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "0f7846d3-dabb-5fa8-a292-75cb5b691ddf"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "0f82412d-e033-6ce8-5920-3093af1b3478"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "11666c32-d192-9fc2-da22-65b1f7c78612"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "11b24609-977b-1d39-2a3b-117855877a48"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "12d5e6ba-95bb-1157-438e-0599bed37f23"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "1360e326-beea-3030-6027-82b302fd475f"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "13901c46-7f96-cabb-9b6f-8ef5c7871a95"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "1568b884-1e43-9e37-e26b-86b162632365"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "15b1610f-855a-88e2-4be3-3047b8d3e625"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "175c1f12-11af-b858-27a4-1584180fe05d"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "17aadc22-9e33-cf09-4cf5-69e1901a1b27"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "17df7bea-33bb-cb84-b4b6-e03ea7c3ed30"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "180a2b22-5799-0343-0520-dc25c991d889"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "18b4dfe8-5ef3-6ab6-7aef-9f45ede0cdb6"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "193786bd-0679-300d-a992-542447ee1b3b"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "1979c133-92ff-5df1-09d0-4ce35a5007b0"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "1b31b2eb-5b32-619b-b344-92baf5d2a3c1"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "1b7e11e8-1f25-e5d6-372a-786e25344d78"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "1c13bf20-27f4-5c3f-a2c8-71ed24025f1e"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "1c58cb1f-4b5d-1418-0b40-0d7d7399a075"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "1cb8ff91-bc31-a7de-d337-a91d19019ef6"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "1cfca461-3b85-5033-8234-256cd88f930d"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "1e018bdd-63ea-118d-6b63-ce47aecfb3be"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "1e10cd4a-c5cd-42d7-8aa9-7fedb5a9b85e"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "1f5b229e-2187-b1bf-d952-a2e6855bf815"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "20269be1-78c3-472b-5d30-1d74df960ff4"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "2048c21b-3ac1-b844-f28a-fd601ac128d2"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "20bf11d4-bda4-3640-d92c-5a7fb85ed4af"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "20e17ea6-5343-9ecd-c28a-e1b64c540c5b"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "20e54a57-f263-0dd1-5407-c0a8c5a251dc"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "2179ccb6-1fb5-10c1-9894-ce81bc9abc8b"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "219c6e02-92a0-62df-5f5e-5cc3ecf3d455"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "21dbc892-ce16-d562-7a42-01c9d420201e"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "220d4065-49b0-b27e-b290-050f101dcf20"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "22d60b29-9ffe-8df5-7c2d-fc97fb681dc4"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "241a5674-bdf2-e6d5-5923-1ca9e0370b3b"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "24f1eee4-4bcc-29fc-cc4d-218e7b47c4b0"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "2539b1dd-fc8a-a519-0163-22731fd45786"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "253d9563-28e5-7bc5-1574-443d3de37005"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "25619d06-fd14-df9e-0040-b3b9311f7b8d"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "2775d654-b0ae-9698-6e5c-598d255f710d"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "27dd0801-5806-a032-9591-c5883c66edb8"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "292d9139-eed9-b308-3112-c3ef526379b3"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "2949c42e-846c-22a6-2f6f-0b39164346a3"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "29601289-9224-8c6e-4767-cf7288ea44c7"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "29978872-08b2-caed-51a2-dd60dbd527dd"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "2b2cf8e9-ad70-61b8-0019-4ac37e6a567e"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "2b5cd6b8-72d6-09ac-acef-40c6004632e1"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "2bd76a9a-e82d-1f89-b8cd-6cd396bee646"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "2bfca87b-7e4e-7d8c-a1c3-96aad144a7f1"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "2c94a3dd-35c0-9a96-eade-9db494507748"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "2cbd32f7-c7d2-e863-ccb4-3525a9caf196"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "2dc1bb01-fee0-7d5b-71ea-d6c3f069ab80"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "2dede103-219e-ff27-e58a-3bce209b9e41"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "2df84da8-1206-fdfb-ee19-ea1f71cc0ef7"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "2f4b2361-15f7-9bb7-0d33-29a025a158e9"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "300feafd-4104-d606-6c8e-8f063af26670"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "317dd763-be0b-b0c6-2cb2-85df0a0aec73"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "31e75e16-dea3-29ec-ab21-3901bfc18dfd"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "31e7e594-0f31-180d-a3d9-8ea2c2eb19bf"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "331987f6-0a36-6d5e-0bcb-0906a887caed"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "33ce0bf1-5c94-8bfa-20f8-5c0adaeb41fb"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "35655edd-8f80-ab6e-779f-a8b6f3477b2d"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "35c8a750-e75f-2185-e916-e2c7ac4fef6c"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "3605e3b3-247e-7c81-28df-469c7e979f60"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "361ec63d-3d0d-698f-5c2f-20b94fdb53ad"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "36b29a3a-c1e0-103d-a365-d4a35413cec4"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "37eacc70-fba5-090a-c6cd-668e8c6e18bf"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "38468c3d-59cb-ea75-73b8-e69cf72aaef8"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "387fccc1-b5e3-8ef3-9271-f301b02efa9a"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "38837db4-c335-0bc2-1470-370e77289490"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "38c1c50d-1b6e-cfc9-b36d-80df142f6789"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "3944d2cf-0b6a-3527-9a97-de6bddbd779e"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "399f98f7-55e0-d043-9fbf-468269d2703a"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "3abf8224-9231-3903-d5a9-93c3a73d1245"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "3ba33d0a-4d9e-1dcc-a256-41c1a279f30d"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "3bbf9c65-5e1f-cda7-cb73-52309857749d"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "3bcd04ae-8699-569e-f0ad-bf3a6fb74d25"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "3c70e5e5-bd2c-29b0-7445-1f8b03735d3e"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "3e612fa3-8fee-2179-8b08-b9a475f6555d"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "3eb143f2-46ed-0abe-95dc-4d0e882f0b95"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "3eb20f4a-8c78-37a3-9cd8-d6466fbb77b4"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "4032a232-f07f-b0f0-64b6-4e15362a772a"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "407cbe02-2b30-b090-cf84-b7514aa20590"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "40fcabbf-4510-cd2a-9dc2-c2b5d76ec36a"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "423fd349-4d7e-da35-47af-0fd3e6aa7c0a"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "43fc0828-20e2-258b-4cf3-104483127218"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "44065a6d-f36e-5fdf-932b-40cfb20ec261"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "445dcd66-c864-5da8-26ce-26c3e3bbe963"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "44e48921-1e36-9f31-318e-4ba86c203c4b"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "45bf4e16-f5dc-da86-aa6d-f0bad293ebcb"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "45c856ff-1b9d-a02b-5517-59f870a2dc17"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "4612f6ac-c8be-09d5-4b7e-4d4bfd2dd183"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "4632b87a-a9c0-59ef-cc13-94d8e503404e"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "46656995-904a-eb1d-1bde-d508f237c768"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "4682a1be-873c-ade3-71e2-53dc812616bc"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "47091de8-84ee-1a9b-b31b-3986e6356cb8"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "4791c38d-f30c-2165-19fd-751af113e6c4"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "47ec37e2-e953-f044-65de-720eb60a2f15"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "48263493-fef0-8c72-0b73-fcda1833485b"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "48b2e31d-af92-5590-af81-5c38783e8469"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "48c65880-6ae9-21f1-4aac-791919b4a74d"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "4935f45b-575b-9bc8-fb4e-578b399a084e"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "496eb8a4-6b8d-c0e1-43ae-b76b180dec02"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "4b23ebb8-75f4-f117-9900-c98b013e3954"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "4c659db1-e892-ae72-8292-196ded0ede25"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "4d823949-6d9b-ae4f-4393-4a37e7845d17"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "4e5049ae-2559-1694-8116-177d3ae9155e"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "4f66fac2-fa01-17bb-6203-dbcab2a5a29c"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "4f69361b-5436-1740-85d8-f02bdde86aff"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "4fb4a640-dce3-83c2-6716-2e706e13c72f"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "501ba5a6-1fdb-cd6c-b87f-4fedfd5eb12c"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "502fd81e-98e3-cbac-4019-e407e00ec2df"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5190ba93-190c-a63a-ea2b-bafe41d0f8b6"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "51ad100d-2a38-acc9-30f2-1317daf80e5f"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5241c3aa-9200-f550-df15-5f4b8e069cfe"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "53311901-b961-32a5-d071-d91fe6e98904"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5341ce01-ac14-0da4-8fba-8d5f38d3c8ae"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "5345b850-44f0-66bf-8bab-0e729fc92985"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "53690ecb-f56d-b1b1-1a65-e3052b7ec7a8"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "557519e5-970d-e7ab-57da-eff60dfb1865"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "55fcd3d0-da52-51c3-e238-3f0d0ce842b3"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "563c84d9-851c-0e07-3628-7390a82028ca"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "565d25c3-688f-61de-4a4c-ae9f390910d3"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "56843fb3-1e6d-2041-9096-80fde2305f6c"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "56a4175a-c95c-c79d-1570-588189b1e5c5"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "56f6cb6d-2afb-5ff7-2c36-17e6bd102fa4"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "571bde11-0291-5ad3-8775-62117ee32c0f"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "58ecdfd2-c751-81f9-bd00-219b8b16448d"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5a5c819e-4a54-6672-df45-f3326a3e89da"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "5a6eda1f-0bbb-3988-ef31-d17a2020a552"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5a8da26f-92c0-dac1-8f4a-8fb3abb375f1"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "5b67595f-6fa0-ac06-6017-5001ba85671a"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5b923ca9-96ad-0e44-161f-47d356cc244c"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "5bcd2269-ac40-37c4-5529-ac412aeacdf0"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "5bd20771-0525-a423-38f0-bd20d5e3f5cd"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "5bda3aa7-431c-1795-5b04-be168e058b33"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "5cee6bee-40d1-7b5a-3edb-603539de3c08"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "5d1334ec-e68b-8fcc-2eef-67f867303dc0"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "5d161649-4dee-b47c-8e47-0696fb216e68"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "5dbcbbb3-04a3-cc57-2e63-585b05c24255"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "5de1afeb-fad2-808b-10fe-4bcf15a339fe"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "5e72b31b-70f6-9c66-1ada-bcdf611b017c"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "5ea97dcf-5d64-4590-4342-0b1aace5f588"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "5f50bc86-e803-baf8-c70c-e36ca34a4f92"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "5fefb2cd-0f6c-33b8-7d67-1f64578f9289"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "60a0beb5-f80b-174a-3efd-1d8462c009ca"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "61864a4e-5fff-4bda-5481-b8dfadfa8436"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "62146618-ad7b-ab1b-f384-99b5c6eb2b7b"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "623e3a1e-a53d-140b-c88a-4f8e0bce2796"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "6243cae7-935e-c19c-5872-73a27d12f9ed"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "626f1a4b-ea77-34cb-d228-504f740974eb"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "6326e524-c848-a201-a50d-cf213d63ad73"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "63426902-4f6d-dd60-7355-ec0b054a357c"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "635e3466-f876-3f65-d88b-9e07c027d2f5"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "63c65c22-dafd-9764-956d-a9438b5aa790"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "64fb010b-9f62-90b3-91fe-5f4fc35a1ae1"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "65142ff7-eb8f-f1c9-0bd3-2aff1c02bcce"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "65ef2a7a-f882-1a9c-5066-fc506a17bad9"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "65f26e9d-9e05-314c-0462-9639c3c3ce06"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "668e4280-a858-bd50-ea05-8034ecd286f4"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "66e4da5a-6b63-edc0-97d5-3d794aead7ef"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "670785a0-11f8-c6fe-a3f6-46f00d65e8a5"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "672128a6-68ab-5011-71b4-702b23e66ef6"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6779b97c-5402-1edd-5663-85a084ad7eae"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "68c25203-a9cd-bbd1-dd16-44b4a1f65912"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "68d4def7-bf5c-ce07-5a82-38bf5b63db83"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "69da0600-f05f-dc79-4ce1-711249ae83d5"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "6a3b12ff-9f38-4eea-4a0f-a90675d73ba4"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "6a82b985-9e31-538c-251e-a03c221896d7"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6a90313d-614d-1268-9694-2bd82dcfef4a"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6a944ac6-7c50-c30c-0b8c-011442bd1a05"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "6ac92173-455d-40e6-bf34-8bb9e98b124a"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "6b62e4d5-ea33-d18d-3cc5-9fd47fb00653"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6be4820f-a434-994c-ddd7-91cbdbea735c"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "6c021304-37a3-d399-a5b0-abc657ec6805"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "6c7569a6-66f5-8c1a-a6ae-bfbfb8d281be"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "6c88a767-2858-5f66-36b4-f6d7acf3ed3e"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6ce657fe-b6df-b74d-8a8c-d3d0ca68b59f"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "6d51a7d8-0e1b-0518-9fa1-0abf5f9db912"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "6eea12a1-4954-ad11-7173-5f03e625f284"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "6f011105-a222-b8c9-eb4f-56aa6258e8d9"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "6f9a481e-65cf-3390-9306-f957fce1ba74"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "6fcd1a2e-879b-48ec-50dc-ee8908d8e4f1"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "72325792-810e-cc38-b22d-14c0bf2f76b6"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "724f2603-7544-c600-05ae-05cb4e2410d5"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "73876b73-2f57-0535-7fc9-d672c1b224d2"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "73e1ad70-3563-8b24-9b8d-5a4fbf4dd297"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "74682cc0-0d3f-dbf9-d14c-629cb2071900"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "7490dc12-6912-192a-44fc-d2bd3c2fd668"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "75316013-92cf-a60c-9712-1bb66db9db80"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "75cf1086-c673-4286-4c30-09f84fa9a868"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "75e24b8e-67f7-eb0b-8938-0238b5135d0d"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "76452e90-459f-8024-7591-02da5e5a357c"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "76d710b5-8edb-0030-4b8c-7f3d8cfa5c89"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "76fa48a5-0720-051a-4840-396c12ed168e"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "7785431f-2861-2127-b1d7-a7f247a4fed9"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "779be118-a3ff-e8ce-8f53-d55e89098062"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "78b1eb08-8a86-eb6b-5126-d7aee47f938c"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "79578a7c-58df-12c7-aeb8-d331eb97cb3b"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7a342ca8-47df-8607-da33-42274c572ba2"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "7a588ce4-9f1b-32d0-ce1c-bd9b78df80f5"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7a9a1b5c-1d0e-009e-6b1a-e770a6351306"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "7b500685-ece0-b49b-1151-8f9e26ee906a"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7bfd9863-4467-1322-b7c8-65ef33ca23df"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7d30d49d-e88e-51ee-4136-67ba0825659a"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "7d6d0751-49ca-0449-8c41-545d832ec839"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7da79865-4701-e1d1-19a1-c8bab60617e6"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7f6a6540-5d16-7899-e36c-b45395c4f845"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "7f951dba-8233-4e82-13cd-7e42e4ae9cfa"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "7f9ae8c4-5c1f-23f8-9fc1-db805ce8e311"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "7fcb34fd-b701-fa0c-1a0f-f36729306685"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "7ff669bc-7875-3a27-244a-a57d36066a0f"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "8174d3a9-fc40-fa09-8053-4f84649fd38f"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "817a6ede-5402-7c82-2cab-a936cf1f83b2"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "82206d28-2cec-e1c4-fc19-c6abaab3fafb"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "822ff69c-6c5a-5498-7b6c-bc4c53115a5d"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "827fb4aa-75ea-1b55-3e68-220dcd67e361"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "82968511-48c5-dbf5-0627-eb60fa2ccb32"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "829e297a-58dc-9261-7fdc-ae51474595dc"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "82b9f03d-c1c5-25e3-6f04-ba9cd34cdec6"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "8366b95f-5721-3316-9767-18e848103ee9"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "83e4a4ef-046e-86fb-e7bf-b949933f8bff"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "84ef6c8f-2239-dc6e-6de8-200dd251be40"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "855ad279-c4f6-132a-b3a9-c6b5e5fa6f41"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "859e1de6-20c2-5f82-e4e2-058deb8212a9"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "85d174f5-3d3f-2763-d70c-834b6ef0da21"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "86293af0-52e3-5652-c76b-ebca06533352"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "86b8836d-3717-05e1-9036-c89a43ac8c0f"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "89562dc2-aa9e-ad05-5d1b-fc7f4b8d8cb0"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "896d934c-c23e-11cb-4b1b-9e6029ce5ce6"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "89e98e44-6401-f4cc-41a9-515a62627159"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "8ab2b7ca-9fd6-12b1-c465-67ec77dbb4ca"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "8acef6f1-1ab1-aa6d-a5d6-6425f456533b"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "8ad253b0-f377-0762-14f1-c1eae87cd19f"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "8b5351ee-5036-7da8-9b7d-1bdcc1aad97b"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "8c2f1c8e-5532-53ee-a659-a32421828acf"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "8cd7df01-e2d1-4320-a3d7-adc295cc8d1c"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "8d1ad5d7-7938-c175-853e-2b27f009bbdd"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "8d21c78c-09cf-4bef-4e67-22e3717b065c"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "8d63965a-1ad4-a380-bea9-f0b2a23eca5a"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "90d46ad8-9cd0-cc46-498e-69ace031dd24"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "910648e0-0463-acfa-4148-68f0ae992429"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "9157a885-3112-56a9-b0b0-4f6be5a982d5"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "91f5b985-eda6-915f-e796-a7d814ca8a22"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "92805e46-629e-35e4-4db5-0af8772fe830"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "93ace043-ef26-42fc-d954-fc9558cc4120"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "9414a06b-8fa1-5130-f6b6-220d6c2ec757"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "94837940-f213-9eef-9434-ede600d69626"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "949c68cc-5c74-cf55-7f31-bc17aee418c3"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "958d53ad-d9b5-2c0f-9f2d-ce938f450eae"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "96116d67-54d4-34c0-4ec5-6d530bcf2dbc"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "96878111-cc39-fc9c-3885-fdf189d55e49"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "96c5b723-69ac-33fd-0d51-3e882c36d120"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "976f88c6-c3a4-ba6a-74df-504ed977732f"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "97a9174e-88e7-f708-8784-2fe38da04706"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "992d4ac7-ed05-e7ac-781b-46ac2423958d"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "99ec1587-067a-9005-379d-6022a6977c01"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "9a7a6b92-715b-b09d-5d9f-ec2a75240e01"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "9aaaf68a-e0ef-d85e-0aa5-b033f2d53cac"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "9b9c8cf6-5f6b-8f9d-ad2f-83c9a50a0cce"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "9bd01422-b67b-26d4-7f34-bedc3c4c8dad"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "9bd54f0f-ee18-ac52-de55-d586e2dc3240"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "9c434323-caa0-0219-848d-b802f9a84c01"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "9d01fc34-c6ca-5b23-03eb-0ffb86b9ad70"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "9d163726-b954-bb50-a61d-69d992ee6d70"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "9d46b827-7a4a-80d7-dfb3-bf40e8fabd0e"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "9d63c274-2cf2-be8e-3bfb-5d6abb122d62"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "9dcd3bb0-17e1-ac0c-1745-2a89b5977974"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "9ef1acd1-b7f2-11fa-7432-b391bfbafc4a"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "9f9803f5-a999-7db7-a195-7665a626f732"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "a0c22b84-288f-a908-6f3b-ef3cbd22f82c"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "a1c5b13f-888c-7c36-ce7a-7effddb673f4"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "a2c7aee8-788d-d666-2585-1826c429d843"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "a3a731cf-f62c-e810-f637-512dde0b5c53"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "a3b58e8d-4e50-61e7-3576-90e1ee526bc0"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "a448cc13-6b81-ea7d-d63a-80bc21024b30"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "a52a61f4-ee7d-28c2-fc1b-208258844afd"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "a6dfddaa-f510-02a5-b06b-37007a836d85"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "a6e7843b-32bf-579b-1f18-a1c2cdf2e5ce"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "a747e06f-a081-fbd3-7df4-0c14117cc88e"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "a7c9beea-e1ea-6a16-902a-431fb59c7110"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "a7fd642e-a219-3a77-5671-1e0fe91234ac"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "a83456d8-d39b-d0f4-70c9-c9839227fb7d"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "a95d81ad-0461-e3e7-bf48-48ababd3bf68"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "a991555f-38e7-4262-7214-47ca216d43dd"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "a9a46a5f-3d8b-3fb1-5456-3c2a531f3af2"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "a9ea7fc2-c295-472b-fced-a30db08357d3"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "aa3f3e8a-a111-d0c7-65ab-399118eb0e5f"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "aab1f8c6-024a-7e04-bf71-a459dd373092"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "aabe1e16-94a4-29d1-aed4-7c2a3adbd915"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "ab1ca911-862b-753d-bbee-ff542719884f"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "abccd941-3bc9-3f15-b2ce-96f0194550d7"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "abe3b827-7c22-58d9-696c-f2cdb9ce04de"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "ac4ade0d-4922-0517-102f-0453d89b87cd"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "ac6352c1-6fa1-4ebb-35fa-3ab8b035571b"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "acbbda1e-af78-98dd-0d3c-6049550b1c97"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "ad0aea53-6a78-cf31-51df-5bc0cf018655"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "ad11e419-2d86-6450-a351-59029b6ee0a6"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "ad501c75-391d-0b08-964e-c9d8d225580d"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "ad89bfb3-26a6-988e-3b20-db82ad71a476"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "adbf0910-6d46-6c2e-a598-5217145bf023"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "ae12e7d3-f4b6-63f7-952e-6ec5d82362f6"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "ae14ff7a-eb4f-0b69-5e9c-d8bb38d93979"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "ae5624cf-ca90-1dd2-d1d2-3a408ad10aa8"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "ae66320c-555a-d3be-220d-008e8ce48be8"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "af0d4e35-6bd4-88e0-ba2f-06f554cebc37"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "af1c740d-8643-dbc0-49b4-85e13c9a2cc1"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "afe9c769-d17f-419b-667a-e147beb26f56"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "b0d8a453-b293-2c5f-c4eb-00abf1e16e98"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "b1c4f2c9-325d-4ea6-003d-e67fd005cb43"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "b2d0abd3-84ae-3026-1fae-4c807bfaa61d"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "b2e294c7-7a9b-05dc-f3bf-cd64228bd400"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "b3fa81c2-c93e-c775-a764-809f23a7d7c6"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "b3fe2c9c-f1ef-5c02-c87e-1691738d964f"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "b4241df6-d740-b6a7-c65e-30bd7c13f14e"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "b63dcc6f-5cb9-3104-451d-6063d54310a0"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "b6bc846e-1d2f-11ac-605f-7979b91c13e4"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "b732c7b7-7bb7-4f2c-1709-36bbc0f33d91"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "b76e2083-1009-a170-ecb5-e4846676a2b2"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "b7915a42-0896-bf09-2b58-140981b21c4d"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "b80c5c3e-261b-af95-aa55-24951b9a1428"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "b824cfa1-f7cc-c572-adc8-e09fcc0322b2"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "b93aa9cf-f201-8a16-128b-8f7822f4d333"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "b9fb2227-fee4-67d6-871a-85b386a8af72"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "bab58b50-43f5-d2bc-4d0f-dda1a6f33389"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "baf68c97-ef20-8717-23f9-7803d27cb2d9"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "bb0015f6-7985-a5b1-0461-52892a636769"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "bb51501b-223c-4b5a-4d03-f870e1bcb9cd"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "bd5eebfe-ad69-5efd-2c91-96c40bff48a0"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "be24fae6-8817-81f6-d234-4573f019855d"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "be54f75e-c610-56b3-986b-de233392bf01"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "be835b0e-415b-fbc2-ba32-5fd6c231eae9"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "bf17cc30-e136-4112-b041-92544ccb3060"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "c12a46a3-c93c-6352-c16c-6f53ed22eb90"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c20380df-39ff-a932-8fb5-06df4263f9ff"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c2c4131d-dc9e-b810-acdb-42f8880afd47"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c2d8df01-f4f3-16d4-3ad9-75a61e8dc4fe"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c3c6a62f-20d8-e6a4-dff9-659c894876f3"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "c40df16f-c107-3340-91f9-aa6ef42b687a"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c4f354ca-dbc8-a7eb-ef35-755aee161264"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "c549d713-0a9b-cb38-a04e-235fe90a27c9"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "c56a0bf4-df83-dab0-b125-50bb3c67891b"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c64fd43f-e8a4-1bef-f436-2cf6584afcc8"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c713c147-2a96-3d85-565f-078e25842cac"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c757e7ee-533f-01f0-016b-d20816e3e26c"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c75e5aac-b0eb-154a-e728-f8e7072e52d7"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c797ae40-78ef-5cd1-01df-63ff24d06b3d"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c7c0aafe-4cdc-d4ce-cfbe-ff2d49a55488"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "c871f831-7c3d-5311-a4b7-a0ee366d8cdb"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "c89769d7-08aa-f96c-a75b-c57506a78f76"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c8d1f8d1-aa3f-a271-b2a7-370b7192e45b"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "c8e04fd1-2c6e-0acf-15d4-99df0e7fe8ca"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "c9118eac-c30d-4dd6-2df0-ef4f5537fa8b"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "c92eee94-20a0-3f06-3d5f-ceb8c7fcb759"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "c9cc82a2-2227-0396-78c6-e80d2fb54765"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "caaf90d9-5ef6-7312-2866-36c86853c195"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "caf03ce6-da2c-c8d0-888c-810d1e5e20d5"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "cb0e1511-b569-e0ab-58c1-7188dfd3da5f"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "cb0e54cd-3c40-365c-9582-93d18c75362e"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "cb75c2d5-0023-82f9-8cf6-9a819b9c683b"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "ccb2b678-582b-aaf3-a95f-69641093d144"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "cd886ea2-a9fd-3902-7a32-1fb68696df89"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "ce0d367d-7813-f372-52ff-137e941ba6cb"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "ce59bc5c-28cf-f2c4-58a5-2ebfe2ca96c8"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "cff1fc4e-46d9-f73a-576f-d741193e404a"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "cfff6e47-7f63-adfb-c634-c7cb6ac72b82"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "d068e0e7-eedd-5fd2-be2b-07789f4bd1ce"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "d1f8105f-3ee7-156b-43c5-874c529f7db2"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "d23b0d08-a5c4-e597-c43a-62cbc686b4b2"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "d26e278d-a367-3e07-fab9-a98fe8e12875"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "d2992128-b43a-337b-8696-ef5fd1c094d2"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "d2e9c4bf-c82f-b633-009c-a81c2643b574"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "d30d8491-5e73-17aa-4178-010187dc3f31"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "d3612b3d-053d-da2f-2a45-8fb1d6968f61"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "d3a94a0a-ac43-9d3c-5f6b-30fceceab01d"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "d3e15c83-eeed-71e1-b45a-488a19305c3e"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "d40f0416-954b-48ee-7b07-df56d3e456d4"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "d4b538ae-0ad9-4f0c-7581-e4ec75038edb"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "d4f3f2b9-d16f-834d-04bf-bee3b0932a3a"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "d5881d33-3348-4754-d680-16af155fa840"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "d5b7359c-a033-c5e6-f9e1-32f0317c365e"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "d5c59507-3e2e-bce3-46cd-470052803a17"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "d5d71dd4-3a7b-ec24-4271-daf6dc420968"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "d5eb7c2a-fd0b-95eb-6d4e-d7199e303f12"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "d5eeb848-7bf7-47fe-6132-12862ac33f62"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "d679384f-3e42-fdb0-517a-f4ba48923845"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "d75951e8-b19f-439f-9eef-6028f87c4a02"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "d79e57aa-74a5-01b2-ff5c-a99eead13d8a"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "d7b05222-356a-1494-40e1-2507b1e7f4e0"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "d855f756-6347-3bd2-2fd4-484ae5e399f4"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "d96b35d6-8b8b-b449-25df-e95e350b236a"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "db2e9434-2d8d-5b2d-b5f8-165defff48cc"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "dc59b2b0-3178-2998-27fd-25cca6872e07"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "dc7619ff-b3cf-e2dd-7513-024b2268631c"
+  },
+  {
+    "Action": "microsoft.directory/applications/create",
+    "Count": 1.0,
+    "PrincipalKey": "dd98233b-ce8d-d630-0da9-51ad40bfa17a"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "dfbd49e9-be01-ac05-e580-afb2214c6985"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "e0324386-99b7-2107-e510-5e642f060dec"
+  },
+  {
+    "Action": "microsoft.directory/roleDefinitions/allProperties/allTasks",
+    "Count": 1.0,
+    "PrincipalKey": "e06286bc-ba78-d52f-25b8-fa9ea0627739"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "e185c612-a214-d983-7cd0-cd97b7816492"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "e36ce9cf-58dd-bec8-915a-d5a13eae5da2"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "e4122e7d-b568-ac10-c9ff-6f4f70a8ba24"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "e477e112-0cd3-720f-3e52-c9c58a028433"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "e49dfdad-b2bd-0bc0-93a2-957a3d549c15"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "e4f5e260-4a78-6abf-b33a-f78c96371896"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "e646c477-960d-8fcd-b461-3470e921405b"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "e7038b27-2de1-fc47-1d08-3298afe941d7"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "e73af5c5-5416-6482-0383-f9c6be75c429"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "e8346ef9-13b6-2173-2a24-c7cb96d3a326"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "e8bc762d-5ad2-56a2-71fa-4c75fd37ecbb"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "e92690f7-7426-a313-64d6-3382b9579cc4"
+  },
+  {
+    "Action": "microsoft.directory/roleAssignments/allProperties/update",
+    "Count": 1.0,
+    "PrincipalKey": "ea9e5e52-11bf-753e-e118-04447576f9a2"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "eba281ff-3195-6802-8905-271939ff1ecb"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "ebceaac7-f69d-8575-dd57-e62d10f0d397"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "ec9e3449-80ff-7f08-bc6a-6fbfe5c46a26"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "ee131f61-b6c6-0806-7919-b7a25a0e8eba"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "ee66199f-ad33-af30-6706-c91cf9d630a7"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "eea3f31e-2bdc-1b8d-caaa-e6a8fe2269d4"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "ef4b5b72-cf9f-9e3d-a798-8391f11df7f3"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/delete",
+    "Count": 1.0,
+    "PrincipalKey": "ef70f87e-1f20-a266-a06b-0ca59268fa7d"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "ef7a202d-dca9-af2f-14fb-aa6eb8f3dcbf"
+  },
+  {
+    "Action": "microsoft.directory/applications/delete",
+    "Count": 1.0,
+    "PrincipalKey": "ef907709-c4e5-f99d-14e6-dcdfd9b0b761"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "efadcd4b-383c-11d2-3e3a-c581dba92aef"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "f053b667-56ab-d7ed-a625-11b906e58c82"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "f2f979a8-2757-2630-be74-b55cdf53e2fb"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "f3a7092d-7896-2f04-bd6f-d260248ce122"
+  },
+  {
+    "Action": "microsoft.directory/users/password/update",
+    "Count": 1.0,
+    "PrincipalKey": "f53e3e52-a78d-23d5-83cc-949f3ee49993"
+  },
+  {
+    "Action": "microsoft.directory/groups/create",
+    "Count": 1.0,
+    "PrincipalKey": "f5465691-9312-41d0-fca0-c63b18287126"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "f5b0b487-fe77-4819-87df-46cafa92ad43"
+  },
+  {
+    "Action": "microsoft.directory/applications/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "f7a73ed1-d495-4cdc-bf9d-a01b92d4f14a"
+  },
+  {
+    "Action": "microsoft.directory/users/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "f7f14841-7dd0-8932-61af-c822d426d386"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "f85412c1-8aa4-142e-58da-156638aa72c0"
+  },
+  {
+    "Action": "microsoft.directory/groups/members/update",
+    "Count": 1.0,
+    "PrincipalKey": "f90d96ff-55be-76e4-8697-bc348c147bfe"
+  },
+  {
+    "Action": "microsoft.directory/groups/delete",
+    "Count": 1.0,
+    "PrincipalKey": "f9c59220-4b9b-d52a-244f-4675b5589a71"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "fb06dcf3-4c27-6f12-d44e-017ead058dc5"
+  },
+  {
+    "Action": "microsoft.directory/users/delete",
+    "Count": 1.0,
+    "PrincipalKey": "fb539947-62ea-6af2-bc0f-494daa9060fc"
+  },
+  {
+    "Action": "microsoft.directory/groups/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "fb904f91-b48e-c8b0-57f0-77c02aa057b9"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/basic/update",
+    "Count": 1.0,
+    "PrincipalKey": "fbcc5c76-3325-b164-fcbe-79ee7014902c"
+  },
+  {
+    "Action": "microsoft.directory/users/create",
+    "Count": 1.0,
+    "PrincipalKey": "fc670413-50a9-13ce-4f2c-af5921d41260"
+  },
+  {
+    "Action": "microsoft.directory/conditionalAccessPolicies/create",
+    "Count": 1.0,
+    "PrincipalKey": "fd197985-e197-7fab-f9e0-581612f0b5f5"
+  },
+  {
+    "Action": "microsoft.directory/servicePrincipals/create",
+    "Count": 1.0,
+    "PrincipalKey": "feed92df-c7c9-29c5-c817-5b0970e0cdd8"
+  }
+]
