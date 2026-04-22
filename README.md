@@ -99,6 +99,19 @@ Connect-MgGraph -Scopes 'AuditLog.Read.All'
 
 Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Starting in `Invoke-RoleMiningPipeline.ps1` **2.0**, `-RoleSchema` must be supplied explicitly for schema-neutral sources (`CSV`, `LogAnalytics`), and `[CmdletBinding(PositionalBinding = $false)]` disables positional parameters on this entry point — all parameters must be specified by name. The previous behavior treated Azure RBAC as the implicit default, which made no principled sense for CSV/LogAnalytics inputs that could equally hold Entra, and which also would not extend cleanly as AWS IAM, GCP IAM, and Active Directory schemas are added. Existing `CSV` or `LogAnalytics` invocations must be updated to pass `-RoleSchema AzureRbac` (for the previous behavior) or `-RoleSchema EntraId` (for Entra custom roles). `ActivityLog` and `EntraId` invocations are unaffected by the `-RoleSchema` change.
 
+### Entra ID Log Analytics ingestion (`-InputMode LogAnalytics -RoleSchema EntraId`)
+
+When the Entra ID directory audit logs are ingested from a Log Analytics workspace, the KQL query issued by `Get-EntraIdAuditEventFromLogAnalytics` collapses retry duplicates **server-side** using `arg_min(TimeGenerated, ...)` over the composite key `(PrincipalKey, OperationName, CorrelationId)`, so that only the earliest row per composite key is returned to the client. Rows whose `CorrelationId` is missing (null, empty, or whitespace-only, matching the `REQ-DED-001` contract) are preserved unchanged via a `union` branch and are not collapsed.
+
+Everything downstream of ingestion is unchanged:
+
+- Activity display names are still mapped to `microsoft.directory/*` resource actions on the PowerShell side via `ConvertTo-EntraIdResourceAction`, preserving the camelCase segments that Microsoft Graph requires.
+- The `CanonicalEntraIdEvent` contract (DC-6) emitted by the ingestion adapter is unchanged.
+- `Remove-DuplicateCanonicalEvent` continues to act as the authoritative dedup gate after ingestion, so cross-adapter equivalence is preserved.
+- Activities that the mapping table does not resolve are still recorded in `entra_unmapped_activities.csv`, whose schema is codified by a Pester contract test at `tests/PowerShell/Export-UnmappedActivityReport.Contract.Tests.ps1`.
+
+The server-side retry-collapse lowers wire volume and client-side memory pressure at production fixture sizes without changing any emitted output. See `REQ-ING-005` in `docs/spec/requirements.md` for the full contract and equivalence gate.
+
 ## Output Artifacts
 
 | File | Description |
@@ -110,6 +123,7 @@ Prior versions silently routed all non-`EntraId` modes to Azure RBAC output. Sta
 | `clusters.json` | Cluster-to-action mapping with principal lists |
 | `role_cluster_<id>.json` | One Azure custom role definition per cluster (when `-RoleSchema AzureRbac`) |
 | `entra_role_cluster_<id>.json` | One Entra ID custom role definition per cluster (when `-RoleSchema EntraId`) |
+| `entra_unmapped_activities.csv` | Diagnostic list of Entra ID activities that did not map to a `microsoft.directory/*` action, emitted when the Entra ID ingestion path encounters at least one unmapped activity. Schema is codified by `tests/PowerShell/Export-UnmappedActivityReport.Contract.Tests.ps1`. |
 
 ## Who It's For
 

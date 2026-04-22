@@ -166,7 +166,30 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     output; row-count gate in the equivalence suite asserts
     `emitted <= floor((1 - DuplicateRatio + 0.10) * baseline)` for the
     locked synthetic fixture parameters (`Count=10000`, `Seed=42`,
-    `DuplicateRatio in {0.0, 0.25, 0.5}`).
+    `DuplicateRatio in {0.0, 0.25, 0.5}`). The
+    `entra_unmapped_activities.csv` diagnostic artifact emitted when the
+    Entra ID ingestion path (both `-InputMode EntraId` and
+    `-InputMode LogAnalytics -RoleSchema EntraId`) encounters one or
+    more activity display names absent from the
+    `ConvertTo-EntraIdResourceAction` mapping table is defined by the
+    contract test at
+    `tests/PowerShell/Export-UnmappedActivityReport.Contract.Tests.ps1`,
+    which is the authoritative definition of the artifact's header,
+    column order, and per-row invariants.
+  - **Option C deferral:** Server-side activity-to-action mapping
+    (embedding the `ConvertTo-EntraIdResourceAction` mapping table
+    inside the KQL query as a `datatable` literal) was evaluated and
+    deferred. Rationale: the retry-collapse in REQ-ING-005's current
+    implementation eliminates the dominant wire-volume cost for
+    directory audit logs; embedding the mapping table in KQL would
+    require a code-generation toolchain to prevent drift between the
+    PowerShell mapping and the KQL copy, plus a secondary reverse-join
+    query to reconstruct the unmapped-activity diagnostic artifact.
+    This work becomes in-scope only when production-tenant telemetry
+    shows (a) stage-1 wall-clock > 30 seconds for a 30-day ingestion
+    window after retry-collapse and query partitioning are both in
+    place, AND (b) the ratio of KQL-returned rows to distinct
+    (PrincipalKey, Action) pairs exceeds 5.0.
 
 ### Canonicalization
 
