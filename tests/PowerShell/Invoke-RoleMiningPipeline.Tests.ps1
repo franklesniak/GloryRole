@@ -1109,26 +1109,19 @@ Describe "Invoke-RoleMiningPipeline" {
             # Arrange
             $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
             try {
-                # Act
-                $objException = $null
-                try {
+                # Act / Assert -- any exception (triad-related or not)
+                # fails the test, which matches the "accepts" contract:
+                # ValidateRange binding on the triad is wired on the
+                # pipeline, the triad is silently ignored under
+                # -InputMode CSV per pipeline convention, and the CSV
+                # run reaches completion without raising.
+                {
                     & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
                         -OutputPath $strOutputPath `
                         -EntraIdInitialSliceHours 168 `
                         -EntraIdMinSliceMinutes 1440 `
                         -EntraIdMaxRecordHint 500000
-                } catch {
-                    $objException = $_
-                }
-
-                # Assert - any error raised MUST NOT be a parameter-
-                # binding error complaining about any of the three
-                # Entra LA partitioning parameters.
-                if ($null -ne $objException) {
-                    $objException.Exception.Message | Should -Not -Match 'EntraIdInitialSliceHours'
-                    $objException.Exception.Message | Should -Not -Match 'EntraIdMinSliceMinutes'
-                    $objException.Exception.Message | Should -Not -Match 'EntraIdMaxRecordHint'
-                }
+                } | Should -Not -Throw
             } finally {
                 if (Test-Path -LiteralPath $strOutputPath) {
                     Remove-Item -LiteralPath $strOutputPath -Recurse -Force

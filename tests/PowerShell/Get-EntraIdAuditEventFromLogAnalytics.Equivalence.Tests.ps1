@@ -36,15 +36,17 @@ BeforeAll {
         # .INPUTS
         # None. You can't pipe objects to this function.
         # .OUTPUTS
-        # [object[]] The filtered rows.
+        # [object] Each mock row whose TimeGenerated falls within the
+        # parsed KQL time window. Emitted once per matching row via the
+        # success stream; callers typically collect with `@(...)`.
         # .NOTES
         # PRIVATE/INTERNAL HELPER -- This function is not part of the
         # public API surface. It exists only to support time-window-
         # aware mocking of the Log Analytics query cmdlet.
         #
-        # Version: 1.1.20260422.0
+        # Version: 1.2.20260422.0
         [CmdletBinding()]
-        [OutputType([object[]])]
+        [OutputType([object])]
         param (
             [Parameter(Mandatory = $true)]
             [string]$Query,

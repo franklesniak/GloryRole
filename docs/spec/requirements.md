@@ -176,10 +176,12 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     protects the ingestion path against the documented Log Analytics Query
     API limits (500 000 rows, ~100 MB raw / 64 MB compressed, 10-minute
     timeout) and composes cleanly with the Option A server-side collapse:
-    each chunk's KQL runs the full `arg_min` collapse independently, and
-    retry duplicates cannot straddle chunk boundaries because they share
-    a `CorrelationId` (and therefore a single logical `TimeGenerated`
-    neighborhood) by definition.
+    each chunk's KQL runs the full `arg_min` collapse independently,
+    which reduces retry duplicates that fall within the same chunk.
+    Retry duplicates that land on opposite sides of a chunk boundary MAY
+    survive the per-chunk collapse, but `Remove-DuplicateCanonicalEvent`
+    still deduplicates them client-side and therefore preserves
+    correctness.
   - **Partitioning parameters.** The Entra LA ingestion path exposes a
     triad of slice-tuning parameters on
     `Get-EntraIdAuditEventFromLogAnalytics.ps1` and surfaces all three on

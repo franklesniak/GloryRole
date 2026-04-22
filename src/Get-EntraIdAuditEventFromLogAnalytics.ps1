@@ -268,13 +268,16 @@ function Get-EntraIdAuditEventFromLogAnalytics {
                 # slice; the Option A server-side retry-collapse
                 # (arg_min over PrincipalKey, OperationName,
                 # CorrelationId with the null-CorrelationId union
-                # bypass) runs independently per chunk and composes
-                # correctly because retry duplicates share a
-                # CorrelationId and therefore cannot straddle chunk
-                # boundaries in any tenant that issues a single
-                # correlation ID per logical operation. The category
-                # filter clause is invariant across chunks and was
-                # built once above the loop.
+                # bypass) runs independently per chunk. This
+                # pre-collapses retry duplicates whose TimeGenerated
+                # values fall within the same chunk, reducing payload
+                # volume before records cross the wire. Retry
+                # duplicates can still straddle chunk boundaries when
+                # their timestamps land in different chunks; those
+                # survivors are removed downstream by
+                # Remove-DuplicateCanonicalEvent. The category filter
+                # clause is invariant across chunks and was built
+                # once above the loop.
                 $strSegStartUtc = $dtSegStart.ToString("o")
                 $strSegEndUtc = $dtSegEnd.ToString("o")
                 if ($boolTerminalChunk) {
