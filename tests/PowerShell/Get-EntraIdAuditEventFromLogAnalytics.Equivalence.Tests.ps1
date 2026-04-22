@@ -89,8 +89,11 @@ BeforeAll {
         #   | summarize arg_min(TimeGenerated, Category, PrincipalType,
         #                       PrincipalUPN, AppId, RecordId)
         #       by PrincipalKey, OperationName, CorrelationIdNormalized
-        #   | project-rename CorrelationId = CorrelationIdNormalized
-        #   | union (src | where isempty(CorrelationIdNormalized))
+        #   | project-rename TimeGenerated = min_TimeGenerated,
+        #                    CorrelationId = CorrelationIdNormalized
+        #   | project TimeGenerated, OperationName, Category, PrincipalKey, ...
+        #   | union (src | where isempty(CorrelationIdNormalized)
+        #                | project TimeGenerated, OperationName, Category, ...)
         #
         # Rows whose CorrelationId is not null, empty, or whitespace-only
         # are grouped by the composite key
@@ -107,10 +110,10 @@ BeforeAll {
         # .EXAMPLE
         # $arrRaw = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.25 -Seed 42)
         # $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
-        # # # $arrCollapsed contains the same rows as $arrRaw, except that
-        # # # retry duplicates sharing (PrincipalKey, OperationName,
-        # # # CorrelationId) have been collapsed to the single row with
-        # # # the earliest TimeGenerated per group.
+        # # $arrCollapsed contains the same rows as $arrRaw, except that
+        # # retry duplicates sharing (PrincipalKey, OperationName,
+        # # CorrelationId) have been collapsed to the single row with
+        # # the earliest TimeGenerated per group.
         # .INPUTS
         # None. You cannot pipe objects to this function.
         # .OUTPUTS
@@ -121,7 +124,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.2.20260422.0
+        # Version: 1.3.20260422.0
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
