@@ -149,11 +149,24 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
   activity display names to `microsoft.directory/*` resource action strings
   while preserving camelCase segments, and producing DC-6 canonical events
   that flow through the standard deduplication and aggregation pipeline.
+  The KQL query MUST collapse retry duplicates server-side on the composite
+  key `(PrincipalKey, OperationName, CorrelationId)` using
+  `arg_min(TimeGenerated, ...)` so that the earliest row per key is kept,
+  and MUST preserve rows whose `CorrelationId` is missing, where "missing"
+  is defined consistently with REQ-DED-001 as `null`, empty, or
+  whitespace-only, via a union branch.
   - **Rationale:** Enables Entra ID role mining from workspaces that receive
     directory audit logs via diagnostic settings, without requiring a direct
-    Microsoft Graph connection.
+    Microsoft Graph connection. Server-side retry collapse reduces the
+    number of rows transferred over the wire and processed client-side,
+    which materially lowers cost and memory pressure at production fixture
+    sizes while preserving the contract that `Remove-DuplicateCanonicalEvent`
+    would otherwise enforce client-side.
   - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
-    output.
+    output; row-count gate in the equivalence suite asserts
+    `emitted <= floor((1 - DuplicateRatio + 0.10) * baseline)` for the
+    locked synthetic fixture parameters (`Count=10000`, `Seed=42`,
+    `DuplicateRatio in {0.0, 0.25, 0.5}`).
 
 ### Canonicalization
 

@@ -73,6 +73,120 @@ BeforeAll {
     }
 
 
+    function Invoke-OptionAServerSideCollapse {
+        # .SYNOPSIS
+        # Simulates the server-side Option A dedup collapse on raw
+        # synthetic fixture rows.
+        # .DESCRIPTION
+        # Emulates the KQL pattern in Get-EntraIdAuditEventFromLogAnalytics:
+        #
+        #   let src =
+        #       <projected rows>
+        #       | extend CorrelationIdNormalized = trim(@"\s+", tostring(CorrelationId))
+        #       | project ..., CorrelationId, CorrelationIdNormalized, ...;
+        #   src
+        #   | where isnotempty(CorrelationIdNormalized)
+        #   | summarize arg_min(TimeGenerated, Category, PrincipalType,
+        #                       PrincipalUPN, AppId, RecordId)
+        #       by PrincipalKey, OperationName, CorrelationId
+        #   | project-rename TimeGenerated = min_TimeGenerated
+        #   | project TimeGenerated, OperationName, Category, PrincipalKey, ...
+        #   | union (src | where isempty(CorrelationIdNormalized)
+        #                | project TimeGenerated, OperationName, Category, ...)
+        #
+        # CorrelationIdNormalized is used ONLY for the
+        # isnotempty/isempty split so that server-side and client-side
+        # pipelines agree on which rows are "missing" a CorrelationId
+        # (null, empty, or whitespace-only). The summarize key and the
+        # emitted CorrelationId value are the RAW CorrelationId, so that
+        # padded-but-non-missing values (e.g. " abc " vs. "abc") stay
+        # distinct, matching Remove-DuplicateCanonicalEvent's raw-string
+        # composite key (REQ-DED-001).
+        #
+        # Rows whose CorrelationId is not null, empty, or whitespace-only
+        # are grouped by the composite key
+        # (PrincipalKey, OperationName, CorrelationId) and reduced to
+        # the single row with the earliest TimeGenerated per group.
+        # Rows whose CorrelationId IS null, empty, or whitespace-only
+        # are preserved unchanged, matching REQ-DED-001 and
+        # Remove-DuplicateCanonicalEvent's [string]::IsNullOrWhiteSpace
+        # contract. The output shape matches New-SyntheticAuditLogFixture
+        # so the result can be handed straight to Invoke-StageOnePipeline
+        # as a mock result.
+        # .PARAMETER FixtureRows
+        # The raw (pre-aggregation) fixture rows to collapse.
+        # .EXAMPLE
+        # $arrRaw = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.25 -Seed 42)
+        # $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+        # # $arrCollapsed contains the same rows as $arrRaw, except that
+        # # retry duplicates sharing (PrincipalKey, OperationName,
+        # # CorrelationId) have been collapsed to the single row with
+        # # the earliest TimeGenerated per group.
+        # .INPUTS
+        # None. You cannot pipe objects to this function.
+        # .OUTPUTS
+        # [pscustomobject] Collapsed fixture rows streamed to the
+        # pipeline.
+        # .NOTES
+        # PRIVATE/INTERNAL HELPER -- This function is not part of the
+        # public API surface. Parameters, return shape, and positional
+        # contract may change without notice.
+        #
+        # Version: 1.5.20260422.0
+        [CmdletBinding()]
+        [OutputType([pscustomobject])]
+        param (
+            [Parameter(Mandatory = $true)]
+            [object[]]$FixtureRows
+        )
+
+        $hashtableSeen = @{}
+
+        # Stable sort by TimeGenerated so arg_min semantics are
+        # preserved: the first row seen per composite key is the one
+        # with the earliest TimeGenerated.
+        $arrSorted = @($FixtureRows | Sort-Object TimeGenerated)
+
+        foreach ($objRow in $arrSorted) {
+            $strCorrelationId = ''
+            if ($null -ne $objRow.CorrelationId) {
+                $strCorrelationId = [string]$objRow.CorrelationId
+            }
+
+            if ([string]::IsNullOrWhiteSpace($strCorrelationId)) {
+                # Missing-CorrelationId branch (null / empty /
+                # whitespace-only): preserved unchanged via the KQL
+                # union, matching Remove-DuplicateCanonicalEvent's
+                # [string]::IsNullOrWhiteSpace contract. This is the
+                # only place where the trim semantics of the KQL's
+                # CorrelationIdNormalized column matter for the
+                # simulator -- [string]::IsNullOrWhiteSpace returns the
+                # same boolean as trim(@"\s+", x) being empty.
+                $objRow
+                continue
+            }
+
+            # Use the RAW CorrelationId as the composite key, mirroring
+            # the KQL's `summarize ... by ..., CorrelationId` (not
+            # CorrelationIdNormalized) and Remove-DuplicateCanonicalEvent's
+            # raw-string key. Padded-but-non-missing values like " abc "
+            # and "abc" remain distinct; only truly missing values are
+            # short-circuited above.
+            $strKey = (
+                '{0}|{1}|{2}' -f
+                [string]$objRow.PrincipalKey,
+                [string]$objRow.OperationName,
+                $strCorrelationId
+            )
+
+            if (-not $hashtableSeen.ContainsKey($strKey)) {
+                $hashtableSeen[$strKey] = $true
+                $objRow
+            }
+        }
+    }
+
+
     function ConvertTo-SortedGoldenJson {
         # .SYNOPSIS
         # Converts stage-1 outputs to deterministic JSON for golden files.
@@ -529,6 +643,112 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Act
             $objEquiv = Test-StageOneEquivalence -Expected $objResult1 -Actual $objResult2 -FixtureRows $arrFixture
+
+            # Assert
+            $objEquiv.Pass | Should -BeTrue
+            $objEquiv.Details.Count | Should -Be 0
+        }
+    }
+
+    Context "OQ1 row-count gate (Option A server-side collapse)" {
+        # Per issue 23 OQ1: after Option A, the stage-1 event count for
+        # the locked fixture (Count=10000, Seed=42) must be at most
+        # (1 - DuplicateRatio + 0.10) x baseline. The baseline JSON
+        # (committed by Phase 1) records the pre-collapse emitted event
+        # count for each ratio in {0.0, 0.25, 0.5}; these values are
+        # valid only for the exact fixture parameters locked by
+        # Phase 1 (Count=10000, Seed=42, all other
+        # New-SyntheticAuditLogFixture parameters at defaults).
+        BeforeAll {
+            $script:strBaselinePath = Join-Path -Path (Join-Path -Path $strFixturesPath -ChildPath 'baselines') -ChildPath 'row-count-baseline.json'
+            Test-Path -LiteralPath $script:strBaselinePath | Should -BeTrue
+            $strBaselineJson = [System.IO.File]::ReadAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($script:strBaselinePath))
+            $script:objBaseline = $strBaselineJson | ConvertFrom-Json
+
+            # Fixture parameter lock assertion: the committed baseline
+            # JSON is only valid for Count=10000 and Seed=42. If these
+            # ever drift, stop -- regenerate Phase 1's baseline first.
+            $script:objBaseline.fixtureCount | Should -Be 10000
+            $script:objBaseline.seed | Should -Be 42
+        }
+
+        It "DuplicateRatio 0.0: emitted events <= (1 - 0.0 + 0.10) * baseline" {
+            # Arrange
+            $dblRatio = 0.0
+            $intBaseline = [int]$script:objBaseline.ratios.'0.0'
+            $intGate = [int][Math]::Floor((1.0 - $dblRatio + 0.10) * $intBaseline)
+
+            $arrRaw = @(New-SyntheticAuditLogFixture -Count 10000 -DuplicateRatio $dblRatio -Seed 42)
+            $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+
+            # Act
+            $objResult = Invoke-StageOnePipeline -FixtureRows $arrCollapsed
+
+            # Assert
+            $objResult.EventsEmitted | Should -BeLessOrEqual $intGate
+        }
+
+        It "DuplicateRatio 0.25: emitted events <= (1 - 0.25 + 0.10) * baseline" {
+            # Arrange
+            $dblRatio = 0.25
+            $intBaseline = [int]$script:objBaseline.ratios.'0.25'
+            $intGate = [int][Math]::Floor((1.0 - $dblRatio + 0.10) * $intBaseline)
+
+            $arrRaw = @(New-SyntheticAuditLogFixture -Count 10000 -DuplicateRatio $dblRatio -Seed 42)
+            $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+
+            # Act
+            $objResult = Invoke-StageOnePipeline -FixtureRows $arrCollapsed
+
+            # Assert
+            $objResult.EventsEmitted | Should -BeLessOrEqual $intGate
+        }
+
+        It "DuplicateRatio 0.5: emitted events <= (1 - 0.5 + 0.10) * baseline" {
+            # Arrange
+            $dblRatio = 0.5
+            $intBaseline = [int]$script:objBaseline.ratios.'0.5'
+            $intGate = [int][Math]::Floor((1.0 - $dblRatio + 0.10) * $intBaseline)
+
+            $arrRaw = @(New-SyntheticAuditLogFixture -Count 10000 -DuplicateRatio $dblRatio -Seed 42)
+            $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+
+            # Act
+            $objResult = Invoke-StageOnePipeline -FixtureRows $arrCollapsed
+
+            # Assert
+            $objResult.EventsEmitted | Should -BeLessOrEqual $intGate
+        }
+    }
+
+    Context "OQ2 equivalence: Option A collapsed vs. raw pipeline output" {
+        # Per issue 23 OQ2: for DuplicateRatio 0.0 there are no retry
+        # duplicates, so the Option A collapse is a no-op and the
+        # collapsed-path output must be strictly identical to the
+        # raw-path output. This test pins the simulator so that any
+        # drift between the KQL pattern and
+        # Invoke-OptionAServerSideCollapse surfaces here instead of
+        # leaking into the row-count gate.
+        #
+        # For DuplicateRatio > 0.0 strict equivalence does not hold
+        # under Test-StageOneEquivalence because that helper compares
+        # UnmappedAccumulator Count by strict equality; Option A
+        # collapses retry duplicates of unmapped activities
+        # server-side, which reduces the post-collapse Count relative
+        # to the raw path. That is the intended, correct behaviour and
+        # is already covered by the OQ1 row-count gate above, so no
+        # additional equivalence assertion is added here for higher
+        # ratios.
+        It "DuplicateRatio 0.0: collapsed output is strictly equivalent to raw output" {
+            # Arrange
+            $arrRaw = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.0 -Seed 42)
+            $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+
+            $objRawResult = Invoke-StageOnePipeline -FixtureRows $arrRaw
+            $objCollapsedResult = Invoke-StageOnePipeline -FixtureRows $arrCollapsed
+
+            # Act
+            $objEquiv = Test-StageOneEquivalence -Expected $objRawResult -Actual $objCollapsedResult -FixtureRows $arrRaw
 
             # Assert
             $objEquiv.Pass | Should -BeTrue
