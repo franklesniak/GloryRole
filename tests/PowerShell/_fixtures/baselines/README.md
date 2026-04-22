@@ -1,8 +1,22 @@
 # Committed baselines
 
-This directory holds committed baseline artifacts used by the equivalence
-test suite to gate future reduction work against the current (pre-reduction)
-behavior of stage-1 pipeline segments.
+## Metadata
+
+- **Status:** Active
+- **Owner:** Repository Maintainers
+- **Last Updated:** 2026-04-22
+- **Scope:** Documents committed baseline artifacts under
+  `tests/PowerShell/_fixtures/baselines/` that capture pre-reduction
+  behavior of stage-1 pipeline segments. Does not cover the reduction
+  work itself or the Phase 2 CI gate implementation.
+- **Related:** Issue #23 (Entra ID Log Analytics ingestion reduction),
+  [Documentation Writing Style](../../../../.github/instructions/docs.instructions.md)
+
+## Purpose
+
+This directory holds committed baseline artifacts that capture the current
+(pre-reduction) behavior of stage-1 pipeline segments for the Phase 2
+CI-enforced row-count gate and related reduction work.
 
 ## `row-count-baseline.json`
 
