@@ -350,7 +350,6 @@ src
                 # pathologically dense time windows.
                 $dblSegMinutes = ($dtSegEnd - $dtSegStart).TotalMinutes
                 if ($arrRows.Count -ge $EntraIdMaxRecordHint -and $dblSegMinutes -ge (2 * $EntraIdMinSliceMinutes)) {
-                    $intChunksSubdivided++
                     # Integer-minute midpoint so a chunk at the floor
                     # cannot spawn a half smaller than 1 minute due to
                     # floating-point remainder.
@@ -363,6 +362,10 @@ src
                         # Degenerate split (shouldn't happen given the
                         # minimum-width guard above, but be defensive):
                         # fall through and accept the chunk's rows.
+                        # Do NOT increment $intChunksSubdivided here,
+                        # because the chunk is emitted as-is in this
+                        # branch; the metric counts only chunks that
+                        # were actually pushed back onto the stack.
                         Write-Debug ("Adaptive subdivision produced a degenerate midpoint for chunk [{0:o} .. {1:o}]; accepting {2} rows as-is." -f $dtSegStart, $dtSegEnd, $arrRows.Count)
                     } else {
                         Write-Verbose ("  Chunk [{0:yyyy-MM-ddTHH:mm:ssZ} .. {1:yyyy-MM-ddTHH:mm:ssZ}] returned {2} rows (>= MaxRecordHint {3}); subdividing at {4:yyyy-MM-ddTHH:mm:ssZ}." -f $dtSegStart, $dtSegEnd, $arrRows.Count, $EntraIdMaxRecordHint, $dtMid)
@@ -376,6 +379,7 @@ src
                                     SegStart = $dtSegStart
                                     SegEnd = $dtMid
                                 }))
+                        $intChunksSubdivided++
                         continue
                     }
                 }
