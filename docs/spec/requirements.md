@@ -161,8 +161,11 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
   the terminal chunk, which uses a closed upper bound (`<=`), so no row
   is dropped at `End` and no row is double-counted at an internal
   chunk boundary. When a chunk's row count is at or above
-  `-EntraIdMaxRecordHint`, the chunk MUST be adaptively subdivided in
-  half down to a floor of `-EntraIdMinSliceMinutes`.
+  `-EntraIdMaxRecordHint`, the chunk MUST be adaptively subdivided at
+  its integer-minute midpoint while its width is at least twice
+  `-EntraIdMinSliceMinutes`; subdivision MUST stop once the chunk's
+  width is below twice `-EntraIdMinSliceMinutes` so that no resulting
+  half drops below the floor.
   - **Rationale:** Enables Entra ID role mining from workspaces that receive
     directory audit logs via diagnostic settings, without requiring a direct
     Microsoft Graph connection. Server-side retry collapse reduces the
@@ -184,7 +187,7 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     -RoleSchema EntraId`:
 
     | Parameter | Default | Validation |
-    |---|---|---|
+    | --- | --- | --- |
     | `-EntraIdInitialSliceHours` | `24` | `[ValidateRange(1, 168)]` |
     | `-EntraIdMinSliceMinutes` | `15` | `[ValidateRange(1, 1440)]` |
     | `-EntraIdMaxRecordHint` | `450000` | `[ValidateRange(1000, 500000)]` |
@@ -201,8 +204,8 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     are Entra-path-specific (null-`CorrelationId` union bypass, activity
     mapping) and may not transfer verbatim to other LA-backed paths.
     The `450000` default is approximately 90 % of the API cap, leaving
-    margin for rows that arrive between the count probe and the actual
-    query.
+    headroom so a chunk approaching the limit is subdivided before the
+    API can truncate the result.
   - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
     output; row-count gate in the equivalence suite asserts
     `emitted <= floor((1 - DuplicateRatio + 0.10) * baseline)` for the

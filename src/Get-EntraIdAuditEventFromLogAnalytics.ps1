@@ -89,18 +89,20 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # sensible defaults differ radically.
     # .PARAMETER EntraIdMinSliceMinutes
     # Minimum chunk width in minutes. When a chunk's row count reaches
-    # -EntraIdMaxRecordHint and the chunk's current width is greater
-    # than this floor, the chunk is adaptively subdivided in half and
-    # the halves are re-queried. Subdivision stops at this floor to
-    # guarantee progress. Default is 15.
+    # -EntraIdMaxRecordHint and the chunk's current width is at least
+    # twice this floor, the chunk is adaptively subdivided at its
+    # integer-minute midpoint so neither resulting half drops below
+    # the floor. Subdivision stops once the chunk's width is below
+    # twice this floor, to guarantee progress. Default is 15.
     # .PARAMETER EntraIdMaxRecordHint
     # Row-count ceiling that triggers adaptive subdivision. When a
     # chunk's query returns at least this many rows, the chunk is
-    # subdivided (if its width exceeds -EntraIdMinSliceMinutes) rather
-    # than emitted, because a value at or near the LA 500 000-row API
-    # cap implies the result was likely truncated. Default is 450 000
-    # (approximately 90 % of the API cap, leaving margin for rows that
-    # arrive between the count probe and the actual query).
+    # subdivided (if its current width is at least twice
+    # -EntraIdMinSliceMinutes) rather than emitted, because a value
+    # at or near the LA 500 000-row API cap implies the result was
+    # likely truncated. Default is 450 000 (approximately 90 % of
+    # the API cap, leaving headroom so a chunk approaching the limit
+    # is subdivided before the API can truncate the result).
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date))
     # # Retrieves all successful Entra ID admin events for the last
@@ -324,12 +326,13 @@ src
                 # likely approached (or hit) the LA Query API 500 000-
                 # row ceiling and its contents may be truncated. Split
                 # the chunk in half and re-query each half. Stop
-                # subdividing once the chunk's span is at or below the
-                # -EntraIdMinSliceMinutes floor; at that point we
-                # accept the chunk's results as-is to guarantee
-                # progress even on pathologically dense time windows.
+                # subdividing once the chunk's span is below twice the
+                # -EntraIdMinSliceMinutes floor; splitting further
+                # would yield a half below the floor, so we accept the
+                # chunk's results as-is to guarantee progress even on
+                # pathologically dense time windows.
                 $dblSegMinutes = ($dtSegEnd - $dtSegStart).TotalMinutes
-                if ($arrRows.Count -ge $EntraIdMaxRecordHint -and $dblSegMinutes -gt $EntraIdMinSliceMinutes) {
+                if ($arrRows.Count -ge $EntraIdMaxRecordHint -and $dblSegMinutes -ge (2 * $EntraIdMinSliceMinutes)) {
                     $intChunksSubdivided++
                     # Integer-minute midpoint so a chunk at the floor
                     # cannot spawn a half smaller than 1 minute due to
