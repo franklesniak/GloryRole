@@ -33,9 +33,9 @@ BeforeAll {
         # .EXAMPLE
         # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
         # $arrFiltered = Select-MockRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
-        # # # $arrFiltered contains only rows whose TimeGenerated falls
-        # # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
-        # # # (half-open upper bound because the KQL uses `<`, not `<=`).
+        # # $arrFiltered contains only rows whose TimeGenerated falls
+        # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+        # # (half-open upper bound because the KQL uses `<`, not `<=`).
         # .INPUTS
         # None. You can't pipe objects to this function.
         # .OUTPUTS

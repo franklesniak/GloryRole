@@ -30,9 +30,9 @@ BeforeAll {
         # .EXAMPLE
         # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
         # $arrFiltered = Select-MockRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
-        # # # $arrFiltered contains only rows whose TimeGenerated falls
-        # # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
-        # # # (half-open upper bound because the KQL uses `<`, not `<=`).
+        # # $arrFiltered contains only rows whose TimeGenerated falls
+        # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+        # # (half-open upper bound because the KQL uses `<`, not `<=`).
         # .INPUTS
         # None. You can't pipe objects to this function.
         # .OUTPUTS
@@ -139,10 +139,10 @@ BeforeAll {
         # .EXAMPLE
         # $arrFixture = @(New-SyntheticAuditLogFixture -Count 300 -DuplicateRatio 0.0 -Seed 42)
         # $objStageOne = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 6
-        # # # $objStageOne.Triples carries the per-principal action counts emitted by stage 1.
-        # # # $objStageOne.DisplayNameMap carries the principal-key -> display-name lookup.
-        # # # $objStageOne.UnmappedAccumulator carries any activity names absent from the mapping table.
-        # # # $objStageOne.EventsEmitted carries the count of audit events emitted before deduplication.
+        # # $objStageOne.Triples carries the per-principal action counts emitted by stage 1.
+        # # $objStageOne.DisplayNameMap carries the principal-key -> display-name lookup.
+        # # $objStageOne.UnmappedAccumulator carries any activity names absent from the mapping table.
+        # # $objStageOne.EventsEmitted carries the count of audit events emitted before deduplication.
         # .INPUTS
         # None. You can't pipe objects to this function.
         # .OUTPUTS
