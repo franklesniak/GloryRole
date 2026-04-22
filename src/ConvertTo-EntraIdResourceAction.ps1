@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 # ConvertFrom-EntraIdAuditRecord, which may be invoked thousands of
 # times per pipeline run) therefore avoid rebuilding the 150+ entry
 # hashtable on every invocation.
-$script:hashEntraIdActivityMap = $null
+$script:hashtableEntraIdActivityMap = $null
 
 
 function ConvertTo-EntraIdResourceAction {
@@ -67,7 +67,7 @@ function ConvertTo-EntraIdResourceAction {
     # .NOTES
     # The static mapping table covers common Entra ID administrative
     # audit activities. New mappings can be added to the
-    # $hashActivityMap hashtable as Entra ID evolves.
+    # $hashtableActivityMap hashtable as Entra ID evolves.
     #
     # Activities not in the mapping table return $null rather than a
     # generated fallback string. This ensures that only real
@@ -88,7 +88,7 @@ function ConvertTo-EntraIdResourceAction {
     #    (Get-MgRoleManagementDirectoryRoleDefinition -All).RolePermissions.AllowedResourceActions | Sort-Object -Unique
     #    Or by creating a test Entra ID custom role with that action
     #    and confirming it is accepted.
-    # 4. Add a new entry to the $hashActivityMap hashtable in this
+    # 4. Add a new entry to the $hashtableActivityMap hashtable in this
     #    file. The key MUST be the lowercase, trimmed activity display
     #    name. The value is the microsoft.directory/* action string
     #    (preserving camelCase segments).
@@ -102,7 +102,7 @@ function ConvertTo-EntraIdResourceAction {
     #   Position 0: ActivityDisplayName
     #   Position 1: Category
     #
-    # Version: 1.2.20260418.0
+    # Version: 1.2.20260422.0
 
     [CmdletBinding()]
     [OutputType([string])]
@@ -129,10 +129,10 @@ function ConvertTo-EntraIdResourceAction {
             #
             # Build the mapping once and cache it in script scope so
             # that subsequent calls reuse the same hashtable instance.
-            if ($null -ne $script:hashEntraIdActivityMap) {
-                $hashActivityMap = $script:hashEntraIdActivityMap
+            if ($null -ne $script:hashtableEntraIdActivityMap) {
+                $hashtableActivityMap = $script:hashtableEntraIdActivityMap
             } else {
-                $hashActivityMap = @{
+                $hashtableActivityMap = @{
                     #region Group management
                     'add member to group' = 'microsoft.directory/groups/members/update'
                     'remove member from group' = 'microsoft.directory/groups/members/update'
@@ -514,13 +514,13 @@ function ConvertTo-EntraIdResourceAction {
                     'update tenant governance settings' = 'microsoft.directory/tenantGovernance/settings/allProperties/update'
                     #endregion Tenant governance
                 }
-                $script:hashEntraIdActivityMap = $hashActivityMap
+                $script:hashtableEntraIdActivityMap = $hashtableActivityMap
             }
 
             $strLowerActivity = $ActivityDisplayName.Trim().ToLowerInvariant()
 
-            if ($hashActivityMap.ContainsKey($strLowerActivity)) {
-                $strMappedAction = $hashActivityMap[$strLowerActivity]
+            if ($hashtableActivityMap.ContainsKey($strLowerActivity)) {
+                $strMappedAction = $hashtableActivityMap[$strLowerActivity]
                 if ($boolVerbose) {
                     Write-Verbose ("Mapped activity '{0}' to '{1}'." -f $ActivityDisplayName, $strMappedAction)
                 }

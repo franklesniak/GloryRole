@@ -68,21 +68,21 @@ Describe "New-SyntheticAuditLogFixture" {
 
             # Group by CorrelationId (excluding empty). Rows sharing the same
             # CorrelationId + OperationName + PrincipalKey are duplicates.
-            $hashGroups = @{}
+            $hashtableGroups = @{}
             foreach ($objRow in $arrRows) {
                 if ([string]::IsNullOrEmpty($objRow.CorrelationId)) {
                     continue
                 }
                 $strKey = ('{0}|{1}|{2}' -f $objRow.CorrelationId, $objRow.OperationName, $objRow.PrincipalKey)
-                if (-not $hashGroups.ContainsKey($strKey)) {
-                    $hashGroups[$strKey] = 0
+                if (-not $hashtableGroups.ContainsKey($strKey)) {
+                    $hashtableGroups[$strKey] = 0
                 }
-                $hashGroups[$strKey]++
+                $hashtableGroups[$strKey]++
             }
             $intDuplicates = 0
-            foreach ($strKey in $hashGroups.Keys) {
-                if ($hashGroups[$strKey] -gt 1) {
-                    $intDuplicates += ($hashGroups[$strKey] - 1)
+            foreach ($strKey in $hashtableGroups.Keys) {
+                if ($hashtableGroups[$strKey] -gt 1) {
+                    $intDuplicates += ($hashtableGroups[$strKey] - 1)
                 }
             }
             $dblActualRatio = $intDuplicates / $intCount
@@ -228,22 +228,22 @@ Describe "New-SyntheticAuditLogFixture" {
 
         It "Duplicate rows share expected fields with their parent" {
             # Arrange - find groups by CorrelationId + OperationName + PrincipalKey
-            $hashGroups = @{}
+            $hashtableGroups = @{}
             foreach ($objRow in $script:arrDupRows) {
                 if ([string]::IsNullOrEmpty($objRow.CorrelationId)) {
                     continue
                 }
                 $strKey = ('{0}|{1}|{2}' -f $objRow.CorrelationId, $objRow.OperationName, $objRow.PrincipalKey)
-                if (-not $hashGroups.ContainsKey($strKey)) {
-                    $hashGroups[$strKey] = New-Object System.Collections.Generic.List[pscustomobject]
+                if (-not $hashtableGroups.ContainsKey($strKey)) {
+                    $hashtableGroups[$strKey] = New-Object System.Collections.Generic.List[pscustomobject]
                 }
-                [void]($hashGroups[$strKey].Add($objRow))
+                [void]($hashtableGroups[$strKey].Add($objRow))
             }
 
             # Assert - groups with more than 1 member are duplicate groups
             $boolFoundDuplicateGroup = $false
-            foreach ($strKey in $hashGroups.Keys) {
-                $arrGroup = $hashGroups[$strKey]
+            foreach ($strKey in $hashtableGroups.Keys) {
+                $arrGroup = $hashtableGroups[$strKey]
                 if ($arrGroup.Count -le 1) {
                     continue
                 }

@@ -64,7 +64,7 @@ function Get-AzActivityAdminEvent {
     #   Position 1: End
     #   Position 2: SubscriptionIds
     #
-    # Version: 1.2.20260413.2
+    # Version: 1.2.20260422.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -126,7 +126,7 @@ function Get-AzActivityAdminEvent {
                 while ($objStack.Count -gt 0) {
                     $objSegment = $objStack.Pop()
 
-                    $hashParams = @{
+                    $hashtableParams = @{
                         StartTime = $objSegment.S
                         EndTime = $objSegment.E
                         MaxRecord = $MaxRecordHint
@@ -134,13 +134,13 @@ function Get-AzActivityAdminEvent {
                         ErrorAction = 'Stop'
                     }
                     if ($DetailedOutput) {
-                        $hashParams['DetailedOutput'] = $true
+                        $hashtableParams['DetailedOutput'] = $true
                     }
 
                     $objVerbosePreferenceAtStartOfBlock = $VerbosePreference
                     try {
                         $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
-                        $arrRaw = @(Get-AzActivityLog @hashParams)
+                        $arrRaw = @(Get-AzActivityLog @hashtableParams)
                         $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
                     } catch {
                         Write-Debug ("Get-AzActivityLog query failed: {0}" -f $_.Exception.Message)

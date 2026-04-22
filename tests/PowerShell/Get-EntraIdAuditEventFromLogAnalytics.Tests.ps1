@@ -47,7 +47,7 @@ BeforeAll {
         # public API surface. It exists only to support time-window-
         # aware mocking of the Log Analytics query cmdlet.
         #
-        # Version: 1.2.20260422.0
+        # Version: 1.2.20260422.1
         [CmdletBinding()]
         [OutputType([object])]
         param (
@@ -394,7 +394,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
             $dtStart = [datetime]'2026-01-01'
             $dtEnd = [datetime]'2026-03-20'
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockResults = @(
                 [pscustomobject]@{
@@ -425,21 +425,21 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert - only mapped event is returned
             $arrResult | Should -HaveCount 1
             $arrResult[0].PrincipalKey | Should -Be 'user-guid-001'
 
             # Assert - accumulator has the unmapped activity
-            $hashUnmapped.Count | Should -Be 1
+            $hashtableUnmapped.Count | Should -Be 1
             $strExpectedKey = 'Self-service password reset flow activity progress|UserManagement'
-            $hashUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
-            $hashUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
-            $hashUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
-            $hashUnmapped[$strExpectedKey].Count | Should -Be 1
-            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-002'
-            $hashUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'rec-002'
+            $hashtableUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
+            $hashtableUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
+            $hashtableUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
+            $hashtableUnmapped[$strExpectedKey].Count | Should -Be 1
+            $hashtableUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-002'
+            $hashtableUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'rec-002'
         }
 
         It "Increments count for repeated unmapped activities" {
@@ -447,7 +447,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
             $dtStart = [datetime]'2026-01-01'
             $dtEnd = [datetime]'2026-03-20'
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockResults = @(
                 [pscustomobject]@{
@@ -478,17 +478,17 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert - no mapped events
             $arrResult | Should -HaveCount 0
 
             # Assert - accumulator has one entry with count 2
-            $hashUnmapped.Count | Should -Be 1
+            $hashtableUnmapped.Count | Should -Be 1
             $strExpectedKey = 'User registered security info|UserManagement'
-            $hashUnmapped[$strExpectedKey].Count | Should -Be 2
+            $hashtableUnmapped[$strExpectedKey].Count | Should -Be 2
             # Sample IDs come from the first occurrence
-            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-001'
+            $hashtableUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-001'
         }
 
         It "Does not populate accumulator when parameter is not provided" {
@@ -529,7 +529,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
             $dtStart = [datetime]'2026-01-01'
             $dtEnd = [datetime]'2026-03-20'
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockResults = @(
                 [pscustomobject]@{
@@ -549,11 +549,11 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert
             $arrResult | Should -HaveCount 0
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not track rows with missing TimeGenerated as unmapped" {
@@ -563,7 +563,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             $strWorkspaceId = '12345678-abcd-1234-abcd-1234567890ab'
             $dtStart = [datetime]'2026-01-01'
             $dtEnd = [datetime]'2026-03-20'
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockResults = @(
                 [pscustomobject]@{
@@ -583,11 +583,11 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
             }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId $strWorkspaceId -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert
             $arrResult | Should -HaveCount 0
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
     }
 }

@@ -48,7 +48,7 @@ function New-FeatureIndex {
     # [pscustomobject] An object with FeatureNames (sorted action array)
     # and FeatureIndex (action-to-index hashtable).
     # .NOTES
-    # Version: 2.0.20260412.0
+    # Version: 2.0.20260422.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -81,16 +81,16 @@ function New-FeatureIndex {
 
             Write-Debug -Message ("Feature index internal state: {0} input counts, {1} unique features so far." -f $PrincipalActionCounts.Count, $arrFeatures.Count)
 
-            $hashIndex = @{}
+            $hashtableIndex = @{}
             for ($intIndex = 0; $intIndex -lt $arrFeatures.Count; $intIndex++) {
-                $hashIndex[[string]$arrFeatures[$intIndex]] = $intIndex
+                $hashtableIndex[[string]$arrFeatures[$intIndex]] = $intIndex
             }
 
             Write-Verbose -Message ("Feature index built: {0} unique features." -f $arrFeatures.Count)
 
             [pscustomobject]@{
                 FeatureNames = $arrFeatures
-                FeatureIndex = $hashIndex
+                FeatureIndex = $hashtableIndex
             }
         } catch {
             Write-Debug -Message ("Feature index build failed: {0}" -f $_.Exception.Message)

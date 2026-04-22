@@ -24,21 +24,21 @@ function ConvertTo-PrincipalDisplayNameMap {
     #     [pscustomobject]@{ PrincipalKey = '11111111-1111-1111-1111-111111111111'; PrincipalUPN = 'alice@contoso.com' }
     #     [pscustomobject]@{ PrincipalKey = '22222222-2222-2222-2222-222222222222'; PrincipalUPN = $null }
     # )
-    # $hashMap = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
-    # # $hashMap['11111111-1111-1111-1111-111111111111'] = 'alice@contoso.com'
-    # # $hashMap['22222222-2222-2222-2222-222222222222'] = '22222222-2222-2222-2222-222222222222'
+    # $hashtableMap = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+    # # $hashtableMap['11111111-1111-1111-1111-111111111111'] = 'alice@contoso.com'
+    # # $hashtableMap['22222222-2222-2222-2222-222222222222'] = '22222222-2222-2222-2222-222222222222'
     # .EXAMPLE
     # $arrEvents = @(
     #     [pscustomobject]@{ PrincipalKey = '11111111-1111-1111-1111-111111111111'; PrincipalUPN = 'alice@contoso.com' }
     #     [pscustomobject]@{ PrincipalKey = '11111111-1111-1111-1111-111111111111'; PrincipalUPN = 'alice.alt@contoso.com' }
     # )
-    # $hashMap = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+    # $hashtableMap = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
     # # First-write-wins: the second event for the same PrincipalKey is
     # # ignored, so the original UPN is preserved:
-    # # $hashMap['11111111-1111-1111-1111-111111111111'] = 'alice@contoso.com'
+    # # $hashtableMap['11111111-1111-1111-1111-111111111111'] = 'alice@contoso.com'
     # .EXAMPLE
-    # $hashMap = ConvertTo-PrincipalDisplayNameMap -Events @()
-    # # $hashMap.Count = 0
+    # $hashtableMap = ConvertTo-PrincipalDisplayNameMap -Events @()
+    # # $hashtableMap.Count = 0
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
@@ -64,7 +64,7 @@ function ConvertTo-PrincipalDisplayNameMap {
     # rules across ingestion modes that produce canonical events with
     # PrincipalUPN metadata (e.g., ActivityLog, EntraId).
     #
-    # Version: 1.0.20260415.0
+    # Version: 1.0.20260422.0
 
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -76,22 +76,22 @@ function ConvertTo-PrincipalDisplayNameMap {
 
     process {
         try {
-            $hashDisplayNames = @{}
+            $hashtableDisplayNames = @{}
 
             foreach ($objEvent in $Events) {
                 $strKey = [string]$objEvent.PrincipalKey
-                if ($hashDisplayNames.ContainsKey($strKey)) {
+                if ($hashtableDisplayNames.ContainsKey($strKey)) {
                     continue
                 }
 
                 if (-not [string]::IsNullOrWhiteSpace($objEvent.PrincipalUPN)) {
-                    $hashDisplayNames[$strKey] = [string]$objEvent.PrincipalUPN
+                    $hashtableDisplayNames[$strKey] = [string]$objEvent.PrincipalUPN
                 } else {
-                    $hashDisplayNames[$strKey] = $strKey
+                    $hashtableDisplayNames[$strKey] = $strKey
                 }
             }
 
-            return $hashDisplayNames
+            return $hashtableDisplayNames
         } catch {
             Write-Debug ("ConvertTo-PrincipalDisplayNameMap failed: {0}" -f $_.Exception.Message)
             throw

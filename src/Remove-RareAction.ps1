@@ -68,7 +68,7 @@ function Remove-RareAction {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 1.2.20260412.0
+    # Version: 1.2.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -88,20 +88,20 @@ function Remove-RareAction {
         Write-Verbose ("Pruning rare actions: MinDistinctPrincipals={0}, MinTotalCount={1}, InputCount={2}" -f $MinDistinctPrincipals, $MinTotalCount, $Counts.Count)
         try {
             $arrStats = @(Get-ActionStatFromCount -Counts $Counts)
-            $hashKeep = @{}
+            $hashtableKeep = @{}
 
             Write-Debug ("Stats computed: {0} distinct action(s) evaluated." -f $arrStats.Count)
 
             foreach ($objStat in $arrStats) {
                 if ($objStat.DistinctPrincipals -ge $MinDistinctPrincipals -and $objStat.TotalCount -ge $MinTotalCount) {
-                    $hashKeep[[string]$objStat.Action] = $true
+                    $hashtableKeep[[string]$objStat.Action] = $true
                 }
             }
 
-            $arrKept = @($Counts | Where-Object { $hashKeep.ContainsKey([string]$_.Action) })
-            $arrDropped = @($Counts | Where-Object { -not $hashKeep.ContainsKey([string]$_.Action) })
+            $arrKept = @($Counts | Where-Object { $hashtableKeep.ContainsKey([string]$_.Action) })
+            $arrDropped = @($Counts | Where-Object { -not $hashtableKeep.ContainsKey([string]$_.Action) })
 
-            Write-Debug ("Actions passing thresholds: {0}. Kept triples: {1}, Dropped triples: {2}." -f $hashKeep.Count, $arrKept.Count, $arrDropped.Count)
+            Write-Debug ("Actions passing thresholds: {0}. Kept triples: {1}, Dropped triples: {2}." -f $hashtableKeep.Count, $arrKept.Count, $arrDropped.Count)
 
             [pscustomobject]@{
                 Kept = $arrKept

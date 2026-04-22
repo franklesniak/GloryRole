@@ -64,7 +64,7 @@ function Invoke-KMeansClustering {
     #   Position 2: MaxIterations
     #   Position 3: Seed
     #
-    # Version: 1.2.20260413.0
+    # Version: 1.2.20260422.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -92,12 +92,12 @@ function Invoke-KMeansClustering {
             $objRandom = New-Object System.Random($Seed)
 
             # Initialize centroids by random selection
-            $hashChosen = @{}
+            $hashtableChosen = @{}
             $listCentroids = New-Object System.Collections.Generic.List[double[]]
             while ($listCentroids.Count -lt $NumberOfClusters) {
                 $intCandidateCentroidIndex = $objRandom.Next(0, $intNumberOfVectorRows)
-                if (-not $hashChosen.ContainsKey($intCandidateCentroidIndex)) {
-                    $hashChosen[$intCandidateCentroidIndex] = $true
+                if (-not $hashtableChosen.ContainsKey($intCandidateCentroidIndex)) {
+                    $hashtableChosen[$intCandidateCentroidIndex] = $true
                     $arrSourceVector = $VectorRows[$intCandidateCentroidIndex].Vector
                     $arrCentroid = New-Object double[] $arrSourceVector.Length
                     [Array]::Copy($arrSourceVector, $arrCentroid, $arrSourceVector.Length)
@@ -184,14 +184,14 @@ function Invoke-KMeansClustering {
             Write-Debug ("Computed SSE = {0}" -f $dblSumOfSquaredErrors)
 
             # Build assignment map
-            $hashAssignmentMap = @{}
+            $hashtableAssignmentMap = @{}
             for ($intPointIndex = 0; $intPointIndex -lt $intNumberOfVectorRows; $intPointIndex++) {
-                $hashAssignmentMap[[string]$VectorRows[$intPointIndex].PrincipalKey] = [int]$arrAssignments[$intPointIndex]
+                $hashtableAssignmentMap[[string]$VectorRows[$intPointIndex].PrincipalKey] = [int]$arrAssignments[$intPointIndex]
             }
 
             [pscustomobject]@{
                 K = $NumberOfClusters
-                Assignments = $hashAssignmentMap
+                Assignments = $hashtableAssignmentMap
                 Centroids = $listCentroids
                 SSE = [double]$dblSumOfSquaredErrors
             }

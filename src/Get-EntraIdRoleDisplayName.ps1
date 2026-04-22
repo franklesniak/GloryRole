@@ -72,7 +72,7 @@ function Get-EntraIdRoleDisplayName {
     #   Position 0: ResourceActions
     #   Position 1: ClusterId
     #
-    # Version: 1.0.20260415.1
+    # Version: 1.0.20260422.0
 
     [CmdletBinding()]
     [OutputType([string])]
@@ -96,7 +96,7 @@ function Get-EntraIdRoleDisplayName {
             # Map from resource type token (extracted from
             # microsoft.directory/{resourceType}/...) to a
             # human-friendly label and a weight for sorting.
-            $hashResourceLabels = @{
+            $hashtableResourceLabels = @{
                 'users' = 'User'
                 'groups' = 'Group'
                 'applications' = 'Application'
@@ -154,7 +154,7 @@ function Get-EntraIdRoleDisplayName {
             }
 
             # Priority order for display name (lower = appears first).
-            $hashResourcePriority = @{
+            $hashtableResourcePriority = @{
                 'User' = 1
                 'Group' = 2
                 'Application' = 3
@@ -173,7 +173,7 @@ function Get-EntraIdRoleDisplayName {
             }
 
             # Extract resource types from action strings and count them.
-            $hashResourceCounts = @{}
+            $hashtableResourceCounts = @{}
             foreach ($strAction in $ResourceActions) {
                 # Pattern: microsoft.directory/{resourceType}/{...}
                 if ($strAction -match '^microsoft\.directory/([^/]+)/') {
@@ -191,44 +191,44 @@ function Get-EntraIdRoleDisplayName {
 
                     # Map to label
                     $strLabel = $null
-                    if ($hashResourceLabels.ContainsKey($strResourceType)) {
-                        $strLabel = $hashResourceLabels[$strResourceType]
+                    if ($hashtableResourceLabels.ContainsKey($strResourceType)) {
+                        $strLabel = $hashtableResourceLabels[$strResourceType]
                     }
 
                     if ($null -ne $strLabel) {
-                        if ($hashResourceCounts.ContainsKey($strLabel)) {
-                            $hashResourceCounts[$strLabel] = $hashResourceCounts[$strLabel] + 1
+                        if ($hashtableResourceCounts.ContainsKey($strLabel)) {
+                            $hashtableResourceCounts[$strLabel] = $hashtableResourceCounts[$strLabel] + 1
                         } else {
-                            $hashResourceCounts[$strLabel] = 1
+                            $hashtableResourceCounts[$strLabel] = 1
                         }
                     }
                 }
             }
 
-            if ($hashResourceCounts.Count -eq 0) {
+            if ($hashtableResourceCounts.Count -eq 0) {
                 return ("{0}-EntraCluster-{1}" -f $Prefix, $ClusterId)
             }
 
             # Sort by priority (known types first), then by count
             # descending, then alphabetically.
-            $hashSortByPriority = @{
+            $hashtableSortByPriority = @{
                 Expression = {
-                    if ($hashResourcePriority.ContainsKey($_)) {
-                        $hashResourcePriority[$_]
+                    if ($hashtableResourcePriority.ContainsKey($_)) {
+                        $hashtableResourcePriority[$_]
                     } else {
                         100
                     }
                 }
             }
-            $hashSortByCount = @{
-                Expression = { $hashResourceCounts[$_] }
+            $hashtableSortByCount = @{
+                Expression = { $hashtableResourceCounts[$_] }
                 Descending = $true
             }
-            $hashSortByName = @{
+            $hashtableSortByName = @{
                 Expression = { $_ }
             }
             $arrSortedLabels = @(
-                $hashResourceCounts.Keys | Sort-Object -Property $hashSortByPriority, $hashSortByCount, $hashSortByName
+                $hashtableResourceCounts.Keys | Sort-Object -Property $hashtableSortByPriority, $hashtableSortByCount, $hashtableSortByName
             )
 
             # Determine suffix based on action types (create, delete,

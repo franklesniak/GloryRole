@@ -45,7 +45,7 @@ BeforeAll {
         # public API surface. It exists solely to keep the contract test
         # focused on the CSV-on-disk invariants that OQ4 defines.
         #
-        # Version: 1.0.20260422.1
+        # Version: 1.0.20260422.2
         [CmdletBinding()]
         [OutputType([void])]
         param (
@@ -96,9 +96,9 @@ BeforeAll {
             [pscustomobject]@{ Results = $FixtureRows }
         }
 
-        $hashUnmapped = @{}
-        $null = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId 'test-workspace-id' -Start ([datetime]'2025-12-01') -End ([datetime]'2026-01-16') -UnmappedActivityAccumulator $hashUnmapped)
-        return $hashUnmapped
+        $hashtableUnmapped = @{}
+        $null = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId 'test-workspace-id' -Start ([datetime]'2025-12-01') -End ([datetime]'2026-01-16') -UnmappedActivityAccumulator $hashtableUnmapped)
+        return $hashtableUnmapped
     }
 }
 
@@ -116,15 +116,15 @@ Describe "entra_unmapped_activities.csv contract (OQ4)" {
         # ratio is 0.1, which yields >= 1 unmapped activity for these
         # fixture sizes across all random seeds emitted by the generator.
         $script:arrFixture = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.25 -Seed 42)
-        $script:hashUnmapped = Invoke-UnmappedAccumulatorBuild -FixtureRows $script:arrFixture
+        $script:hashtableUnmapped = Invoke-UnmappedAccumulatorBuild -FixtureRows $script:arrFixture
 
         # Preconditions for the contract tests below. If either of these
         # fail, the fixture has drifted in a way that invalidates the
         # test -- not the contract itself.
-        $script:hashUnmapped.Count | Should -BeGreaterThan 0
+        $script:hashtableUnmapped.Count | Should -BeGreaterThan 0
 
         $script:strTempCsv = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ('entra_unmapped_activities_{0}.csv' -f ([Guid]::NewGuid().ToString('N')))
-        Export-UnmappedActivityReportForTest -Accumulator $script:hashUnmapped -Path $script:strTempCsv
+        Export-UnmappedActivityReportForTest -Accumulator $script:hashtableUnmapped -Path $script:strTempCsv
 
         $script:strResolvedCsv = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($script:strTempCsv)
         Test-Path -LiteralPath $script:strResolvedCsv | Should -BeTrue
