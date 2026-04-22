@@ -1022,7 +1022,10 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             # Assert -- at a 168h initial slice the window splits into
             # 7 chunks; adaptive subdivision on at least one chunk
             # that hits the 1000-row cap requires strictly more than
-            # 7 query invocations.
+            # 7 query invocations. In Pester 5, `Should -Invoke
+            # -Times N` without `-Exactly` is a minimum-count
+            # assertion (>= N), so this checks `>= 8` (i.e., strictly
+            # more than the 7-chunk no-subdivide baseline).
             Should -Invoke Invoke-AzOperationalInsightsQuery -Scope It -Times 8
         }
     }
