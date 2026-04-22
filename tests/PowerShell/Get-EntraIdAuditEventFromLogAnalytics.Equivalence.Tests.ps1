@@ -121,7 +121,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.1.20260422.0
+        # Version: 1.2.20260422.0
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
@@ -151,14 +151,32 @@ BeforeAll {
                 continue
             }
 
+            # Mirror the KQL's `CorrelationIdNormalized = trim(@"\s+", ...)`:
+            # group by the trimmed value and (on the summarize branch)
+            # project-rename CorrelationId = CorrelationIdNormalized, so
+            # the emitted row carries the trimmed value.
+            $strCorrelationIdNormalized = $strCorrelationId.Trim()
+
             $strKey = ('{0}|{1}|{2}' -f `
                     [string]$objRow.PrincipalKey, `
                     [string]$objRow.OperationName, `
-                    $strCorrelationId)
+                    $strCorrelationIdNormalized)
 
             if (-not $hashtableSeen.ContainsKey($strKey)) {
                 $hashtableSeen[$strKey] = $true
-                $objRow
+                if ($strCorrelationIdNormalized -ceq $strCorrelationId) {
+                    # No trim was applied; emit the raw fixture row to
+                    # avoid an unnecessary clone on the common path.
+                    $objRow
+                } else {
+                    # Trim changed the value; clone to avoid mutating the
+                    # caller's fixture array and set CorrelationId to the
+                    # normalized value so downstream behaviour matches
+                    # the KQL `project-rename CorrelationId = CorrelationIdNormalized`.
+                    $objRowNormalized = $objRow.PSObject.Copy()
+                    $objRowNormalized.CorrelationId = $strCorrelationIdNormalized
+                    $objRowNormalized
+                }
             }
         }
     }
