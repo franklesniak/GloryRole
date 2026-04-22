@@ -174,24 +174,24 @@ BeforeAll {
             [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $FixtureRows) }
         }
 
-        $hashUnmapped = @{}
+        $hashtableUnmapped = @{}
         $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics `
                 -WorkspaceId 'test-workspace-id' `
                 -Start ([datetime]'2025-12-01') `
                 -End ([datetime]'2026-01-16') `
-                -UnmappedActivityAccumulator $hashUnmapped `
+                -UnmappedActivityAccumulator $hashtableUnmapped `
                 -EntraIdInitialSliceHours $EntraIdInitialSliceHours `
                 -EntraIdMinSliceMinutes $EntraIdMinSliceMinutes `
                 -EntraIdMaxRecordHint $EntraIdMaxRecordHint)
 
         $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
-        $hashDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+        $hashtableDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
         $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
 
         return [pscustomobject]@{
             Triples = $arrCounts
-            DisplayNameMap = $hashDisplayNames
-            UnmappedAccumulator = $hashUnmapped
+            DisplayNameMap = $hashtableDisplayNames
+            UnmappedAccumulator = $hashtableUnmapped
             EventsEmitted = $arrEvents.Count
         }
     }
@@ -1104,12 +1104,12 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             Mock Invoke-AzOperationalInsightsQuery {
                 [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $arrSubdivFixture) }
             }
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             [void](@(Get-EntraIdAuditEventFromLogAnalytics `
                         -WorkspaceId 'test-workspace-id' `
                         -Start ([datetime]'2025-12-01') `
                         -End ([datetime]'2026-01-16') `
-                        -UnmappedActivityAccumulator $hashUnmapped `
+                        -UnmappedActivityAccumulator $hashtableUnmapped `
                         -EntraIdInitialSliceHours 168 `
                         -EntraIdMinSliceMinutes 15 `
                         -EntraIdMaxRecordHint 1000))

@@ -113,9 +113,9 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # # Retrieves only GroupManagement and UserManagement events from
     # # the last 7 days in the specified workspace.
     # .EXAMPLE
-    # $hashUnmapped = @{}
-    # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
-    # # $hashUnmapped now contains entries for each unmapped activity
+    # $hashtableUnmapped = @{}
+    # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashtableUnmapped)
+    # # $hashtableUnmapped now contains entries for each unmapped activity
     # # with Count, Category, and sample IDs for diagnostics.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId '12345678-1234-1234-1234-123456789012' -Start (Get-Date).AddDays(-30) -End (Get-Date) -EntraIdInitialSliceHours 6 -EntraIdMinSliceMinutes 5 -EntraIdMaxRecordHint 400000)

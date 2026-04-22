@@ -111,10 +111,10 @@
 # .PARAMETER EntraIdMaxRecordHint
 # Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
 # Row-count ceiling that triggers adaptive subdivision of a chunk's
-# time window. Default is 450 000 (~90 % of the LA Query API's
-# 500 000-row cap, leaving margin for rows arriving between the
-# count probe and the actual query). Silently ignored outside the
-# LA+EntraId branch.
+# time window. Default is 450 000 (approximately 90 % of the LA
+# Query API's 500 000-row cap, leaving headroom so a chunk
+# approaching the limit is subdivided before the API can truncate
+# the result). Silently ignored outside the LA+EntraId branch.
 #
 # .PARAMETER UnmappedActivityWarningThreshold
 # Percentage threshold (0-100) for emitting a warning when unmapped
