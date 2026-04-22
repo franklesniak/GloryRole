@@ -112,6 +112,20 @@ Everything downstream of ingestion is unchanged:
 
 The server-side retry-collapse lowers wire volume and client-side memory pressure at production fixture sizes without changing any emitted output. See `REQ-ING-005` in `docs/spec/requirements.md` for the full contract and equivalence gate.
 
+#### Query partitioning (Option B)
+
+To protect against the documented Log Analytics Query API limits (500 000 rows, ~100 MB raw / 64 MB compressed, 10-minute timeout), the `[Start, End]` range is partitioned into consecutive time-window chunks and each chunk is issued as a separate KQL query whose results are concatenated client-side. Partitioning composes cleanly with the server-side retry collapse: each chunk runs the full `arg_min` collapse independently, and retry duplicates cannot straddle chunk boundaries because they share a `CorrelationId` by definition. Chunks use a half-open upper bound (`<`) except for the terminal chunk, which uses a closed upper bound (`<=`), so no row is dropped at `End` and no row is double-counted at an internal chunk boundary. When a chunk's row count meets or exceeds `-EntraIdMaxRecordHint`, the chunk is adaptively subdivided in half down to a floor of `-EntraIdMinSliceMinutes` and the halves are re-queried.
+
+Three parameters are surfaced on both `Get-EntraIdAuditEventFromLogAnalytics` and `Invoke-RoleMiningPipeline.ps1`:
+
+| Parameter | Default | Validation | Purpose |
+| --- | --- | --- | --- |
+| `-EntraIdInitialSliceHours` | `24` | `1..168` | Initial chunk width in hours. The `[Start, End]` range is split into consecutive chunks of this width; the final chunk is truncated to `End`. |
+| `-EntraIdMinSliceMinutes` | `15` | `1..1440` | Subdivision floor. Adaptive subdivision stops when a chunk's width is at or below this value, to guarantee progress on pathologically dense time windows. |
+| `-EntraIdMaxRecordHint` | `450000` | `1000..500000` | Row-count ceiling that triggers adaptive subdivision. Defaults to ~90 % of the LA Query API 500 000-row cap, leaving margin for rows that arrive between the count probe and the actual query. |
+
+The triad is intentionally named distinctly from the Az path's `-InitialSliceHours` / `-MinSliceMinutes` / `-MaxRecordHint` triad because the two underlying APIs have fundamentally different quantitative limits (LA Query API's 500 000-row ceiling is two orders of magnitude higher than `Get-AzActivityLog`'s 5 000 default), so a shared parameter name with radically different sensible defaults would be a footgun.
+
 ## Output Artifacts
 
 | File | Description |

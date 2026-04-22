@@ -39,7 +39,7 @@
     "Category": "RoleManagement",
     "Count": 2,
     "SampleCorrelationId": "a218b493-e2f6-4178-6493-bfe1e5e9087c",
-    "SampleRecordId": "45d65ec0-dba9-4a5f-ae4c-77baa5ce784f"
+    "SampleRecordId": "6e208314-09b7-7010-a1ec-b5e4846676a2"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-133",
@@ -60,7 +60,7 @@
     "Category": "RoleManagement",
     "Count": 4,
     "SampleCorrelationId": "accc5944-2006-abf2-b06d-f53f239bdf43",
-    "SampleRecordId": "612c49c0-efa6-d732-35c6-f1dfc9d64f25"
+    "SampleRecordId": "d8247605-9c1e-9dce-01d3-41eb4596634b"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-154",
@@ -88,14 +88,14 @@
     "Category": "UserManagement",
     "Count": 3,
     "SampleCorrelationId": "b5d1a48f-0843-00b0-3cf7-a474680e6d5a",
-    "SampleRecordId": "46dbbb1e-3e59-e850-8244-13132c4f780e"
+    "SampleRecordId": "a2036032-ec15-46ba-dcb3-1c1e346bc514"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-209",
     "Category": "GroupManagement",
     "Count": 2,
     "SampleCorrelationId": "44575b4e-9174-d377-ba51-1bb4863513d8",
-    "SampleRecordId": "a7a8029b-78f0-2ceb-4c8b-ce3b623b5d16"
+    "SampleRecordId": "5604ae69-7942-a434-47af-90cd34e6f739"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-223",
@@ -109,21 +109,21 @@
     "Category": "RoleManagement",
     "Count": 2,
     "SampleCorrelationId": "59b69171-f683-5357-747a-c13115e88d2f",
-    "SampleRecordId": "cb7612a4-5055-d3a5-20e7-848ae5e96c07"
+    "SampleRecordId": "833aca69-836f-7599-a8cc-76428b0ef4a0"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-256",
     "Category": "GroupManagement",
     "Count": 2,
     "SampleCorrelationId": "ec208559-38e2-729c-cc6d-8b0eba78676c",
-    "SampleRecordId": "eb9d55af-e453-1b79-f142-435a23843c10"
+    "SampleRecordId": "f8b19cb3-2344-2648-810c-40d630f4d05e"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-260",
     "Category": "RoleManagement",
     "Count": 3,
     "SampleCorrelationId": "e83e0155-76ac-9b53-bc4e-092fadc44a45",
-    "SampleRecordId": "1e6a0c6e-6c88-f7d9-6186-0c3f663b8951"
+    "SampleRecordId": "bca116ab-cfe8-2604-140c-a3d061c7c8a3"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-303",
@@ -165,7 +165,7 @@
     "Category": "GroupManagement",
     "Count": 2,
     "SampleCorrelationId": "fef58ba8-f850-736e-e136-b9dfc09fab5c",
-    "SampleRecordId": "1ab42db2-a43b-b316-1a13-031cb588c82b"
+    "SampleRecordId": "a09133c7-1a23-f43e-1115-e7b25608e957"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-71",
@@ -186,7 +186,7 @@
     "Category": "ApplicationManagement",
     "Count": 2,
     "SampleCorrelationId": "efe0c874-78ba-bc2d-1f45-8dd69d5c8e62",
-    "SampleRecordId": "0a8bb957-3d32-8ec3-4388-eed39f3ba802"
+    "SampleRecordId": "cb6d0422-56f6-2afb-f75f-2c3617e6bd10"
   },
   {
     "ActivityDisplayName": "SyntheticUnmapped-84",

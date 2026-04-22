@@ -91,6 +91,31 @@
 # so the default produces names like "GloryRole-User Manager-0" or
 # "GloryRole-EntraCluster-0".
 #
+# .PARAMETER EntraIdInitialSliceHours
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Initial time-window chunk width in hours used to partition the LA
+# AuditLogs query. Default is 24. Distinct from the Az triad's
+# -InitialSliceHours because the LA Query API's 500 000-row ceiling
+# is two orders of magnitude higher than Get-AzActivityLog's 5 000
+# default, so sharing a parameter name would tempt callers into
+# using Az-appropriate values against the LA path where the
+# sensible defaults differ radically. Silently ignored outside the
+# LA+EntraId branch, consistent with the pipeline's existing
+# convention for mismatched-mode parameters.
+#
+# .PARAMETER EntraIdMinSliceMinutes
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Minimum chunk width (minutes) before adaptive subdivision stops.
+# Default is 15. Silently ignored outside the LA+EntraId branch.
+#
+# .PARAMETER EntraIdMaxRecordHint
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Row-count ceiling that triggers adaptive subdivision of a chunk's
+# time window. Default is 450 000 (~90 % of the LA Query API's
+# 500 000-row cap, leaving margin for rows arriving between the
+# count probe and the actual query). Silently ignored outside the
+# LA+EntraId branch.
+#
 # .PARAMETER UnmappedActivityWarningThreshold
 # Percentage threshold (0-100) for emitting a warning when unmapped
 # Entra ID activities exceed this fraction of total successful audit
@@ -221,7 +246,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.2.20260418.0
+# Version: 2.3.20260422.0
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -250,6 +275,15 @@ param (
 
     [string[]]$EntraIdFilterCategory,
     [string]$EntraIdRoleNamePrefix = 'GloryRole',
+
+    [ValidateRange(1, 168)]
+    [int]$EntraIdInitialSliceHours = 24,
+
+    [ValidateRange(1, 1440)]
+    [int]$EntraIdMinSliceMinutes = 15,
+
+    [ValidateRange(1000, 500000)]
+    [int]$EntraIdMaxRecordHint = 450000,
 
     [ValidateRange(0, 100)]
     [double]$UnmappedActivityWarningThreshold = 15,
@@ -463,6 +497,9 @@ try {
                     Start = $Start
                     End = $End
                     UnmappedActivityAccumulator = $hashUnmappedActivities
+                    EntraIdInitialSliceHours = $EntraIdInitialSliceHours
+                    EntraIdMinSliceMinutes = $EntraIdMinSliceMinutes
+                    EntraIdMaxRecordHint = $EntraIdMaxRecordHint
                 }
                 if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
                     $hashLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory

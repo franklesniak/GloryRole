@@ -10,6 +10,107 @@ BeforeAll {
         [CmdletBinding()]
         param ($WorkspaceId, $Query)
     }
+
+    function Select-MockRowByKqlTimeWindow {
+        # .SYNOPSIS
+        # Filters mock Log Analytics rows by the time window embedded in
+        # the KQL query.
+        # .DESCRIPTION
+        # Since the production function now issues one KQL per chunk of
+        # the [Start, End] range, a naive mock that returns every row
+        # unconditionally would N-fold-duplicate rows across chunks.
+        # This helper parses the first two datetime(...) tokens from
+        # the query -- which always correspond to the chunk's lower
+        # and upper TimeGenerated bounds -- and returns only the rows
+        # whose TimeGenerated falls in that window, honoring the
+        # half-open-vs-closed upper-bound distinction that the
+        # production code uses to coordinate chunk boundaries with the
+        # overall [Start, End] interval.
+        # .PARAMETER Query
+        # The KQL query passed to the mock.
+        # .PARAMETER Rows
+        # The full set of mock rows to filter.
+        # .OUTPUTS
+        # [object[]] The filtered rows.
+        # .NOTES
+        # PRIVATE/INTERNAL HELPER -- This function is not part of the
+        # public API surface. It exists only to support time-window-
+        # aware mocking of the Log Analytics query cmdlet.
+        #
+        # Version: 1.0.20260422.0
+        [CmdletBinding()]
+        [OutputType([object[]])]
+        param (
+            [Parameter(Mandatory = $true)]
+            [string]$Query,
+            [object[]]$Rows
+        )
+
+        if ($null -eq $Rows -or $Rows.Count -eq 0) {
+            return @()
+        }
+
+        $regexDt = [regex]'datetime\(([^)]+)\)'
+        $objMatches = $regexDt.Matches($Query)
+        if ($objMatches.Count -lt 2) {
+            # Fall back to returning all rows when the query shape is
+            # not recognized (e.g., a future query form).
+            return @($Rows)
+        }
+
+        $dtStyles = [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
+        $objCulture = [System.Globalization.CultureInfo]::InvariantCulture
+        $dtLower = [datetime]::Parse($objMatches[0].Groups[1].Value, $objCulture, $dtStyles)
+        $dtUpper = [datetime]::Parse($objMatches[1].Groups[1].Value, $objCulture, $dtStyles)
+
+        # Closed upper bound is signalled by "<= datetime(...)" (terminal
+        # chunk); half-open by "< datetime(...)". The legacy
+        # `between(... .. ...)` form is closed at both ends.
+        $boolClosedUpper = $false
+        if ($Query -match 'between\s*\(') {
+            $boolClosedUpper = $true
+        } elseif ($Query -match '<=\s*datetime\(') {
+            $boolClosedUpper = $true
+        }
+
+        $arrFiltered = New-Object System.Collections.Generic.List[object]
+        foreach ($objRow in $Rows) {
+            $strTg = [string]$objRow.TimeGenerated
+            if ([string]::IsNullOrWhiteSpace($strTg)) {
+                # Rows with missing TimeGenerated can't be assigned to
+                # any chunk by time. Include them only in the terminal
+                # (closed-upper) chunk so the function sees them
+                # exactly once, which preserves coverage of the
+                # function's client-side "skip rows with missing
+                # TimeGenerated" branch.
+                if ($boolClosedUpper) {
+                    [void]($arrFiltered.Add($objRow))
+                }
+                continue
+            }
+            $dtRowParsed = [datetime]::MinValue
+            $boolRowParsed = [datetime]::TryParse($strTg, $objCulture, $dtStyles, [ref]$dtRowParsed)
+            if (-not $boolRowParsed) {
+                # Same rationale as the missing-TimeGenerated branch:
+                # include in the terminal chunk only so the function's
+                # unparseable-TimeGenerated branch is exercised exactly
+                # once.
+                if ($boolClosedUpper) {
+                    [void]($arrFiltered.Add($objRow))
+                }
+                continue
+            }
+            if ($dtRowParsed -lt $dtLower) { continue }
+            if ($boolClosedUpper) {
+                if ($dtRowParsed -gt $dtUpper) { continue }
+            } else {
+                if ($dtRowParsed -ge $dtUpper) { continue }
+            }
+            [void]($arrFiltered.Add($objRow))
+        }
+        return $arrFiltered.ToArray()
+    }
+
     # Avoid relative-path segments per style guide checklist item
     $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
@@ -49,7 +150,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -104,7 +205,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -180,7 +281,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -231,7 +332,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -263,7 +364,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -310,7 +411,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -363,7 +464,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -400,7 +501,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act - should not throw even though unmapped activities exist
@@ -434,7 +535,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act
@@ -468,7 +569,7 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics" {
                 }
             )
             Mock Invoke-AzOperationalInsightsQuery {
-                [pscustomobject]@{ Results = $objMockResults }
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $objMockResults) }
             }
 
             # Act

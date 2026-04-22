@@ -154,20 +154,68 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
   `arg_min(TimeGenerated, ...)` so that the earliest row per key is kept,
   and MUST preserve rows whose `CorrelationId` is missing, where "missing"
   is defined consistently with REQ-DED-001 as `null`, empty, or
-  whitespace-only, via a union branch.
+  whitespace-only, via a union branch. The `[Start, End]` range MUST be
+  partitioned into consecutive time-window chunks and each chunk MUST be
+  issued as a separate KQL query whose results are concatenated
+  client-side; chunks MUST use a half-open upper bound (`<`) except for
+  the terminal chunk, which uses a closed upper bound (`<=`), so no row
+  is dropped at `End` and no row is double-counted at an internal
+  chunk boundary. When a chunk's row count is at or above
+  `-EntraIdMaxRecordHint`, the chunk MUST be adaptively subdivided in
+  half down to a floor of `-EntraIdMinSliceMinutes`.
   - **Rationale:** Enables Entra ID role mining from workspaces that receive
     directory audit logs via diagnostic settings, without requiring a direct
     Microsoft Graph connection. Server-side retry collapse reduces the
     number of rows transferred over the wire and processed client-side,
     which materially lowers cost and memory pressure at production fixture
     sizes while preserving the contract that `Remove-DuplicateCanonicalEvent`
-    would otherwise enforce client-side.
+    would otherwise enforce client-side. Query partitioning (Option B)
+    protects the ingestion path against the documented Log Analytics Query
+    API limits (500 000 rows, ~100 MB raw / 64 MB compressed, 10-minute
+    timeout) and composes cleanly with the Option A server-side collapse:
+    each chunk's KQL runs the full `arg_min` collapse independently, and
+    retry duplicates cannot straddle chunk boundaries because they share
+    a `CorrelationId` (and therefore a single logical `TimeGenerated`
+    neighborhood) by definition.
+  - **Partitioning parameters.** The Entra LA ingestion path exposes a
+    triad of slice-tuning parameters on
+    `Get-EntraIdAuditEventFromLogAnalytics.ps1` and surfaces all three on
+    `Invoke-RoleMiningPipeline.ps1` for `-InputMode LogAnalytics
+    -RoleSchema EntraId`:
+
+    | Parameter | Default | Validation |
+    |---|---|---|
+    | `-EntraIdInitialSliceHours` | `24` | `[ValidateRange(1, 168)]` |
+    | `-EntraIdMinSliceMinutes` | `15` | `[ValidateRange(1, 1440)]` |
+    | `-EntraIdMaxRecordHint` | `450000` | `[ValidateRange(1000, 500000)]` |
+
+    The triad is intentionally named distinctly from the Az path's
+    `-InitialSliceHours` / `-MinSliceMinutes` / `-MaxRecordHint` triad
+    because the two underlying APIs have fundamentally different
+    quantitative limits. `Get-AzActivityLog`'s `MaxRecordHint` default
+    is `5000`; the LA Query API hard ceiling is `500000` — two orders
+    of magnitude apart. A shared parameter name with radically different
+    sensible defaults would be a footgun. The `EntraId*` prefix matches
+    the existing pipeline convention (`-EntraIdFilterCategory`,
+    `-EntraIdRoleNamePrefix`) and signals that the chunking invariants
+    are Entra-path-specific (null-`CorrelationId` union bypass, activity
+    mapping) and may not transfer verbatim to other LA-backed paths.
+    The `450000` default is approximately 90 % of the API cap, leaving
+    margin for rows that arrive between the count probe and the actual
+    query.
   - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
     output; row-count gate in the equivalence suite asserts
     `emitted <= floor((1 - DuplicateRatio + 0.10) * baseline)` for the
     locked synthetic fixture parameters (`Count=10000`, `Seed=42`,
-    `DuplicateRatio in {0.0, 0.25, 0.5}`). The
-    `entra_unmapped_activities.csv` diagnostic artifact emitted when the
+    `DuplicateRatio in {0.0, 0.25, 0.5}`). Chunked-wrapping equivalence
+    between coarse (168 h) and fine (1 h) chunk widths is verified by
+    `Test-StageOneEquivalence`. Chunk-boundary correctness (no drop, no
+    double-count across an internal seam) and adaptive-subdivision
+    convergence (a chunk that hits `-EntraIdMaxRecordHint` subdivides
+    down toward `-EntraIdMinSliceMinutes` and still produces identical
+    stage-one outputs) are each covered by dedicated Pester cases in
+    `tests/PowerShell/Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`.
+    The `entra_unmapped_activities.csv` diagnostic artifact emitted when the
     Entra ID ingestion path (both `-InputMode EntraId` and
     `-InputMode LogAnalytics -RoleSchema EntraId`) encounters one or
     more activity display names absent from the

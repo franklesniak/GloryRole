@@ -972,4 +972,168 @@ Describe "Invoke-RoleMiningPipeline" {
             (Test-Path -LiteralPath $strUnmappedPath) | Should -BeFalse
         }
     }
+
+    Context "When binding the Entra LA partitioning triad (-EntraIdInitialSliceHours / -EntraIdMinSliceMinutes / -EntraIdMaxRecordHint)" {
+        # The Entra LA partitioning triad is exposed on the pipeline
+        # for operator-side tuning of the Log Analytics query-partition
+        # behavior. These tests assert the parameter-binding surface,
+        # not the runtime semantics (semantics are covered by the
+        # Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1
+        # suite): they verify that ValidateRange is wired on the
+        # pipeline, and that the triad is accepted under any
+        # -InputMode without raising a parameter-binding error (matching
+        # the pipeline's existing convention for mismatched-mode
+        # parameters such as -WorkspaceId or -SubscriptionIds, which
+        # are silently ignored outside their native branches rather
+        # than throwing). Runtime pass-through into
+        # Get-EntraIdAuditEventFromLogAnalytics for the LA+EntraId
+        # branch is proven by the equivalence tests in
+        # Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1.
+
+        It "Rejects -EntraIdInitialSliceHours below the 1..168 validation range" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath -EntraIdInitialSliceHours 0
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match 'EntraIdInitialSliceHours'
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Rejects -EntraIdInitialSliceHours above the 1..168 validation range" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath -EntraIdInitialSliceHours 169
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match 'EntraIdInitialSliceHours'
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Rejects -EntraIdMinSliceMinutes below the 1..1440 validation range" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath -EntraIdMinSliceMinutes 0
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match 'EntraIdMinSliceMinutes'
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Rejects -EntraIdMaxRecordHint below the 1000..500000 validation range" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath -EntraIdMaxRecordHint 999
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match 'EntraIdMaxRecordHint'
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Rejects -EntraIdMaxRecordHint above the 1000..500000 validation range" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath -EntraIdMaxRecordHint 500001
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert
+                $objException | Should -Not -BeNullOrEmpty
+                $objException.Exception.Message | Should -Match 'EntraIdMaxRecordHint'
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+
+        It "Accepts the full Entra LA triad at the valid-range boundaries under -InputMode CSV (silently ignored per pipeline convention)" {
+            # Arrange
+            $strOutputPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ([System.Guid]::NewGuid().ToString())
+            try {
+                # Act
+                $objException = $null
+                try {
+                    & $script:strScriptPath -InputMode CSV -CsvPath $script:strCsvPath -RoleSchema AzureRbac `
+                        -OutputPath $strOutputPath `
+                        -EntraIdInitialSliceHours 168 `
+                        -EntraIdMinSliceMinutes 1440 `
+                        -EntraIdMaxRecordHint 500000
+                } catch {
+                    $objException = $_
+                }
+
+                # Assert - any error raised MUST NOT be a parameter-
+                # binding error complaining about any of the three
+                # Entra LA partitioning parameters.
+                if ($null -ne $objException) {
+                    $objException.Exception.Message | Should -Not -Match 'EntraIdInitialSliceHours'
+                    $objException.Exception.Message | Should -Not -Match 'EntraIdMinSliceMinutes'
+                    $objException.Exception.Message | Should -Not -Match 'EntraIdMaxRecordHint'
+                }
+            } finally {
+                if (Test-Path -LiteralPath $strOutputPath) {
+                    Remove-Item -LiteralPath $strOutputPath -Recurse -Force
+                }
+            }
+        }
+    }
 }
