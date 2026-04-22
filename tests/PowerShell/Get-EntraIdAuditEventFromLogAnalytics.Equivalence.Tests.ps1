@@ -80,31 +80,48 @@ BeforeAll {
         # .DESCRIPTION
         # Emulates the KQL pattern in Get-EntraIdAuditEventFromLogAnalytics:
         #
-        #   let src = <projected rows>;
+        #   let src =
+        #       <projected rows>
+        #       | extend CorrelationIdNormalized = trim(@"\s+", tostring(CorrelationId))
+        #       | project ..., CorrelationId, CorrelationIdNormalized, ...;
         #   src
-        #   | where isnotempty(CorrelationId)
+        #   | where isnotempty(CorrelationIdNormalized)
         #   | summarize arg_min(TimeGenerated, Category, PrincipalType,
         #                       PrincipalUPN, AppId, RecordId)
-        #       by PrincipalKey, OperationName, CorrelationId
-        #   | union (src | where isempty(CorrelationId))
+        #       by PrincipalKey, OperationName, CorrelationIdNormalized
+        #   | project-rename CorrelationId = CorrelationIdNormalized
+        #   | union (src | where isempty(CorrelationIdNormalized))
         #
-        # Rows with a non-empty CorrelationId are grouped by the
-        # composite key (PrincipalKey, OperationName, CorrelationId)
-        # and reduced to the single row with the earliest TimeGenerated
-        # per group. Rows with an empty CorrelationId are preserved
-        # unchanged. The output shape matches New-SyntheticAuditLogFixture
+        # Rows whose CorrelationId is not null, empty, or whitespace-only
+        # are grouped by the composite key
+        # (PrincipalKey, OperationName, CorrelationId) and reduced to
+        # the single row with the earliest TimeGenerated per group.
+        # Rows whose CorrelationId IS null, empty, or whitespace-only
+        # are preserved unchanged, matching REQ-DED-001 and
+        # Remove-DuplicateCanonicalEvent's [string]::IsNullOrWhiteSpace
+        # contract. The output shape matches New-SyntheticAuditLogFixture
         # so the result can be handed straight to Invoke-StageOnePipeline
         # as a mock result.
         # .PARAMETER FixtureRows
         # The raw (pre-aggregation) fixture rows to collapse.
+        # .EXAMPLE
+        # $arrRaw = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.25 -Seed 42)
+        # $arrCollapsed = @(Invoke-OptionAServerSideCollapse -FixtureRows $arrRaw)
+        # # # $arrCollapsed contains the same rows as $arrRaw, except that
+        # # # retry duplicates sharing (PrincipalKey, OperationName,
+        # # # CorrelationId) have been collapsed to the single row with
+        # # # the earliest TimeGenerated per group.
+        # .INPUTS
+        # None. You cannot pipe objects to this function.
         # .OUTPUTS
-        # [pscustomobject[]] Collapsed fixture rows.
+        # [pscustomobject] Collapsed fixture rows streamed to the
+        # pipeline.
         # .NOTES
         # PRIVATE/INTERNAL HELPER -- This function is not part of the
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.0.20260422.0
+        # Version: 1.1.20260422.0
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
@@ -112,8 +129,7 @@ BeforeAll {
             [object[]]$FixtureRows
         )
 
-        $listCollapsed = New-Object System.Collections.Generic.List[pscustomobject]
-        $hashSeen = @{}
+        $hashtableSeen = @{}
 
         # Stable sort by TimeGenerated so arg_min semantics are
         # preserved: the first row seen per composite key is the one
@@ -126,10 +142,12 @@ BeforeAll {
                 $strCorrelationId = [string]$objRow.CorrelationId
             }
 
-            if ([string]::IsNullOrEmpty($strCorrelationId)) {
-                # Null/empty CorrelationId branch: preserved unchanged
-                # via the KQL union.
-                [void]($listCollapsed.Add($objRow))
+            if ([string]::IsNullOrWhiteSpace($strCorrelationId)) {
+                # Missing-CorrelationId branch (null / empty /
+                # whitespace-only): preserved unchanged via the KQL
+                # union, matching Remove-DuplicateCanonicalEvent's
+                # [string]::IsNullOrWhiteSpace contract.
+                $objRow
                 continue
             }
 
@@ -138,13 +156,11 @@ BeforeAll {
                     [string]$objRow.OperationName, `
                     $strCorrelationId)
 
-            if (-not $hashSeen.ContainsKey($strKey)) {
-                $hashSeen[$strKey] = $true
-                [void]($listCollapsed.Add($objRow))
+            if (-not $hashtableSeen.ContainsKey($strKey)) {
+                $hashtableSeen[$strKey] = $true
+                $objRow
             }
         }
-
-        return $listCollapsed.ToArray()
     }
 
 

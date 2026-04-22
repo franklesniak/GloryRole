@@ -26,13 +26,18 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # wire. Retry duplicates are collapsed server-side on the composite
     # key (PrincipalKey, OperationName, CorrelationId) using
     # arg_min(TimeGenerated, ...) so the earliest row per composite key
-    # is retained; rows with an empty CorrelationId are preserved via a
-    # union branch because they cannot be retry-duplicates (the
-    # CorrelationId is required to identify a retry pair). The
-    # activity-to-action mapping is performed PowerShell-side via
-    # ConvertTo-EntraIdResourceAction because the mapping table is
-    # maintained in PowerShell and embedding 150+ entries in KQL would
-    # be fragile.
+    # is retained; rows whose CorrelationId is missing (null, empty, or
+    # whitespace-only after trimming) are preserved via a union branch
+    # because they cannot be retry-duplicates (the CorrelationId is
+    # required to identify a retry pair). "Missing" is defined
+    # consistently with REQ-DED-001 and Remove-DuplicateCanonicalEvent's
+    # [string]::IsNullOrWhiteSpace contract, so the KQL normalizes the
+    # CorrelationId via trim(@"\s+", ...) before the isnotempty/isempty
+    # split to guarantee the server-side and client-side pipelines treat
+    # the same rows as "missing". The activity-to-action mapping is
+    # performed PowerShell-side via ConvertTo-EntraIdResourceAction
+    # because the mapping table is maintained in PowerShell and
+    # embedding 150+ entries in KQL would be fragile.
     #
     # Two distinct failure modes apply to individual records:
     # - **Intentional skips.** Records whose activity display name
@@ -94,7 +99,7 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     #   Position 1: Start
     #   Position 2: End
     #
-    # Version: 1.3.20260422.0
+    # Version: 1.4.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
@@ -130,21 +135,28 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             # server-side.
             #
             # Retry-duplicate collapse (Option A): after the `src`
-            # projection, rows with a non-empty CorrelationId are
-            # summarized with arg_min(TimeGenerated, ...) by the
-            # composite key (PrincipalKey, OperationName, CorrelationId)
-            # so the earliest TimeGenerated row per key is kept;
+            # projection, each row carries both the original
+            # CorrelationId and a whitespace-normalized copy
+            # (CorrelationIdNormalized = trim(@"\s+", ...)). Rows whose
+            # normalized CorrelationId is non-empty are summarized with
+            # arg_min(TimeGenerated, ...) by the composite key
+            # (PrincipalKey, OperationName, CorrelationIdNormalized) so
+            # the earliest TimeGenerated row per key is kept;
             # project-rename restores the original TimeGenerated column
-            # name. Rows with an empty CorrelationId are unioned back
-            # unchanged because they cannot be retry-duplicates of one
-            # another, and collapsing them would violate the invariant
-            # that null-CorrelationId events are always kept (see
-            # REQ-DED-001 and Remove-DuplicateCanonicalEvent). The
-            # composite key intentionally omits RecordId and
-            # TimeGenerated so that retries (which differ only in those
-            # two fields and share a CorrelationId) collapse to a
-            # single row, matching the client-side
-            # Remove-DuplicateCanonicalEvent contract.
+            # name and renames CorrelationIdNormalized back to
+            # CorrelationId. Rows whose normalized CorrelationId is
+            # empty (covering null, empty, and whitespace-only raw
+            # values) are unioned back unchanged -- keeping their raw
+            # CorrelationId -- because they cannot be retry-duplicates
+            # of one another, and collapsing them would violate the
+            # invariant that records without a usable CorrelationId are
+            # always kept (see REQ-DED-001 and
+            # Remove-DuplicateCanonicalEvent, which both use
+            # [string]::IsNullOrWhiteSpace). The composite key
+            # intentionally omits RecordId and TimeGenerated so that
+            # retries (which differ only in those two fields and share
+            # a CorrelationId) collapse to a single row, matching the
+            # client-side Remove-DuplicateCanonicalEvent contract.
             $strCategoryFilter = ''
             if ($null -ne $FilterCategory -and $FilterCategory.Count -gt 0) {
                 $arrCategoryParts = @()
@@ -186,14 +198,15 @@ let src =
         isnotempty(AppIdVal) or isnotempty(AppDisplayName), "ServicePrincipal",
         "Unknown"
     )
+    | extend CorrelationIdNormalized = trim(@"\s+", tostring(CorrelationId))
     | where isnotempty(PrincipalKey) and isnotempty(OperationName)
-    | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN=UserUPN, AppId=AppIdVal, CorrelationId, RecordId=Id;
+    | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN=UserUPN, AppId=AppIdVal, CorrelationId, CorrelationIdNormalized, RecordId=Id;
 src
-| where isnotempty(CorrelationId)
-| summarize arg_min(TimeGenerated, Category, PrincipalType, PrincipalUPN, AppId, RecordId) by PrincipalKey, OperationName, CorrelationId
-| project-rename TimeGenerated = min_TimeGenerated
+| where isnotempty(CorrelationIdNormalized)
+| summarize arg_min(TimeGenerated, Category, PrincipalType, PrincipalUPN, AppId, RecordId) by PrincipalKey, OperationName, CorrelationIdNormalized
+| project-rename TimeGenerated = min_TimeGenerated, CorrelationId = CorrelationIdNormalized
 | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN, AppId, CorrelationId, RecordId
-| union (src | where isempty(CorrelationId))
+| union (src | where isempty(CorrelationIdNormalized) | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN, AppId, CorrelationId, RecordId)
 "@
 
             Write-Debug ("KQL query: {0}" -f $strKql)
