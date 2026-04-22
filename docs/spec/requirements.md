@@ -164,8 +164,8 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     would otherwise enforce client-side.
   - **Verification:** Unit test with mock `Invoke-AzOperationalInsightsQuery`
     output; row-count gate in the equivalence suite asserts
-    `emitted <= (1 - DuplicateRatio + 0.10) * baseline` for the locked
-    synthetic fixture parameters (`Count=10000`, `Seed=42`,
+    `emitted <= floor((1 - DuplicateRatio + 0.10) * baseline)` for the
+    locked synthetic fixture parameters (`Count=10000`, `Seed=42`,
     `DuplicateRatio in {0.0, 0.25, 0.5}`).
 
 ### Canonicalization

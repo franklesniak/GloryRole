@@ -31,13 +31,16 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # because they cannot be retry-duplicates (the CorrelationId is
     # required to identify a retry pair). "Missing" is defined
     # consistently with REQ-DED-001 and Remove-DuplicateCanonicalEvent's
-    # [string]::IsNullOrWhiteSpace contract, so the KQL normalizes the
-    # CorrelationId via trim(@"\s+", ...) before the isnotempty/isempty
-    # split to guarantee the server-side and client-side pipelines treat
-    # the same rows as "missing". The activity-to-action mapping is
-    # performed PowerShell-side via ConvertTo-EntraIdResourceAction
-    # because the mapping table is maintained in PowerShell and
-    # embedding 150+ entries in KQL would be fragile.
+    # [string]::IsNullOrWhiteSpace contract, so the KQL derives a
+    # CorrelationIdNormalized = trim(@"\s+", ...) column that is used
+    # only for the isnotempty/isempty split. The summarize key and the
+    # emitted CorrelationId value remain the raw CorrelationId so that
+    # non-missing padded values (e.g. " abc " vs. "abc") stay distinct,
+    # matching Remove-DuplicateCanonicalEvent's raw-string key. The
+    # activity-to-action mapping is performed PowerShell-side via
+    # ConvertTo-EntraIdResourceAction because the mapping table is
+    # maintained in PowerShell and embedding 150+ entries in KQL would
+    # be fragile.
     #
     # Two distinct failure modes apply to individual records:
     # - **Intentional skips.** Records whose activity display name
@@ -99,7 +102,7 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     #   Position 1: Start
     #   Position 2: End
     #
-    # Version: 1.4.20260422.0
+    # Version: 1.5.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
@@ -137,22 +140,23 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             # Retry-duplicate collapse (Option A): after the `src`
             # projection, each row carries both the original
             # CorrelationId and a whitespace-normalized copy
-            # (CorrelationIdNormalized = trim(@"\s+", ...)). Rows whose
-            # normalized CorrelationId is non-empty are summarized with
-            # arg_min(TimeGenerated, ...) by the composite key
-            # (PrincipalKey, OperationName, CorrelationIdNormalized) so
-            # the earliest TimeGenerated row per key is kept;
-            # project-rename restores the original TimeGenerated column
-            # name and renames CorrelationIdNormalized back to
-            # CorrelationId. Rows whose normalized CorrelationId is
-            # empty (covering null, empty, and whitespace-only raw
-            # values) are unioned back unchanged -- keeping their raw
-            # CorrelationId -- because they cannot be retry-duplicates
-            # of one another, and collapsing them would violate the
-            # invariant that records without a usable CorrelationId are
-            # always kept (see REQ-DED-001 and
-            # Remove-DuplicateCanonicalEvent, which both use
-            # [string]::IsNullOrWhiteSpace). The composite key
+            # (CorrelationIdNormalized = trim(@"\s+", ...)). The
+            # normalized column is used ONLY for the isnotempty/isempty
+            # split so that server-side and client-side pipelines agree
+            # on which rows are "missing" a CorrelationId (null, empty,
+            # or whitespace-only). Rows whose normalized CorrelationId
+            # is non-empty are summarized with arg_min(TimeGenerated,
+            # ...) by the composite key (PrincipalKey, OperationName,
+            # CorrelationId) -- keyed on the RAW CorrelationId, not the
+            # trimmed value -- so server-side collapse semantics match
+            # Remove-DuplicateCanonicalEvent's raw-string composite key
+            # (REQ-DED-001). project-rename restores the original
+            # TimeGenerated column name. Rows whose normalized
+            # CorrelationId is empty are unioned back unchanged --
+            # keeping their raw CorrelationId -- because they cannot be
+            # retry-duplicates of one another, and collapsing them
+            # would violate the invariant that records without a usable
+            # CorrelationId are always kept. The composite key
             # intentionally omits RecordId and TimeGenerated so that
             # retries (which differ only in those two fields and share
             # a CorrelationId) collapse to a single row, matching the
@@ -203,8 +207,8 @@ let src =
     | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN=UserUPN, AppId=AppIdVal, CorrelationId, CorrelationIdNormalized, RecordId=Id;
 src
 | where isnotempty(CorrelationIdNormalized)
-| summarize arg_min(TimeGenerated, Category, PrincipalType, PrincipalUPN, AppId, RecordId) by PrincipalKey, OperationName, CorrelationIdNormalized
-| project-rename TimeGenerated = min_TimeGenerated, CorrelationId = CorrelationIdNormalized
+| summarize arg_min(TimeGenerated, Category, PrincipalType, PrincipalUPN, AppId, RecordId) by PrincipalKey, OperationName, CorrelationId
+| project-rename TimeGenerated = min_TimeGenerated
 | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN, AppId, CorrelationId, RecordId
 | union (src | where isempty(CorrelationIdNormalized) | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN, AppId, CorrelationId, RecordId)
 "@

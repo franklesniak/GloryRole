@@ -88,12 +88,20 @@ BeforeAll {
         #   | where isnotempty(CorrelationIdNormalized)
         #   | summarize arg_min(TimeGenerated, Category, PrincipalType,
         #                       PrincipalUPN, AppId, RecordId)
-        #       by PrincipalKey, OperationName, CorrelationIdNormalized
-        #   | project-rename TimeGenerated = min_TimeGenerated,
-        #                    CorrelationId = CorrelationIdNormalized
+        #       by PrincipalKey, OperationName, CorrelationId
+        #   | project-rename TimeGenerated = min_TimeGenerated
         #   | project TimeGenerated, OperationName, Category, PrincipalKey, ...
         #   | union (src | where isempty(CorrelationIdNormalized)
         #                | project TimeGenerated, OperationName, Category, ...)
+        #
+        # CorrelationIdNormalized is used ONLY for the
+        # isnotempty/isempty split so that server-side and client-side
+        # pipelines agree on which rows are "missing" a CorrelationId
+        # (null, empty, or whitespace-only). The summarize key and the
+        # emitted CorrelationId value are the RAW CorrelationId, so that
+        # padded-but-non-missing values (e.g. " abc " vs. "abc") stay
+        # distinct, matching Remove-DuplicateCanonicalEvent's raw-string
+        # composite key (REQ-DED-001).
         #
         # Rows whose CorrelationId is not null, empty, or whitespace-only
         # are grouped by the composite key
@@ -124,7 +132,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.3.20260422.0
+        # Version: 1.4.20260422.0
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
@@ -149,37 +157,29 @@ BeforeAll {
                 # Missing-CorrelationId branch (null / empty /
                 # whitespace-only): preserved unchanged via the KQL
                 # union, matching Remove-DuplicateCanonicalEvent's
-                # [string]::IsNullOrWhiteSpace contract.
+                # [string]::IsNullOrWhiteSpace contract. This is the
+                # only place where the trim semantics of the KQL's
+                # CorrelationIdNormalized column matter for the
+                # simulator -- [string]::IsNullOrWhiteSpace returns the
+                # same boolean as trim(@"\s+", x) being empty.
                 $objRow
                 continue
             }
 
-            # Mirror the KQL's `CorrelationIdNormalized = trim(@"\s+", ...)`:
-            # group by the trimmed value and (on the summarize branch)
-            # project-rename CorrelationId = CorrelationIdNormalized, so
-            # the emitted row carries the trimmed value.
-            $strCorrelationIdNormalized = $strCorrelationId.Trim()
-
+            # Use the RAW CorrelationId as the composite key, mirroring
+            # the KQL's `summarize ... by ..., CorrelationId` (not
+            # CorrelationIdNormalized) and Remove-DuplicateCanonicalEvent's
+            # raw-string key. Padded-but-non-missing values like " abc "
+            # and "abc" remain distinct; only truly missing values are
+            # short-circuited above.
             $strKey = ('{0}|{1}|{2}' -f `
                     [string]$objRow.PrincipalKey, `
                     [string]$objRow.OperationName, `
-                    $strCorrelationIdNormalized)
+                    $strCorrelationId)
 
             if (-not $hashtableSeen.ContainsKey($strKey)) {
                 $hashtableSeen[$strKey] = $true
-                if ($strCorrelationIdNormalized -ceq $strCorrelationId) {
-                    # No trim was applied; emit the raw fixture row to
-                    # avoid an unnecessary clone on the common path.
-                    $objRow
-                } else {
-                    # Trim changed the value; clone to avoid mutating the
-                    # caller's fixture array and set CorrelationId to the
-                    # normalized value so downstream behaviour matches
-                    # the KQL `project-rename CorrelationId = CorrelationIdNormalized`.
-                    $objRowNormalized = $objRow.PSObject.Copy()
-                    $objRowNormalized.CorrelationId = $strCorrelationIdNormalized
-                    $objRowNormalized
-                }
+                $objRow
             }
         }
     }
