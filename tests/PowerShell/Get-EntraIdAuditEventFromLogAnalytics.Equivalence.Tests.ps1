@@ -132,7 +132,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.4.20260422.0
+        # Version: 1.5.20260422.0
         [CmdletBinding()]
         [OutputType([pscustomobject])]
         param (
@@ -172,10 +172,12 @@ BeforeAll {
             # raw-string key. Padded-but-non-missing values like " abc "
             # and "abc" remain distinct; only truly missing values are
             # short-circuited above.
-            $strKey = ('{0}|{1}|{2}' -f `
-                    [string]$objRow.PrincipalKey, `
-                    [string]$objRow.OperationName, `
-                    $strCorrelationId)
+            $strKey = (
+                '{0}|{1}|{2}' -f
+                [string]$objRow.PrincipalKey,
+                [string]$objRow.OperationName,
+                $strCorrelationId
+            )
 
             if (-not $hashtableSeen.ContainsKey($strKey)) {
                 $hashtableSeen[$strKey] = $true
