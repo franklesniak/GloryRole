@@ -45,7 +45,7 @@ BeforeAll {
         # public API surface. It exists solely to keep the contract test
         # focused on the CSV-on-disk invariants that OQ4 defines.
         #
-        # Version: 1.0.20260422.0
+        # Version: 1.0.20260422.1
         [CmdletBinding()]
         [OutputType([void])]
         param (
@@ -61,8 +61,7 @@ BeforeAll {
         $arrUnmappedSorted = @($Accumulator.Values |
                 Sort-Object -Property Count -Descending)
         $arrUnmappedCsvLines = @($arrUnmappedSorted | ConvertTo-Csv -NoTypeInformation)
-        $strResolvedPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
-        [System.IO.File]::WriteAllLines($strResolvedPath, [string[]]$arrUnmappedCsvLines, $objUtf8NoBomEncoding)
+        [System.IO.File]::WriteAllLines($Path, [string[]]$arrUnmappedCsvLines, $objUtf8NoBomEncoding)
     }
 
     function Invoke-UnmappedAccumulatorBuild {
@@ -150,23 +149,26 @@ Describe "entra_unmapped_activities.csv contract (OQ4)" {
             $script:arrCsvLines[0] | Should -BeExactly $strExpectedHeader
         }
 
-        It "Parsed CSV exposes exactly the five contracted columns in order" {
-            # Arrange
-            $arrExpectedColumns = @(
-                'ActivityDisplayName',
-                'Category',
-                'Count',
-                'SampleCorrelationId',
-                'SampleRecordId'
-            )
+        It "Parsed CSV exposes exactly the five contracted columns (set check; header-order contract asserted above)" {
+            # The header-order contract is asserted byte-for-byte against
+            # the raw CSV header line in the preceding It block. This
+            # assertion is a set-membership check on the parsed object's
+            # property names. Per the PowerShell instructions' "Testing
+            # Property Names on PSCustomObject" rule, assertions on
+            # PSObject.Properties.Name MUST be order-insensitive because
+            # PSCustomObject property ordering is not a documented
+            # guarantee even when hashtable literals preserve it in
+            # practice.
 
             # Assert
             $script:arrCsvRows | Should -Not -BeNullOrEmpty
-            $arrActualColumns = @($script:arrCsvRows[0].PSObject.Properties.Name)
-            $arrActualColumns.Count | Should -Be $arrExpectedColumns.Count
-            for ($i = 0; $i -lt $arrExpectedColumns.Count; $i++) {
-                $arrActualColumns[$i] | Should -BeExactly $arrExpectedColumns[$i]
-            }
+            $arrActualColumns = $script:arrCsvRows[0].PSObject.Properties.Name
+            $arrActualColumns | Should -Contain 'ActivityDisplayName'
+            $arrActualColumns | Should -Contain 'Category'
+            $arrActualColumns | Should -Contain 'Count'
+            $arrActualColumns | Should -Contain 'SampleCorrelationId'
+            $arrActualColumns | Should -Contain 'SampleRecordId'
+            $arrActualColumns | Should -HaveCount 5
         }
     }
 
