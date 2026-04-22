@@ -27,6 +27,14 @@ BeforeAll {
         # The KQL query passed to the mock.
         # .PARAMETER Rows
         # The full set of mock rows to filter.
+        # .EXAMPLE
+        # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
+        # $arrFiltered = Select-MockRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
+        # # # $arrFiltered contains only rows whose TimeGenerated falls
+        # # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+        # # # (half-open upper bound because the KQL uses `<`, not `<=`).
+        # .INPUTS
+        # None. You can't pipe objects to this function.
         # .OUTPUTS
         # [object[]] The filtered rows.
         # .NOTES
@@ -34,7 +42,7 @@ BeforeAll {
         # public API surface. It exists only to support time-window-
         # aware mocking of the Log Analytics query cmdlet.
         #
-        # Version: 1.0.20260422.0
+        # Version: 1.1.20260422.0
         [CmdletBinding()]
         [OutputType([object[]])]
         param (
@@ -128,6 +136,15 @@ BeforeAll {
         # Optional override for the Option B row-count ceiling that
         # triggers adaptive subdivision. Defaults to the production
         # default.
+        # .EXAMPLE
+        # $arrFixture = @(New-SyntheticAuditLogFixture -Count 300 -DuplicateRatio 0.0 -Seed 42)
+        # $objStageOne = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 6
+        # # # $objStageOne.Triples carries the per-principal action counts emitted by stage 1.
+        # # # $objStageOne.DisplayNameMap carries the principal-key -> display-name lookup.
+        # # # $objStageOne.UnmappedAccumulator carries any activity names absent from the mapping table.
+        # # # $objStageOne.EventsEmitted carries the count of audit events emitted before deduplication.
+        # .INPUTS
+        # None. You can't pipe objects to this function.
         # .OUTPUTS
         # [pscustomobject] with Triples, DisplayNameMap, UnmappedAccumulator,
         # and EventsEmitted properties.
@@ -136,7 +153,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.1.20260422.0
+        # Version: 1.2.20260422.0
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
             'PSReviewUnusedParameter', 'FixtureRows',
             Justification = 'FixtureRows is captured by the Mock closure and used when Pester invokes the mock.')]

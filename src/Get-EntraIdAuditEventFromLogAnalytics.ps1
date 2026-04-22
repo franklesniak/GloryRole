@@ -225,6 +225,28 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             $intChunksProcessed = 0
             $intChunksSubdivided = 0
 
+            # Build the optional `| where Category == ...` clause once,
+            # before the per-chunk loop, because it depends only on
+            # -FilterCategory (invariant for the whole invocation) and
+            # the resulting string is concatenated verbatim into every
+            # chunk's KQL. Computing it here keeps the per-chunk loop
+            # focused on boundary stamping + querying.
+            $strCategoryFilter = ''
+            if ($null -ne $FilterCategory -and $FilterCategory.Count -gt 0) {
+                $arrCategoryParts = @()
+                foreach ($strCat in $FilterCategory) {
+                    if ([string]::IsNullOrWhiteSpace($strCat)) {
+                        continue
+                    }
+                    # Escape single quotes for KQL string literals.
+                    $strEscapedCat = $strCat.Replace("'", "''")
+                    $arrCategoryParts += ("Category == '{0}'" -f $strEscapedCat)
+                }
+                if ($arrCategoryParts.Count -gt 0) {
+                    $strCategoryFilter = ("| where {0}" -f ($arrCategoryParts -join ' or '))
+                }
+            }
+
             while ($stackSegments.Count -gt 0) {
                 $objSeg = $stackSegments.Pop()
                 $dtSegStart = [datetime]$objSeg.SegStart
@@ -250,23 +272,9 @@ function Get-EntraIdAuditEventFromLogAnalytics {
                 # correctly because retry duplicates share a
                 # CorrelationId and therefore cannot straddle chunk
                 # boundaries in any tenant that issues a single
-                # correlation ID per logical operation.
-                $strCategoryFilter = ''
-                if ($null -ne $FilterCategory -and $FilterCategory.Count -gt 0) {
-                    $arrCategoryParts = @()
-                    foreach ($strCat in $FilterCategory) {
-                        if ([string]::IsNullOrWhiteSpace($strCat)) {
-                            continue
-                        }
-                        # Escape single quotes for KQL string literals.
-                        $strEscapedCat = $strCat.Replace("'", "''")
-                        $arrCategoryParts += ("Category == '{0}'" -f $strEscapedCat)
-                    }
-                    if ($arrCategoryParts.Count -gt 0) {
-                        $strCategoryFilter = ("| where {0}" -f ($arrCategoryParts -join ' or '))
-                    }
-                }
-
+                # correlation ID per logical operation. The category
+                # filter clause is invariant across chunks and was
+                # built once above the loop.
                 $strSegStartUtc = $dtSegStart.ToString("o")
                 $strSegEndUtc = $dtSegEnd.ToString("o")
                 if ($boolTerminalChunk) {

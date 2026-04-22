@@ -30,6 +30,14 @@ BeforeAll {
         # The KQL query passed to the mock.
         # .PARAMETER Rows
         # The full set of mock rows to filter.
+        # .EXAMPLE
+        # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
+        # $arrFiltered = Select-MockRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
+        # # # $arrFiltered contains only rows whose TimeGenerated falls
+        # # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+        # # # (half-open upper bound because the KQL uses `<`, not `<=`).
+        # .INPUTS
+        # None. You can't pipe objects to this function.
         # .OUTPUTS
         # [object[]] The filtered rows.
         # .NOTES
@@ -37,7 +45,7 @@ BeforeAll {
         # public API surface. It exists only to support time-window-
         # aware mocking of the Log Analytics query cmdlet.
         #
-        # Version: 1.0.20260422.0
+        # Version: 1.1.20260422.0
         [CmdletBinding()]
         [OutputType([object[]])]
         param (
