@@ -46,7 +46,7 @@ function New-AzureRoleDefinitionJson {
     #   Position 2: Actions
     #   Position 3: AssignableScopes
     #
-    # Version: 1.1.20260412.0
+    # Version: 1.1.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -71,7 +71,7 @@ function New-AzureRoleDefinitionJson {
         Write-Verbose ("Generating role definition JSON for role: {0}" -f $RoleName)
 
         try {
-            $hashRole = [ordered]@{
+            $hashtableRole = [ordered]@{
                 Name = $RoleName
                 IsCustom = $true
                 Description = $Description
@@ -82,7 +82,7 @@ function New-AzureRoleDefinitionJson {
                 AssignableScopes = $AssignableScopes
             }
 
-            $hashRole | ConvertTo-Json -Depth 8 -ErrorAction Stop
+            $hashtableRole | ConvertTo-Json -Depth 8 -ErrorAction Stop
         } catch {
             Write-Debug ("Failed to generate role definition JSON for role '{0}': {1}" -f $RoleName, $_.Exception.Message)
             throw

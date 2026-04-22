@@ -48,7 +48,7 @@ function Remove-DuplicateCanonicalEvent {
     # This function supports positional parameters:
     #   Position 0: Events
     #
-    # Version: 1.2.20260415.0
+    # Version: 1.2.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -63,7 +63,7 @@ function Remove-DuplicateCanonicalEvent {
     process {
         Write-Verbose ("Deduplicating {0} canonical event(s)." -f $Events.Count)
         try {
-            $hashSeen = @{}
+            $hashtableSeen = @{}
 
             foreach ($objEvent in ($Events | Sort-Object TimeGenerated)) {
                 $strCorrelationId = [string]$objEvent.CorrelationId
@@ -80,12 +80,12 @@ function Remove-DuplicateCanonicalEvent {
 
                 $strKey = [string]$objEvent.PrincipalKey + '|' + [string]$objEvent.Action + '|' + $strResourceId + '|' + $strCorrelationId
                 Write-Debug ("Composite key constructed for deduplication check.")
-                if (-not $hashSeen.ContainsKey($strKey)) {
-                    $hashSeen[$strKey] = $true
+                if (-not $hashtableSeen.ContainsKey($strKey)) {
+                    $hashtableSeen[$strKey] = $true
                     $objEvent
                 }
             }
-            Write-Debug ("Deduplication complete. Unique keys tracked: {0}." -f $hashSeen.Count)
+            Write-Debug ("Deduplication complete. Unique keys tracked: {0}." -f $hashtableSeen.Count)
         } catch {
             Write-Debug ("Remove-DuplicateCanonicalEvent failed: {0}" -f $_.Exception.Message)
             throw

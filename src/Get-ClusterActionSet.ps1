@@ -45,17 +45,17 @@ function Get-ClusterActionSet {
     # # $arrClusterActions[0].Actions = @('microsoft.compute/virtualmachines/read', ...)
     # # $arrClusterActions[0].Principals = @('user1@contoso.com', 'spn-abcde')
     # .EXAMPLE
-    # $hashDisplayNames = @{ '00000000-0000-0000-0000-000000000001' = 'admin@contoso.com'; 'app-id-123' = 'app-id-123' }
-    # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments -PrincipalDisplayNameMap $hashDisplayNames)
+    # $hashtableDisplayNames = @{ '00000000-0000-0000-0000-000000000001' = 'admin@contoso.com'; 'app-id-123' = 'app-id-123' }
+    # $arrClusterActions = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $objKm.Assignments -PrincipalDisplayNameMap $hashtableDisplayNames)
     # # $arrClusterActions[0].PrincipalDisplayNames = @('admin@contoso.com')
     # .EXAMPLE
     # $arrCounts = @(
     # #     [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
     # #     [pscustomobject]@{ PrincipalKey = 'unknownUser'; Action = 'write'; Count = 2 }
     # # )
-    # # $hashAssignments = @{ 'userA' = 0 }
-    # $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
-    # # 'unknownUser' is not in $hashAssignments, so it is skipped.
+    # # $hashtableAssignments = @{ 'userA' = 0 }
+    # $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
+    # # 'unknownUser' is not in $hashtableAssignments, so it is skipped.
     # # $arrResult.Count = 1
     # # $arrResult[0].ClusterId = 0
     # # $arrResult[0].Actions = @('read')
@@ -90,7 +90,7 @@ function Get-ClusterActionSet {
     #   Position 0: Counts
     #   Position 1: AssignmentsMap
     #
-    # Version: 2.2.20260415.1
+    # Version: 2.2.20260422.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -111,8 +111,8 @@ function Get-ClusterActionSet {
             $intAssignmentCount = if ($null -ne $AssignmentsMap) { $AssignmentsMap.Count } else { 0 }
             Write-Verbose ("Processing {0} count records against {1} cluster assignments." -f $intCountRecords, $intAssignmentCount)
 
-            $hashActionsByCluster = @{}
-            $hashPrincipalsByCluster = @{}
+            $hashtableActionsByCluster = @{}
+            $hashtablePrincipalsByCluster = @{}
 
             foreach ($objRow in $Counts) {
                 $strPrincipal = [string]$objRow.PrincipalKey
@@ -122,20 +122,20 @@ function Get-ClusterActionSet {
                 }
                 $intClusterId = [int]$AssignmentsMap[$strPrincipal]
 
-                if (-not $hashActionsByCluster.ContainsKey($intClusterId)) {
-                    $hashActionsByCluster[$intClusterId] = @{}
-                    $hashPrincipalsByCluster[$intClusterId] = @{}
+                if (-not $hashtableActionsByCluster.ContainsKey($intClusterId)) {
+                    $hashtableActionsByCluster[$intClusterId] = @{}
+                    $hashtablePrincipalsByCluster[$intClusterId] = @{}
                 }
-                $hashActionsByCluster[$intClusterId][[string]$objRow.Action] = $true
-                $hashPrincipalsByCluster[$intClusterId][$strPrincipal] = $true
+                $hashtableActionsByCluster[$intClusterId][[string]$objRow.Action] = $true
+                $hashtablePrincipalsByCluster[$intClusterId][$strPrincipal] = $true
             }
 
-            foreach ($intClusterId in ($hashActionsByCluster.Keys | Sort-Object)) {
-                $arrSortedPrincipals = [string[]]@($hashPrincipalsByCluster[$intClusterId].Keys | Sort-Object)
+            foreach ($intClusterId in ($hashtableActionsByCluster.Keys | Sort-Object)) {
+                $arrSortedPrincipals = [string[]]@($hashtablePrincipalsByCluster[$intClusterId].Keys | Sort-Object)
 
                 $objOutput = [pscustomobject]@{
                     ClusterId = $intClusterId
-                    Actions = [string[]]@($hashActionsByCluster[$intClusterId].Keys | Sort-Object)
+                    Actions = [string[]]@($hashtableActionsByCluster[$intClusterId].Keys | Sort-Object)
                     Principals = $arrSortedPrincipals
                 }
 

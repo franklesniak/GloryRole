@@ -13,10 +13,10 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'write'; Count = 3 }
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 5 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -35,14 +35,14 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'write'; Count = 2 }
                 [pscustomobject]@{ PrincipalKey = 'userC'; Action = 'delete'; Count = 1 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'userA' = 2
                 'userB' = 0
                 'userC' = 1
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 3
@@ -59,13 +59,13 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'read'; Count = 3 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'userA' = 0
                 'userB' = 0
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -81,10 +81,10 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'unknownUser'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -101,10 +101,10 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'unknownA'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'unknownB'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 0
@@ -117,10 +117,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{}
+            $hashtableAssignments = @{}
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 0
@@ -134,13 +134,13 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'userA' = 0
                 'userB' = 0
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -156,10 +156,10 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'write'; Count = 3 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -175,14 +175,14 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'write'; Count = 2 }
                 [pscustomobject]@{ PrincipalKey = 'userC'; Action = 'delete'; Count = 1 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'userA' = 0
                 'userB' = 1
                 'userC' = 0
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 2
@@ -203,10 +203,10 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'unknownUser'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -222,10 +222,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -241,10 +241,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'missing'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'other' = 0 }
+            $hashtableAssignments = @{ 'other' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 0
@@ -255,10 +255,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -271,14 +271,14 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'userB'; Action = 'write'; Count = 2 }
                 [pscustomobject]@{ PrincipalKey = 'userC'; Action = 'delete'; Count = 1 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'userA' = 0
                 'userB' = 1
                 'userC' = 2
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult.Count | Should -Be 3
@@ -292,17 +292,17 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'guid-1' = 0
                 'guid-2' = 0
             }
-            $hashDisplayNames = @{
+            $hashtableDisplayNames = @{
                 'guid-1' = 'alice@contoso.com'
                 'guid-2' = 'bob@contoso.com'
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap $hashtableDisplayNames)
 
             # Assert
             $arrResult.Count | Should -Be 1
@@ -318,17 +318,17 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'guid-z'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'guid-a'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'guid-z' = 0
                 'guid-a' = 0
             }
-            $hashDisplayNames = @{
+            $hashtableDisplayNames = @{
                 'guid-z' = 'zara@contoso.com'
                 'guid-a' = 'alice@contoso.com'
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap $hashtableDisplayNames)
 
             # Assert
             $arrResult[0].PrincipalDisplayNames[0] | Should -Be 'alice@contoso.com'
@@ -341,17 +341,17 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
                 [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'guid-1' = 0
                 'guid-2' = 0
             }
-            $hashDisplayNames = @{
+            $hashtableDisplayNames = @{
                 'guid-1' = 'alice@contoso.com'
                 # guid-2 intentionally missing
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap $hashtableDisplayNames)
 
             # Assert
             $arrResult[0].PrincipalDisplayNames | Should -Contain 'alice@contoso.com'
@@ -363,11 +363,11 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'guid-1'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'guid-1' = 0 }
-            $hashDisplayNames = @{ 'guid-1' = 'alice@contoso.com' }
+            $hashtableAssignments = @{ 'guid-1' = 0 }
+            $hashtableDisplayNames = @{ 'guid-1' = 'alice@contoso.com' }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap $hashtableDisplayNames)
 
             # Assert
             ($arrResult[0].PrincipalDisplayNames -is [string[]]) | Should -BeTrue
@@ -380,10 +380,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert
             $arrResult[0].PSObject.Properties['PrincipalDisplayNames'] | Should -BeNullOrEmpty
@@ -394,10 +394,10 @@ Describe "Get-ClusterActionSet" {
             $arrCounts = @(
                 [pscustomobject]@{ PrincipalKey = 'userA'; Action = 'read'; Count = 1 }
             )
-            $hashAssignments = @{ 'userA' = 0 }
+            $hashtableAssignments = @{ 'userA' = 0 }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap @{})
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap @{})
 
             # Assert
             $arrResult[0].PSObject.Properties['PrincipalDisplayNames'] | Should -BeNullOrEmpty
@@ -412,19 +412,19 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'guid-2'; Action = 'write'; Count = 2 }
                 [pscustomobject]@{ PrincipalKey = 'guid-3'; Action = 'delete'; Count = 1 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'guid-1' = 0
                 'guid-2' = 1
                 'guid-3' = 0
             }
-            $hashDisplayNames = @{
+            $hashtableDisplayNames = @{
                 'guid-1' = 'alice@contoso.com'
                 'guid-2' = 'bob@contoso.com'
                 'guid-3' = 'charlie@contoso.com'
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments -PrincipalDisplayNameMap $hashDisplayNames)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments -PrincipalDisplayNameMap $hashtableDisplayNames)
 
             # Assert
             $arrResult.Count | Should -Be 2
@@ -447,13 +447,13 @@ Describe "Get-ClusterActionSet" {
                 [pscustomobject]@{ PrincipalKey = 'admin-001'; Action = 'microsoft.directory/servicePrincipals/standard/read'; Count = 5 }
                 [pscustomobject]@{ PrincipalKey = 'admin-002'; Action = 'microsoft.directory/conditionalAccessPolicies/create'; Count = 3 }
             )
-            $hashAssignments = @{
+            $hashtableAssignments = @{
                 'admin-001' = 0
                 'admin-002' = 1
             }
 
             # Act
-            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashAssignments)
+            $arrResult = @(Get-ClusterActionSet -Counts $arrCounts -AssignmentsMap $hashtableAssignments)
 
             # Assert - camelCase segments are preserved verbatim
             $arrResult | Should -Not -BeNullOrEmpty

@@ -61,7 +61,7 @@ function ConvertTo-VectorRow {
     # [pscustomobject] Vector row objects with PrincipalKey, Vector, and
     # TotalActions properties.
     # .NOTES
-    # Version: 1.1.20260413.0
+    # Version: 1.1.20260422.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -87,38 +87,38 @@ function ConvertTo-VectorRow {
 
     process {
         try {
-            $hashFeatureIndex = $FeatureIndexObject.FeatureIndex
+            $hashtableFeatureIndex = $FeatureIndexObject.FeatureIndex
             $intDimension = $FeatureIndexObject.FeatureNames.Count
 
             Write-Verbose ("Building vector rows from {0} counts with {1} features" -f $Counts.Count, $intDimension)
 
-            $hashVectorsByPrincipal = @{}
-            $hashTotalByPrincipal = @{}
+            $hashtableVectorsByPrincipal = @{}
+            $hashtableTotalByPrincipal = @{}
 
             foreach ($objRow in $Counts) {
                 $strPrincipal = [string]$objRow.PrincipalKey
                 $strAction = [string]$objRow.Action
                 $dblCount = [double]$objRow.Count
 
-                if (-not $hashVectorsByPrincipal.ContainsKey($strPrincipal)) {
-                    $hashVectorsByPrincipal[$strPrincipal] = New-Object double[] $intDimension
-                    $hashTotalByPrincipal[$strPrincipal] = 0.0
+                if (-not $hashtableVectorsByPrincipal.ContainsKey($strPrincipal)) {
+                    $hashtableVectorsByPrincipal[$strPrincipal] = New-Object double[] $intDimension
+                    $hashtableTotalByPrincipal[$strPrincipal] = 0.0
                 }
 
-                if ($hashFeatureIndex.ContainsKey($strAction)) {
-                    $intIndex = [int]$hashFeatureIndex[$strAction]
-                    $hashVectorsByPrincipal[$strPrincipal][$intIndex] += $dblCount
-                    $hashTotalByPrincipal[$strPrincipal] += $dblCount
+                if ($hashtableFeatureIndex.ContainsKey($strAction)) {
+                    $intIndex = [int]$hashtableFeatureIndex[$strAction]
+                    $hashtableVectorsByPrincipal[$strPrincipal][$intIndex] += $dblCount
+                    $hashtableTotalByPrincipal[$strPrincipal] += $dblCount
                 }
             }
 
-            Write-Verbose ("Generated vector rows for {0} principals" -f $hashVectorsByPrincipal.Count)
+            Write-Verbose ("Generated vector rows for {0} principals" -f $hashtableVectorsByPrincipal.Count)
 
-            foreach ($strPrincipal in ($hashVectorsByPrincipal.Keys | Sort-Object)) {
+            foreach ($strPrincipal in ($hashtableVectorsByPrincipal.Keys | Sort-Object)) {
                 [pscustomobject]@{
                     PrincipalKey = $strPrincipal
-                    Vector = $hashVectorsByPrincipal[$strPrincipal]
-                    TotalActions = [double]$hashTotalByPrincipal[$strPrincipal]
+                    Vector = $hashtableVectorsByPrincipal[$strPrincipal]
+                    TotalActions = [double]$hashtableTotalByPrincipal[$strPrincipal]
                 }
             }
         } catch {

@@ -198,7 +198,7 @@ Describe "Get-EntraIdAuditEvent" {
             # Arrange
             $dtStart = (Get-Date).AddDays(-1)
             $dtEnd = Get-Date
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockMapped = [pscustomobject]@{
                 Result = 'success'
@@ -235,28 +235,28 @@ Describe "Get-EntraIdAuditEvent" {
             Mock Get-MgAuditLogDirectoryAudit { return @($objMockMapped, $objMockUnmapped) }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert - only mapped event is returned
             $arrResult.Count | Should -Be 1
             $arrResult[0].PrincipalKey | Should -Be 'user-obj-1'
 
             # Assert - accumulator has the unmapped activity
-            $hashUnmapped.Count | Should -Be 1
+            $hashtableUnmapped.Count | Should -Be 1
             $strExpectedKey = 'Self-service password reset flow activity progress|UserManagement'
-            $hashUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
-            $hashUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
-            $hashUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
-            $hashUnmapped[$strExpectedKey].Count | Should -Be 1
-            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-2'
-            $hashUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'id-2'
+            $hashtableUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
+            $hashtableUnmapped[$strExpectedKey].ActivityDisplayName | Should -Be 'Self-service password reset flow activity progress'
+            $hashtableUnmapped[$strExpectedKey].Category | Should -Be 'UserManagement'
+            $hashtableUnmapped[$strExpectedKey].Count | Should -Be 1
+            $hashtableUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-2'
+            $hashtableUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'id-2'
         }
 
         It "Increments count for repeated unmapped activities" {
             # Arrange
             $dtStart = (Get-Date).AddDays(-1)
             $dtEnd = Get-Date
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockUnmapped1 = [pscustomobject]@{
                 Result = 'success'
@@ -293,24 +293,24 @@ Describe "Get-EntraIdAuditEvent" {
             Mock Get-MgAuditLogDirectoryAudit { return @($objMockUnmapped1, $objMockUnmapped2) }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert - no mapped events
             $arrResult.Count | Should -Be 0
 
             # Assert - accumulator has one entry with count 2
-            $hashUnmapped.Count | Should -Be 1
+            $hashtableUnmapped.Count | Should -Be 1
             $strExpectedKey = 'User registered security info|UserManagement'
-            $hashUnmapped[$strExpectedKey].Count | Should -Be 2
+            $hashtableUnmapped[$strExpectedKey].Count | Should -Be 2
             # Sample IDs come from the first occurrence
-            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-1'
+            $hashtableUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-1'
         }
 
         It "Does not track non-success records as unmapped" {
             # Arrange
             $dtStart = (Get-Date).AddDays(-1)
             $dtEnd = Get-Date
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockFailed = [pscustomobject]@{
                 Result = 'failure'
@@ -331,11 +331,11 @@ Describe "Get-EntraIdAuditEvent" {
             Mock Get-MgAuditLogDirectoryAudit { return @($objMockFailed) }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert
             $arrResult.Count | Should -Be 0
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not track records dropped for missing principal as unmapped" {
@@ -346,7 +346,7 @@ Describe "Get-EntraIdAuditEvent" {
             # not mapping coverage.
             $dtStart = (Get-Date).AddDays(-1)
             $dtEnd = Get-Date
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockNoPrincipal = [pscustomobject]@{
                 Result = 'success'
@@ -361,11 +361,11 @@ Describe "Get-EntraIdAuditEvent" {
             Mock Get-MgAuditLogDirectoryAudit { return @($objMockNoPrincipal) }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert
             $arrResult.Count | Should -Be 0
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not track records dropped for unparseable ActivityDateTime as unmapped" {
@@ -374,7 +374,7 @@ Describe "Get-EntraIdAuditEvent" {
             # for date failure and MUST NOT be counted as unmapped.
             $dtStart = (Get-Date).AddDays(-1)
             $dtEnd = Get-Date
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
 
             $objMockBadDate = [pscustomobject]@{
                 Result = 'success'
@@ -395,11 +395,11 @@ Describe "Get-EntraIdAuditEvent" {
             Mock Get-MgAuditLogDirectoryAudit { return @($objMockBadDate) }
 
             # Act
-            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashUnmapped)
+            $arrResult = @(Get-EntraIdAuditEvent -Start $dtStart -End $dtEnd -UnmappedActivityAccumulator $hashtableUnmapped)
 
             # Assert
             $arrResult.Count | Should -Be 0
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not populate accumulator when parameter is not provided" {

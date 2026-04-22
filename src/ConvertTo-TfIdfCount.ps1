@@ -51,7 +51,7 @@ function ConvertTo-TfIdfCount {
     # weighted counts.
     # Returns no objects when the input contains no principals (empty input).
     # .NOTES
-    # Version: 1.3.20260413.0
+    # Version: 1.3.20260422.0
     #
     # This function supports positional parameters:
     #   Position 0: Counts
@@ -83,8 +83,8 @@ function ConvertTo-TfIdfCount {
             }
 
             #region Document-Frequency Computation
-            $hashDocumentFrequency = @{}
-            $hashPrincipals = @{}
+            $hashtableDocumentFrequency = @{}
+            $hashtablePrincipals = @{}
 
             foreach ($objRow in $Counts) {
                 $strPrincipal = [string]$objRow.PrincipalKey
@@ -109,17 +109,17 @@ function ConvertTo-TfIdfCount {
                     continue
                 }
 
-                $hashPrincipals[$strPrincipal] = $true
-                if (-not $hashDocumentFrequency.ContainsKey($strAction)) {
-                    $hashDocumentFrequency[$strAction] = @{}
+                $hashtablePrincipals[$strPrincipal] = $true
+                if (-not $hashtableDocumentFrequency.ContainsKey($strAction)) {
+                    $hashtableDocumentFrequency[$strAction] = @{}
                 }
-                $hashDocumentFrequency[$strAction][$strPrincipal] = $true
+                $hashtableDocumentFrequency[$strAction][$strPrincipal] = $true
             }
 
-            Write-Debug -Message ("Document frequency pass complete: {0} unique principals, {1} unique actions." -f $hashPrincipals.Count, $hashDocumentFrequency.Count)
+            Write-Debug -Message ("Document frequency pass complete: {0} unique principals, {1} unique actions." -f $hashtablePrincipals.Count, $hashtableDocumentFrequency.Count)
             #endregion Document-Frequency Computation
 
-            $dblN = [double]$hashPrincipals.Count
+            $dblN = [double]$hashtablePrincipals.Count
             if ($dblN -le 0) {
                 return
             }
@@ -146,7 +146,7 @@ function ConvertTo-TfIdfCount {
                 }
 
                 $dblTf = $dblCount
-                $dblDf = [double]$hashDocumentFrequency[$strAction].Count
+                $dblDf = [double]$hashtableDocumentFrequency[$strAction].Count
 
                 $dblIdf = [Math]::Log((1.0 + $dblN) / (1.0 + $dblDf)) + 1.0
 

@@ -10,11 +10,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
     Context "When given an empty event array" {
         It "Returns an empty hashtable" {
             # Arrange / Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events @()
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events @()
 
             # Assert
-            $hashResult | Should -BeOfType [hashtable]
-            $hashResult.Count | Should -Be 0
+            $hashtableResult | Should -BeOfType [hashtable]
+            $hashtableResult.Count | Should -Be 0
         }
     }
 
@@ -33,12 +33,12 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 2
-            $hashResult['11111111-1111-1111-1111-111111111111'] | Should -Be 'alice@contoso.com'
-            $hashResult['22222222-2222-2222-2222-222222222222'] | Should -Be 'bob@contoso.com'
+            $hashtableResult.Count | Should -Be 2
+            $hashtableResult['11111111-1111-1111-1111-111111111111'] | Should -Be 'alice@contoso.com'
+            $hashtableResult['22222222-2222-2222-2222-222222222222'] | Should -Be 'bob@contoso.com'
         }
     }
 
@@ -53,11 +53,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 1
-            $hashResult['33333333-3333-3333-3333-333333333333'] | Should -Be '33333333-3333-3333-3333-333333333333'
+            $hashtableResult.Count | Should -Be 1
+            $hashtableResult['33333333-3333-3333-3333-333333333333'] | Should -Be '33333333-3333-3333-3333-333333333333'
         }
 
         It "Falls back to PrincipalKey when PrincipalUPN is empty string" {
@@ -70,11 +70,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 1
-            $hashResult['44444444-4444-4444-4444-444444444444'] | Should -Be '44444444-4444-4444-4444-444444444444'
+            $hashtableResult.Count | Should -Be 1
+            $hashtableResult['44444444-4444-4444-4444-444444444444'] | Should -Be '44444444-4444-4444-4444-444444444444'
         }
 
         It "Falls back to PrincipalKey when PrincipalUPN is whitespace" {
@@ -87,11 +87,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 1
-            $hashResult['55555555-5555-5555-5555-555555555555'] | Should -Be '55555555-5555-5555-5555-555555555555'
+            $hashtableResult.Count | Should -Be 1
+            $hashtableResult['55555555-5555-5555-5555-555555555555'] | Should -Be '55555555-5555-5555-5555-555555555555'
         }
     }
 
@@ -110,11 +110,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 1
-            $hashResult['66666666-6666-6666-6666-666666666666'] | Should -Be 'first@contoso.com'
+            $hashtableResult.Count | Should -Be 1
+            $hashtableResult['66666666-6666-6666-6666-666666666666'] | Should -Be 'first@contoso.com'
         }
 
         It "Does not upgrade a PrincipalKey fallback when a later event has a UPN" {
@@ -132,11 +132,11 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 1
-            $hashResult['77777777-7777-7777-7777-777777777777'] | Should -Be '77777777-7777-7777-7777-777777777777'
+            $hashtableResult.Count | Should -Be 1
+            $hashtableResult['77777777-7777-7777-7777-777777777777'] | Should -Be '77777777-7777-7777-7777-777777777777'
         }
     }
 
@@ -159,13 +159,13 @@ Describe "ConvertTo-PrincipalDisplayNameMap" {
             )
 
             # Act
-            $hashResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
+            $hashtableResult = ConvertTo-PrincipalDisplayNameMap -Events $arrEvents
 
             # Assert
-            $hashResult.Count | Should -Be 3
-            $hashResult['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'] | Should -Be 'alice@contoso.com'
-            $hashResult['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'] | Should -Be 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-            $hashResult['cccccccc-cccc-cccc-cccc-cccccccccccc'] | Should -Be 'carol@contoso.com'
+            $hashtableResult.Count | Should -Be 3
+            $hashtableResult['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'] | Should -Be 'alice@contoso.com'
+            $hashtableResult['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'] | Should -Be 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+            $hashtableResult['cccccccc-cccc-cccc-cccc-cccccccccccc'] | Should -Be 'carol@contoso.com'
         }
     }
 }
