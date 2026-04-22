@@ -23,6 +23,7 @@ tests/**/goldens/**           text eol=lf
 tests/**/snapshots/**         text eol=lf
 tests/**/__snapshots__/**     text eol=lf
 tests/**/fixtures/**          text eol=lf
+tests/**/baselines/**         text eol=lf
 testdata/**                   text eol=lf
 
 # Binary overrides: prevent the broad rules above (or any default
