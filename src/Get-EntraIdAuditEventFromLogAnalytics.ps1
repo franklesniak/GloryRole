@@ -176,8 +176,8 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             $dtStartUtc = $Start.ToUniversalTime()
             $dtEndUtc = $End.ToUniversalTime()
 
-            if ($dtEndUtc -le $dtStartUtc) {
-                Write-Verbose ("Querying AuditLogs table in workspace {0}: End ({1:yyyy-MM-ddTHH:mm:ssZ}) is not after Start ({2:yyyy-MM-ddTHH:mm:ssZ}); no events to emit." -f $WorkspaceId, $dtEndUtc, $dtStartUtc)
+            if ($dtEndUtc -lt $dtStartUtc) {
+                Write-Verbose ("Querying AuditLogs table in workspace {0}: End ({1:yyyy-MM-ddTHH:mm:ssZ}) is before Start ({2:yyyy-MM-ddTHH:mm:ssZ}); no events to emit." -f $WorkspaceId, $dtEndUtc, $dtStartUtc)
                 return
             }
 
@@ -186,11 +186,17 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             # Build the initial chunk list by splitting [Start, End] into
             # consecutive windows of -EntraIdInitialSliceHours each. The
             # final chunk is truncated to End so the total time range is
-            # covered exactly once with no gaps or overlaps. Boundary
-            # inclusivity is handled by the per-chunk KQL below.
+            # covered exactly once with no gaps or overlaps. A
+            # zero-duration request (Start == End) yields exactly one
+            # terminal chunk [Start, Start] (the do/while guarantees at
+            # least one iteration); the KQL below renders that as
+            # `>= Start and <= Start`, matching the pre-chunking
+            # `between(Start..End)` semantics for the single-instant
+            # case. Boundary inclusivity for non-degenerate chunks is
+            # handled by the per-chunk KQL below.
             $listInitialChunks = New-Object System.Collections.Generic.List[pscustomobject]
             $dtCursor = $dtStartUtc
-            while ($dtCursor -lt $dtEndUtc) {
+            do {
                 $dtChunkEnd = $dtCursor.AddHours($EntraIdInitialSliceHours)
                 if ($dtChunkEnd -gt $dtEndUtc) {
                     $dtChunkEnd = $dtEndUtc
@@ -200,7 +206,7 @@ function Get-EntraIdAuditEventFromLogAnalytics {
                             SegEnd = $dtChunkEnd
                         }))
                 $dtCursor = $dtChunkEnd
-            }
+            } while ($dtCursor -lt $dtEndUtc)
 
             # Push chunks onto a LIFO stack in reverse order so that
             # pops yield chunks in forward time order. Adaptive
@@ -303,7 +309,7 @@ src
 "@
 
                 if ($DebugPreference -ne 'SilentlyContinue') {
-                    Write-Debug ("KQL query for chunk [{0:yyyy-MM-ddTHH:mm:ssZ} .. {1:yyyy-MM-ddTHH:mm:ssZ}{2}]: {3}" -f $dtSegStart, $dtSegEnd, $(if ($boolTerminalChunk) { ']' } else { ')' }), $strKql)
+                    Write-Debug ("KQL query for chunk [{0:yyyy-MM-ddTHH:mm:ssZ} .. {1:yyyy-MM-ddTHH:mm:ssZ}{2}: {3}" -f $dtSegStart, $dtSegEnd, $(if ($boolTerminalChunk) { ']' } else { ')' }), $strKql)
                 }
 
                 $objVerbosePreferenceAtStartOfBlock = $VerbosePreference

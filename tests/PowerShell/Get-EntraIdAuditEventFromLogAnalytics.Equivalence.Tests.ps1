@@ -942,13 +942,89 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
 
             # Assert -- exactly one event per input row, and the set
             # of RecordIds emitted is the set that was input (strict
-            # equality, no duplicates, no drops).
+            # equality, no duplicates, no drops). RecordId is the
+            # canonical per-row identifier in the CanonicalEntraIdEvent
+            # (DC-6) contract, so it is the right column to assert on
+            # for "no row dropped, no row double-counted".
             $arrEvents | Should -HaveCount 24
-            $arrExpectedKeys = @($arrFixtureRows | ForEach-Object { $_.PrincipalKey } | Sort-Object)
-            $arrActualKeys = @($arrEvents | ForEach-Object { $_.PrincipalKey } | Sort-Object)
-            for ($i = 0; $i -lt $arrExpectedKeys.Count; $i++) {
-                $arrActualKeys[$i] | Should -Be $arrExpectedKeys[$i]
+            $arrExpectedRecordIds = @($arrFixtureRows | ForEach-Object { $_.RecordId } | Sort-Object)
+            $arrActualRecordIds = @($arrEvents | ForEach-Object { $_.RecordId } | Sort-Object)
+            for ($i = 0; $i -lt $arrExpectedRecordIds.Count; $i++) {
+                $arrActualRecordIds[$i] | Should -Be $arrExpectedRecordIds[$i]
             }
+        }
+
+        # Asserts the documented [Start, End] coverage when the caller
+        # requests a zero-duration window (Start == End): the
+        # implementation MUST emit any rows whose TimeGenerated lands
+        # at exactly that instant, matching the pre-PR `between(..)`
+        # KQL semantics. The single chunk produced by the do/while
+        # initial-chunk builder is terminal (SegEnd == End) and uses
+        # the closed `<=` upper bound, so the KQL filter renders as
+        # `TimeGenerated >= Start and TimeGenerated <= Start`.
+        It "Zero-duration window (Start == End) returns rows at the boundary instant" {
+            # Arrange -- one row at exactly the requested instant and
+            # neighbours one second on each side that MUST be excluded.
+            # Construct $dtInstant with explicit UTC kind so the
+            # fixture string round-trip is timezone-independent (the
+            # mock helper parses TimeGenerated with AssumeUniversal,
+            # and the production function calls .ToUniversalTime()
+            # before stamping chunk bounds into the KQL).
+            $dtInstant = [datetime]::new(2026, 1, 10, 12, 0, 0, [System.DateTimeKind]::Utc)
+            $arrFixtureZeroDur = @(
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.AddSeconds(-1).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-before'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'before@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-before'
+                    RecordId = 'rec-before'
+                },
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-instant'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'instant@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-instant'
+                    RecordId = 'rec-instant'
+                },
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.AddSeconds(1).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-after'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'after@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-after'
+                    RecordId = 'rec-after'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $arrFixtureZeroDur) }
+            }
+
+            # Act
+            $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics `
+                    -WorkspaceId 'test-workspace-id' `
+                    -Start $dtInstant `
+                    -End $dtInstant `
+                    -EntraIdInitialSliceHours 24 `
+                    -EntraIdMinSliceMinutes 15 `
+                    -EntraIdMaxRecordHint 450000)
+
+            # Assert -- only the row at the exact instant is returned;
+            # the function issued exactly one query (the single
+            # terminal chunk).
+            $arrEvents | Should -HaveCount 1
+            $arrEvents[0].RecordId | Should -Be 'rec-instant'
+            Should -Invoke Invoke-AzOperationalInsightsQuery -Scope It -Times 1 -Exactly
         }
     }
 
