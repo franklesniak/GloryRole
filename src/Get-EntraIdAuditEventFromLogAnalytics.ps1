@@ -20,10 +20,16 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     # aggregation, clustering) works identically regardless of the
     # data source.
     #
-    # The heavy lifting (date-range filtering, success filtering, and
-    # principal extraction) is performed server-side in KQL so that
-    # only qualifying rows travel over the wire. The activity-to-action
-    # mapping is performed PowerShell-side via
+    # The heavy lifting (date-range filtering, success filtering,
+    # principal extraction, and retry-duplicate collapse) is performed
+    # server-side in KQL so that only qualifying rows travel over the
+    # wire. Retry duplicates are collapsed server-side on the composite
+    # key (PrincipalKey, OperationName, CorrelationId) using
+    # arg_min(TimeGenerated, ...) so the earliest row per composite key
+    # is retained; rows with an empty CorrelationId are preserved via a
+    # union branch because they cannot be retry-duplicates (the
+    # CorrelationId is required to identify a retry pair). The
+    # activity-to-action mapping is performed PowerShell-side via
     # ConvertTo-EntraIdResourceAction because the mapping table is
     # maintained in PowerShell and embedding 150+ entries in KQL would
     # be fragile.
@@ -88,7 +94,7 @@ function Get-EntraIdAuditEventFromLogAnalytics {
     #   Position 1: Start
     #   Position 2: End
     #
-    # Version: 1.2.20260418.0
+    # Version: 1.3.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
@@ -122,6 +128,23 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             # User.Id > App.AppId > App.DisplayName. Records with no
             # resolvable principal or no OperationName are excluded
             # server-side.
+            #
+            # Retry-duplicate collapse (Option A): after the `src`
+            # projection, rows with a non-empty CorrelationId are
+            # summarized with arg_min(TimeGenerated, ...) by the
+            # composite key (PrincipalKey, OperationName, CorrelationId)
+            # so the earliest TimeGenerated row per key is kept;
+            # project-rename restores the original TimeGenerated column
+            # name. Rows with an empty CorrelationId are unioned back
+            # unchanged because they cannot be retry-duplicates of one
+            # another, and collapsing them would violate the invariant
+            # that null-CorrelationId events are always kept (see
+            # REQ-DED-001 and Remove-DuplicateCanonicalEvent). The
+            # composite key intentionally omits RecordId and
+            # TimeGenerated so that retries (which differ only in those
+            # two fields and share a CorrelationId) collapse to a
+            # single row, matching the client-side
+            # Remove-DuplicateCanonicalEvent contract.
             $strCategoryFilter = ''
             if ($null -ne $FilterCategory -and $FilterCategory.Count -gt 0) {
                 $arrCategoryParts = @()
@@ -142,28 +165,35 @@ function Get-EntraIdAuditEventFromLogAnalytics {
             $strEndUtc = $End.ToUniversalTime().ToString("o")
 
             $strKql = @"
-AuditLogs
-| where TimeGenerated between (datetime($strStartUtc) .. datetime($strEndUtc))
-| where ResultDescription =~ "success" or Result =~ "success"
-$strCategoryFilter
-| extend InitiatedByObj = parse_json(InitiatedBy)
-| extend UserId = tostring(InitiatedByObj.user.id)
-| extend UserUPN = tostring(InitiatedByObj.user.userPrincipalName)
-| extend AppIdVal = tostring(InitiatedByObj.app.appId)
-| extend AppDisplayName = tostring(InitiatedByObj.app.displayName)
-| extend PrincipalKey = case(
-    isnotempty(UserId), UserId,
-    isnotempty(AppIdVal), AppIdVal,
-    isnotempty(AppDisplayName), AppDisplayName,
-    ""
-)
-| extend PrincipalType = case(
-    isnotempty(UserId), "User",
-    isnotempty(AppIdVal) or isnotempty(AppDisplayName), "ServicePrincipal",
-    "Unknown"
-)
-| where isnotempty(PrincipalKey) and isnotempty(OperationName)
-| project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN=UserUPN, AppId=AppIdVal, CorrelationId, RecordId=Id
+let src =
+    AuditLogs
+    | where TimeGenerated between (datetime($strStartUtc) .. datetime($strEndUtc))
+    | where ResultDescription =~ "success" or Result =~ "success"
+    $strCategoryFilter
+    | extend InitiatedByObj = parse_json(InitiatedBy)
+    | extend UserId = tostring(InitiatedByObj.user.id)
+    | extend UserUPN = tostring(InitiatedByObj.user.userPrincipalName)
+    | extend AppIdVal = tostring(InitiatedByObj.app.appId)
+    | extend AppDisplayName = tostring(InitiatedByObj.app.displayName)
+    | extend PrincipalKey = case(
+        isnotempty(UserId), UserId,
+        isnotempty(AppIdVal), AppIdVal,
+        isnotempty(AppDisplayName), AppDisplayName,
+        ""
+    )
+    | extend PrincipalType = case(
+        isnotempty(UserId), "User",
+        isnotempty(AppIdVal) or isnotempty(AppDisplayName), "ServicePrincipal",
+        "Unknown"
+    )
+    | where isnotempty(PrincipalKey) and isnotempty(OperationName)
+    | project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN=UserUPN, AppId=AppIdVal, CorrelationId, RecordId=Id;
+src
+| where isnotempty(CorrelationId)
+| summarize arg_min(TimeGenerated, Category, PrincipalType, PrincipalUPN, AppId, RecordId) by PrincipalKey, OperationName, CorrelationId
+| project-rename TimeGenerated = min_TimeGenerated
+| project TimeGenerated, OperationName, Category, PrincipalKey, PrincipalType, PrincipalUPN, AppId, CorrelationId, RecordId
+| union (src | where isempty(CorrelationId))
 "@
 
             Write-Debug ("KQL query: {0}" -f $strKql)
