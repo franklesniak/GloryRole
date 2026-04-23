@@ -98,6 +98,45 @@ function Invoke-AzOperationalInsightsQuery {
 # window. Rows with unparseable TimeGenerated are treated the same way as
 # the equivalence tests: included only on terminal (closed-upper) chunks.
 function Select-BenchRowByKqlTimeWindow {
+    # .SYNOPSIS
+    # Filters mock Log Analytics rows by the KQL chunk time window.
+    # .DESCRIPTION
+    # Get-EntraIdAuditEventFromLogAnalytics issues one KQL query per
+    # chunk of the [Start, End] range, so a naive mock that returns
+    # every row unconditionally would N-fold-duplicate rows across
+    # chunks. This helper parses the first two datetime(...) tokens
+    # from the query -- which always correspond to the chunk's lower
+    # and upper TimeGenerated bounds -- and returns only the rows
+    # whose TimeGenerated falls in that window, honoring the
+    # half-open-vs-closed upper-bound distinction that the production
+    # code uses to coordinate chunk boundaries with the overall
+    # [Start, End] interval. The behaviour mirrors
+    # Select-MockRowByKqlTimeWindow in the equivalence test suite so
+    # the benchmark simulator and the tests treat chunk boundaries
+    # identically.
+    # .PARAMETER Query
+    # The KQL query passed to the mocked cmdlet.
+    # .PARAMETER Rows
+    # The full set of candidate mock rows (e.g., a synthetic fixture)
+    # to filter down to the current chunk's window.
+    # .EXAMPLE
+    # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
+    # $arrFiltered = Select-BenchRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
+    # # $arrFiltered contains only rows whose TimeGenerated falls in
+    # # the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+    # # (half-open upper bound because the KQL uses `<`, not `<=`).
+    # .INPUTS
+    # None. You cannot pipe objects to this function.
+    # .OUTPUTS
+    # [object] Each mock row whose TimeGenerated falls within the
+    # parsed KQL time window. Emitted as an object array via the
+    # return statement; callers typically collect with `@(...)`.
+    # .NOTES
+    # PRIVATE/INTERNAL HELPER -- Not part of the public API surface.
+    # Parameters, return shape, and positional contract may change
+    # without notice.
+    #
+    # Version: 1.0.20260423.0
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
         Justification = 'Function returns a collection of mock rows; plural "Row" matches repository convention for collection-returning helpers (e.g., Select-MockRowByKqlTimeWindow in the equivalence suite).')]
@@ -165,6 +204,45 @@ function Select-BenchRowByKqlTimeWindow {
 # Get-EntraIdAuditEventFromLogAnalytics.ps1 and the
 # Invoke-OptionAServerSideCollapse helper in the equivalence tests.
 function Invoke-BenchOptionACollapse {
+    # .SYNOPSIS
+    # Simulates the KQL Option A server-side retry-collapse on fixture rows.
+    # .DESCRIPTION
+    # Emulates the `arg_min(TimeGenerated, ...) by PrincipalKey,
+    # OperationName, CorrelationId` summarize block in the KQL query
+    # inside Get-EntraIdAuditEventFromLogAnalytics. Rows whose
+    # CorrelationId is null, empty, or whitespace-only bypass the
+    # collapse (preserved via the KQL `union` branch), matching
+    # REQ-DED-001 and Remove-DuplicateCanonicalEvent's
+    # [string]::IsNullOrWhiteSpace contract. All other rows are grouped
+    # by the raw (non-trimmed) composite key
+    # (PrincipalKey, OperationName, CorrelationId) and reduced to the
+    # single row with the earliest TimeGenerated per group (arg_min
+    # semantics). Rows are sorted by TimeGenerated first so the first
+    # row seen per composite key is the earliest.
+    # This helper mirrors Invoke-OptionAServerSideCollapse in the
+    # equivalence test suite so the benchmark simulator and the tests
+    # apply the same collapse semantics.
+    # .PARAMETER Rows
+    # The fixture rows to collapse (typically a chunk's time-filtered
+    # rows for the OptionAPlusB mode, or the whole fixture for the
+    # OptionA mode).
+    # .EXAMPLE
+    # $arrRaw = @(New-SyntheticAuditLogFixture -Count 500 -DuplicateRatio 0.25 -Seed 42)
+    # $arrCollapsed = @(Invoke-BenchOptionACollapse -Rows $arrRaw)
+    # # $arrCollapsed contains the same rows as $arrRaw, except that
+    # # retry duplicates sharing (PrincipalKey, OperationName,
+    # # CorrelationId) are collapsed to the single row with the
+    # # earliest TimeGenerated per group.
+    # .INPUTS
+    # None. You cannot pipe objects to this function.
+    # .OUTPUTS
+    # [object] The collapsed row set as an object array.
+    # .NOTES
+    # PRIVATE/INTERNAL HELPER -- Not part of the public API surface.
+    # Parameters, return shape, and positional contract may change
+    # without notice.
+    #
+    # Version: 1.0.20260423.0
     [CmdletBinding()]
     [OutputType([object])]
     param (
