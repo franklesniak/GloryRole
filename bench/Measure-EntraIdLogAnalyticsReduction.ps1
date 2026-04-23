@@ -21,7 +21,7 @@
 # Requires the fixture generator from tests/PowerShell/_fixtures/:
 #   New-SyntheticAuditLogFixture.ps1
 #
-# Version: 1.3.20260423.0
+# Version: 1.4.20260423.0
 
 [CmdletBinding()]
 param (
@@ -129,14 +129,14 @@ function Select-BenchRowByKqlTimeWindow {
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
     # [object] Each mock row whose TimeGenerated falls within the
-    # parsed KQL time window. Emitted as an object array via the
-    # return statement; callers typically collect with `@(...)`.
+    # parsed KQL time window. Emitted once per matching row on the
+    # success stream; callers typically collect with `@(...)`.
     # .NOTES
     # PRIVATE/INTERNAL HELPER -- Not part of the public API surface.
     # Parameters, return shape, and positional contract may change
     # without notice.
     #
-    # Version: 1.0.20260423.0
+    # Version: 1.1.20260423.0
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseSingularNouns', '',
         Justification = 'Function returns a collection of mock rows; plural "Row" matches repository convention for collection-returning helpers (e.g., Select-MockRowByKqlTimeWindow in the equivalence suite).')]
@@ -163,8 +163,17 @@ function Select-BenchRowByKqlTimeWindow {
     $dtLower = [datetime]::Parse($objMatches[0].Groups[1].Value, $objCulture, $dtStyles)
     $dtUpper = [datetime]::Parse($objMatches[1].Groups[1].Value, $objCulture, $dtStyles)
 
+    # Closed-upper detection mirrors Select-MockRowByKqlTimeWindow in the
+    # equivalence test suite: a KQL `between(...)` predicate is inclusive on
+    # both ends (closed-upper), and the production KQL can also emit an
+    # explicit `<= datetime(...)` clause on the terminal chunk. Detecting
+    # both forms keeps the bench simulator's row-assignment behaviour in
+    # lock-step with the test helper even if the KQL ever reverts to a
+    # `between(...)` form for the time-window filter.
     $boolClosedUpper = $false
-    if ($Query -match '<=\s*datetime\(') {
+    if ($Query -match 'between\s*\(') {
+        $boolClosedUpper = $true
+    } elseif ($Query -match '<=\s*datetime\(') {
         $boolClosedUpper = $true
     }
 
@@ -236,13 +245,14 @@ function Invoke-BenchOptionACollapse {
     # .INPUTS
     # None. You cannot pipe objects to this function.
     # .OUTPUTS
-    # [object] The collapsed row set as an object array.
+    # [object] Collapsed fixture rows emitted once per row on the
+    # success stream; callers typically collect with `@(...)`.
     # .NOTES
     # PRIVATE/INTERNAL HELPER -- Not part of the public API surface.
     # Parameters, return shape, and positional contract may change
     # without notice.
     #
-    # Version: 1.0.20260423.0
+    # Version: 1.1.20260423.0
     [CmdletBinding()]
     [OutputType([object])]
     param (
