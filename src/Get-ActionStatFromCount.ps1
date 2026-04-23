@@ -47,7 +47,7 @@ function Get-ActionStatFromCount {
     # This function supports positional parameters:
     #   Position 0: Counts
     #
-    # Version: 1.2.20260412.0
+    # Version: 1.2.20260422.0
 
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -61,8 +61,8 @@ function Get-ActionStatFromCount {
         try {
             Write-Verbose ("Processing {0} input row(s)." -f $Counts.Count)
 
-            $hashTotal = @{}
-            $hashPrincipalSet = @{}
+            $hashtableTotal = @{}
+            $hashtablePrincipalSet = @{}
 
             foreach ($objRow in $Counts) {
                 # Validate required properties
@@ -86,23 +86,23 @@ function Get-ActionStatFromCount {
                 $strAction = [string]$objRow.Action
                 $strPrincipal = [string]$objRow.PrincipalKey
 
-                if ($hashTotal.ContainsKey($strAction)) {
-                    $hashTotal[$strAction] += $dblCount
+                if ($hashtableTotal.ContainsKey($strAction)) {
+                    $hashtableTotal[$strAction] += $dblCount
                 } else {
-                    $hashTotal[$strAction] = $dblCount
+                    $hashtableTotal[$strAction] = $dblCount
                 }
 
-                if (-not $hashPrincipalSet.ContainsKey($strAction)) {
-                    $hashPrincipalSet[$strAction] = @{}
+                if (-not $hashtablePrincipalSet.ContainsKey($strAction)) {
+                    $hashtablePrincipalSet[$strAction] = @{}
                 }
-                $hashPrincipalSet[$strAction][$strPrincipal] = $true
+                $hashtablePrincipalSet[$strAction][$strPrincipal] = $true
             }
 
-            foreach ($strAction in $hashTotal.Keys) {
+            foreach ($strAction in $hashtableTotal.Keys) {
                 [pscustomobject]@{
                     Action = $strAction
-                    TotalCount = [double]$hashTotal[$strAction]
-                    DistinctPrincipals = [int]$hashPrincipalSet[$strAction].Count
+                    TotalCount = [double]$hashtableTotal[$strAction]
+                    DistinctPrincipals = [int]$hashtablePrincipalSet[$strAction].Count
                 }
             }
         } catch {

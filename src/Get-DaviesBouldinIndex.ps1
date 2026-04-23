@@ -69,7 +69,7 @@ function Get-DaviesBouldinIndex {
     #   Position 0: VectorRows
     #   Position 1: KMeansResult
     #
-    # Version: 1.1.20260410.0
+    # Version: 1.1.20260422.0
 
     [CmdletBinding()]
     [OutputType([double])]
@@ -92,21 +92,21 @@ function Get-DaviesBouldinIndex {
             }
 
             # Build cluster membership lists
-            $hashMembers = @{}
+            $hashtableMembers = @{}
             for ($intClusterIndex = 0; $intClusterIndex -lt $intK; $intClusterIndex++) {
-                $hashMembers[$intClusterIndex] = New-Object System.Collections.Generic.List[int]
+                $hashtableMembers[$intClusterIndex] = New-Object System.Collections.Generic.List[int]
             }
 
             for ($intPointIndex = 0; $intPointIndex -lt $intN; $intPointIndex++) {
                 $strKey = [string]$VectorRows[$intPointIndex].PrincipalKey
                 $intClusterId = [int]$KMeansResult.Assignments[$strKey]
-                [void]($hashMembers[$intClusterId].Add($intPointIndex))
+                [void]($hashtableMembers[$intClusterId].Add($intPointIndex))
             }
 
             # Compute scatter (average distance to centroid) for each cluster
             $arrScatter = New-Object double[] $intK
             for ($intClusterIndex = 0; $intClusterIndex -lt $intK; $intClusterIndex++) {
-                $listIndices = $hashMembers[$intClusterIndex]
+                $listIndices = $hashtableMembers[$intClusterIndex]
                 if ($listIndices.Count -eq 0) {
                     $arrScatter[$intClusterIndex] = 0.0
                     continue

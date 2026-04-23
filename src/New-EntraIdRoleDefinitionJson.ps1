@@ -65,7 +65,7 @@ function New-EntraIdRoleDefinitionJson {
     #   Position 1: Description
     #   Position 2: ResourceActions
     #
-    # Version: 1.5.20260418.0
+    # Version: 1.5.20260422.0
 
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',
@@ -202,7 +202,7 @@ function New-EntraIdRoleDefinitionJson {
                 }
             }
 
-            $hashRole = [ordered]@{
+            $hashtableRole = [ordered]@{
                 displayName = $RoleName
                 description = $Description
                 isEnabled = $IsEnabled
@@ -214,7 +214,7 @@ function New-EntraIdRoleDefinitionJson {
                 )
             }
 
-            $hashRole | ConvertTo-Json -Depth 8 -ErrorAction Stop
+            $hashtableRole | ConvertTo-Json -Depth 8 -ErrorAction Stop
         } catch {
             Write-Debug ("Failed to generate Entra ID role definition JSON for role '{0}': {1}" -f $RoleName, $_.Exception.Message)
             throw

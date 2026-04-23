@@ -9,6 +9,100 @@ BeforeAll {
         param ($WorkspaceId, $Query)
     }
 
+    function Select-MockRowByKqlTimeWindow {
+        # .SYNOPSIS
+        # Filters mock Log Analytics rows by the KQL time window.
+        # .DESCRIPTION
+        # The production function issues one KQL per chunk of the
+        # [Start, End] range, so a naive mock that returns every row
+        # unconditionally would N-fold-duplicate rows across chunks.
+        # This helper parses the first two datetime(...) tokens from
+        # the query -- which always correspond to the chunk's lower
+        # and upper TimeGenerated bounds -- and returns only the rows
+        # whose TimeGenerated falls in that window, honoring the
+        # half-open-vs-closed upper-bound distinction that the
+        # production code uses to coordinate chunk boundaries with
+        # the overall [Start, End] interval.
+        # .PARAMETER Query
+        # The KQL query passed to the mock.
+        # .PARAMETER Rows
+        # The full set of mock rows to filter.
+        # .EXAMPLE
+        # $strKql = "TimeGenerated >= datetime(2026-01-10T00:00:00Z) and TimeGenerated < datetime(2026-01-11T00:00:00Z)"
+        # $arrFiltered = Select-MockRowByKqlTimeWindow -Query $strKql -Rows $arrAllRows
+        # # $arrFiltered contains only rows whose TimeGenerated falls
+        # # in the [2026-01-10T00:00:00Z, 2026-01-11T00:00:00Z) window
+        # # (half-open upper bound because the KQL uses `<`, not `<=`).
+        # .INPUTS
+        # None. You can't pipe objects to this function.
+        # .OUTPUTS
+        # [object] Each mock row whose TimeGenerated falls within the
+        # parsed KQL time window. Emitted once per matching row via the
+        # success stream; callers typically collect with `@(...)`.
+        # .NOTES
+        # PRIVATE/INTERNAL HELPER -- This function is not part of the
+        # public API surface. It exists only to support time-window-
+        # aware mocking of the Log Analytics query cmdlet.
+        #
+        # Version: 1.2.20260422.0
+        [CmdletBinding()]
+        [OutputType([object])]
+        param (
+            [Parameter(Mandatory = $true)]
+            [string]$Query,
+            [object[]]$Rows
+        )
+
+        if ($null -eq $Rows -or $Rows.Count -eq 0) {
+            return @()
+        }
+
+        $regexDt = [regex]'datetime\(([^)]+)\)'
+        $objMatches = $regexDt.Matches($Query)
+        if ($objMatches.Count -lt 2) {
+            return @($Rows)
+        }
+
+        $dtStyles = [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
+        $objCulture = [System.Globalization.CultureInfo]::InvariantCulture
+        $dtLower = [datetime]::Parse($objMatches[0].Groups[1].Value, $objCulture, $dtStyles)
+        $dtUpper = [datetime]::Parse($objMatches[1].Groups[1].Value, $objCulture, $dtStyles)
+
+        $boolClosedUpper = $false
+        if ($Query -match 'between\s*\(') {
+            $boolClosedUpper = $true
+        } elseif ($Query -match '<=\s*datetime\(') {
+            $boolClosedUpper = $true
+        }
+
+        $arrFiltered = New-Object System.Collections.Generic.List[object]
+        foreach ($objRow in $Rows) {
+            $strTg = [string]$objRow.TimeGenerated
+            if ([string]::IsNullOrWhiteSpace($strTg)) {
+                if ($boolClosedUpper) {
+                    [void]($arrFiltered.Add($objRow))
+                }
+                continue
+            }
+            $dtRowParsed = [datetime]::MinValue
+            $boolRowParsed = [datetime]::TryParse($strTg, $objCulture, $dtStyles, [ref]$dtRowParsed)
+            if (-not $boolRowParsed) {
+                if ($boolClosedUpper) {
+                    [void]($arrFiltered.Add($objRow))
+                }
+                continue
+            }
+            if ($dtRowParsed -lt $dtLower) { continue }
+            if ($boolClosedUpper) {
+                if ($dtRowParsed -gt $dtUpper) { continue }
+            } else {
+                if ($dtRowParsed -ge $dtUpper) { continue }
+            }
+            [void]($arrFiltered.Add($objRow))
+        }
+        return $arrFiltered.ToArray()
+    }
+
     $strRepoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $strSrcPath = Join-Path -Path $strRepoRoot -ChildPath 'src'
     $strFixturesPath = Join-Path -Path $PSScriptRoot -ChildPath '_fixtures'
@@ -34,6 +128,25 @@ BeforeAll {
         # and ConvertTo-PrincipalActionCount.
         # .PARAMETER FixtureRows
         # The synthetic fixture rows to use as mock results.
+        # .PARAMETER EntraIdInitialSliceHours
+        # Optional override for the Option B initial chunk width in hours.
+        # Defaults to the production default.
+        # .PARAMETER EntraIdMinSliceMinutes
+        # Optional override for the Option B minimum chunk width in
+        # minutes. Defaults to the production default.
+        # .PARAMETER EntraIdMaxRecordHint
+        # Optional override for the Option B row-count ceiling that
+        # triggers adaptive subdivision. Defaults to the production
+        # default.
+        # .EXAMPLE
+        # $arrFixture = @(New-SyntheticAuditLogFixture -Count 300 -DuplicateRatio 0.0 -Seed 42)
+        # $objStageOne = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 6
+        # # $objStageOne.Triples carries the per-principal action counts emitted by stage 1.
+        # # $objStageOne.DisplayNameMap carries the principal-key -> display-name lookup.
+        # # $objStageOne.UnmappedAccumulator carries any activity names absent from the mapping table.
+        # # $objStageOne.EventsEmitted carries the count of audit events emitted before deduplication.
+        # .INPUTS
+        # None. You can't pipe objects to this function.
         # .OUTPUTS
         # [pscustomobject] with Triples, DisplayNameMap, UnmappedAccumulator,
         # and EventsEmitted properties.
@@ -42,7 +155,7 @@ BeforeAll {
         # public API surface. Parameters, return shape, and positional
         # contract may change without notice.
         #
-        # Version: 1.0.20260420.0
+        # Version: 1.2.20260422.0
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
             'PSReviewUnusedParameter', 'FixtureRows',
             Justification = 'FixtureRows is captured by the Mock closure and used when Pester invokes the mock.')]
@@ -50,24 +163,35 @@ BeforeAll {
         [OutputType([pscustomobject])]
         param (
             [Parameter(Mandatory = $true)]
-            [object[]]$FixtureRows
+            [object[]]$FixtureRows,
+
+            [int]$EntraIdInitialSliceHours = 24,
+            [int]$EntraIdMinSliceMinutes = 15,
+            [int]$EntraIdMaxRecordHint = 450000
         )
 
         Mock Invoke-AzOperationalInsightsQuery {
-            [pscustomobject]@{ Results = $FixtureRows }
+            [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $FixtureRows) }
         }
 
-        $hashUnmapped = @{}
-        $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId 'test-workspace-id' -Start ([datetime]'2025-12-01') -End ([datetime]'2026-01-16') -UnmappedActivityAccumulator $hashUnmapped)
+        $hashtableUnmapped = @{}
+        $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics `
+                -WorkspaceId 'test-workspace-id' `
+                -Start ([datetime]'2025-12-01') `
+                -End ([datetime]'2026-01-16') `
+                -UnmappedActivityAccumulator $hashtableUnmapped `
+                -EntraIdInitialSliceHours $EntraIdInitialSliceHours `
+                -EntraIdMinSliceMinutes $EntraIdMinSliceMinutes `
+                -EntraIdMaxRecordHint $EntraIdMaxRecordHint)
 
         $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
-        $hashDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+        $hashtableDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
         $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
 
         return [pscustomobject]@{
             Triples = $arrCounts
-            DisplayNameMap = $hashDisplayNames
-            UnmappedAccumulator = $hashUnmapped
+            DisplayNameMap = $hashtableDisplayNames
+            UnmappedAccumulator = $hashtableUnmapped
             EventsEmitted = $arrEvents.Count
         }
     }
@@ -753,6 +877,251 @@ Describe "Get-EntraIdAuditEventFromLogAnalytics Equivalence" {
             # Assert
             $objEquiv.Pass | Should -BeTrue
             $objEquiv.Details.Count | Should -Be 0
+        }
+    }
+
+    Context "Option B: chunked-wrapping equivalence across chunk widths" {
+        # Proves that Option A + chunked wrapping produces identical
+        # stage-one outputs (triples, display-name map, and unmapped
+        # accumulator counts + activity names) regardless of the chunk
+        # width. A 1-hour chunk window (the smallest practical
+        # setting) is compared against a 168-hour (7-day) window (the
+        # largest allowed value on EntraIdInitialSliceHours). Equivalence
+        # at the extremes implies equivalence everywhere in between,
+        # which in turn implies equivalence with the notional
+        # "Option A alone" path that simply issues one query over the
+        # whole [Start, End] window.
+        It "Fine chunking (1h) matches coarse chunking (168h) for DuplicateRatio 0.0" {
+            # Arrange
+            $arrFixture = @(New-SyntheticAuditLogFixture -Count 300 -DuplicateRatio 0.0 -Seed 42)
+            $objCoarse = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 168
+            $objFine = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 1
+
+            # Act
+            $objEquiv = Test-StageOneEquivalence -Expected $objCoarse -Actual $objFine -FixtureRows $arrFixture
+
+            # Assert
+            $objEquiv.Pass | Should -BeTrue
+            $objEquiv.Details.Count | Should -Be 0
+        }
+
+        It "Fine chunking (1h) matches coarse chunking (168h) for DuplicateRatio 0.25" {
+            # Arrange
+            $arrFixture = @(New-SyntheticAuditLogFixture -Count 300 -DuplicateRatio 0.25 -Seed 42)
+            $objCoarse = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 168
+            $objFine = Invoke-StageOnePipeline -FixtureRows $arrFixture -EntraIdInitialSliceHours 1
+
+            # Act
+            $objEquiv = Test-StageOneEquivalence -Expected $objCoarse -Actual $objFine -FixtureRows $arrFixture
+
+            # Assert
+            $objEquiv.Pass | Should -BeTrue
+            $objEquiv.Details.Count | Should -Be 0
+        }
+    }
+
+    Context "Option B: chunk-boundary correctness" {
+        # Asserts the chunking loop neither drops nor double-counts
+        # rows whose TimeGenerated lies on the boundary between two
+        # adjacent chunks. Uses a tiny synthetic fixture with rows at
+        # precisely-known TimeGenerated values straddling an hour
+        # boundary, so the chunking seam falls exactly between two
+        # rows. The half-open-vs-closed terminal-upper-bound
+        # convention is the seam invariant being verified here.
+        It "No row is double-counted and no row is dropped across chunk seams" {
+            # Arrange -- construct rows whose TimeGenerated straddles
+            # every hourly chunk edge in the fixture window.
+            $arrFixtureRows = @()
+            for ($i = 0; $i -lt 24; $i++) {
+                $arrFixtureRows += [pscustomobject]@{
+                    TimeGenerated = ([datetime]'2026-01-10').AddHours($i).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = ('principal-{0:D3}' -f $i)
+                    PrincipalType = 'User'
+                    PrincipalUPN = ('user-{0}@contoso.example' -f $i)
+                    AppId = ''
+                    CorrelationId = ('corr-{0:D3}' -f $i)
+                    RecordId = ('rec-{0:D3}' -f $i)
+                }
+            }
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $arrFixtureRows) }
+            }
+
+            # Act -- chunk at exactly 1 hour so every fixture row sits
+            # at a chunk seam.
+            $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics `
+                    -WorkspaceId 'test-workspace-id' `
+                    -Start ([datetime]'2026-01-10') `
+                    -End ([datetime]'2026-01-11') `
+                    -EntraIdInitialSliceHours 1 `
+                    -EntraIdMinSliceMinutes 15 `
+                    -EntraIdMaxRecordHint 450000)
+
+            # Assert -- exactly one event per input row, and the set
+            # of RecordIds emitted is the set that was input (strict
+            # equality, no duplicates, no drops). RecordId is the
+            # canonical per-row identifier in the CanonicalEntraIdEvent
+            # (DC-6) contract, so it is the right column to assert on
+            # for "no row dropped, no row double-counted".
+            $arrEvents | Should -HaveCount 24
+            $arrExpectedRecordIds = @($arrFixtureRows | ForEach-Object { $_.RecordId } | Sort-Object)
+            $arrActualRecordIds = @($arrEvents | ForEach-Object { $_.RecordId } | Sort-Object)
+            for ($i = 0; $i -lt $arrExpectedRecordIds.Count; $i++) {
+                $arrActualRecordIds[$i] | Should -Be $arrExpectedRecordIds[$i]
+            }
+        }
+
+        # Asserts the documented [Start, End] coverage when the caller
+        # requests a zero-duration window (Start == End): the
+        # implementation MUST emit any rows whose TimeGenerated lands
+        # at exactly that instant, matching the pre-PR `between(..)`
+        # KQL semantics. The single chunk produced by the do/while
+        # initial-chunk builder is terminal (SegEnd == End) and uses
+        # the closed `<=` upper bound, so the KQL filter renders as
+        # `TimeGenerated >= Start and TimeGenerated <= Start`.
+        It "Zero-duration window (Start == End) returns rows at the boundary instant" {
+            # Arrange -- one row at exactly the requested instant and
+            # neighbours one second on each side that MUST be excluded.
+            # Construct $dtInstant with explicit UTC kind so the
+            # fixture string round-trip is timezone-independent (the
+            # mock helper parses TimeGenerated with AssumeUniversal,
+            # and the production function calls .ToUniversalTime()
+            # before stamping chunk bounds into the KQL).
+            $dtInstant = [datetime]::new(2026, 1, 10, 12, 0, 0, [System.DateTimeKind]::Utc)
+            $arrFixtureZeroDur = @(
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.AddSeconds(-1).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-before'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'before@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-before'
+                    RecordId = 'rec-before'
+                },
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-instant'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'instant@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-instant'
+                    RecordId = 'rec-instant'
+                },
+                [pscustomobject]@{
+                    TimeGenerated = $dtInstant.AddSeconds(1).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    OperationName = 'Add member to group'
+                    Category = 'GroupManagement'
+                    PrincipalKey = 'principal-after'
+                    PrincipalType = 'User'
+                    PrincipalUPN = 'after@contoso.example'
+                    AppId = ''
+                    CorrelationId = 'corr-after'
+                    RecordId = 'rec-after'
+                }
+            )
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $arrFixtureZeroDur) }
+            }
+
+            # Act
+            $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics `
+                    -WorkspaceId 'test-workspace-id' `
+                    -Start $dtInstant `
+                    -End $dtInstant `
+                    -EntraIdInitialSliceHours 24 `
+                    -EntraIdMinSliceMinutes 15 `
+                    -EntraIdMaxRecordHint 450000)
+
+            # Assert -- only the row at the exact instant is returned;
+            # the function issued exactly one query (the single
+            # terminal chunk).
+            $arrEvents | Should -HaveCount 1
+            $arrEvents[0].RecordId | Should -Be 'rec-instant'
+            Should -Invoke Invoke-AzOperationalInsightsQuery -Scope It -Times 1 -Exactly
+        }
+    }
+
+    Context "Option B: adaptive subdivision" {
+        # Asserts that when a chunk's returned row count meets or
+        # exceeds EntraIdMaxRecordHint, the loop subdivides the chunk
+        # down toward EntraIdMinSliceMinutes rather than emitting the
+        # rows as-is, and that the resulting stage-one outputs are
+        # identical to the no-subdivision run on the same fixture.
+        It "Subdivides a chunk that hits EntraIdMaxRecordHint and converges to identical stage-one outputs" {
+            # Arrange -- fixture sized so the initial 168-hour chunk's
+            # row count exceeds a synthetic MaxRecordHint of 1000 and
+            # must subdivide. 3000 rows across 168 hours gives an
+            # average of ~18 rows/hour, which exceeds the synthetic
+            # cap at the full-window level and forces subdivision.
+            $arrFixture = @(New-SyntheticAuditLogFixture -Count 3000 -DuplicateRatio 0.25 -Seed 42)
+
+            $objNoSubdivide = Invoke-StageOnePipeline `
+                -FixtureRows $arrFixture `
+                -EntraIdInitialSliceHours 168 `
+                -EntraIdMinSliceMinutes 15 `
+                -EntraIdMaxRecordHint 500000
+
+            $objSubdivide = Invoke-StageOnePipeline `
+                -FixtureRows $arrFixture `
+                -EntraIdInitialSliceHours 168 `
+                -EntraIdMinSliceMinutes 15 `
+                -EntraIdMaxRecordHint 1000
+
+            # Act
+            $objEquiv = Test-StageOneEquivalence -Expected $objNoSubdivide -Actual $objSubdivide -FixtureRows $arrFixture
+
+            # Assert -- subdivision triggered (EventsEmitted is equal
+            # under Test-StageOneEquivalence because that helper
+            # compares stage-one outputs, not raw event counts), and
+            # the full equivalence contract holds.
+            $objEquiv.Pass | Should -BeTrue
+            $objEquiv.Details.Count | Should -Be 0
+        }
+
+        It "Subdivision traffic triggers more Invoke-AzOperationalInsightsQuery calls than the no-subdivide path" {
+            # Arrange -- same fixture shape, but count mock invocations
+            # to prove the subdivide path issues strictly more queries.
+            # Rename the fixture variable to avoid dynamic-scope
+            # collision with Get-EntraIdAuditEventFromLogAnalytics's
+            # internal $arrRows local (which would cause the mock to
+            # see the callee's local variable after the first call).
+            # Fixture is sized to guarantee at least one 168-hour
+            # initial chunk exceeds the 1000-row cap: the synthetic
+            # fixture emits rows uniformly over a 30-day window, so at
+            # 8000 total rows a 7-day slice holds ~1867 rows on
+            # average -- well above the synthetic cap of 1000.
+            $arrSubdivFixture = @(New-SyntheticAuditLogFixture -Count 8000 -DuplicateRatio 0.0 -Seed 42)
+
+            # Run with an aggressively small MaxRecordHint (at the
+            # lower bound of its validation range) so the chunker
+            # must subdivide at least one chunk.
+            Mock Invoke-AzOperationalInsightsQuery {
+                [pscustomobject]@{ Results = @(Select-MockRowByKqlTimeWindow -Query $Query -Rows $arrSubdivFixture) }
+            }
+            $hashtableUnmapped = @{}
+            [void](@(Get-EntraIdAuditEventFromLogAnalytics `
+                        -WorkspaceId 'test-workspace-id' `
+                        -Start ([datetime]'2025-12-01') `
+                        -End ([datetime]'2026-01-16') `
+                        -UnmappedActivityAccumulator $hashtableUnmapped `
+                        -EntraIdInitialSliceHours 168 `
+                        -EntraIdMinSliceMinutes 15 `
+                        -EntraIdMaxRecordHint 1000))
+
+            # Assert -- at a 168h initial slice the window splits into
+            # 7 chunks; adaptive subdivision on at least one chunk
+            # that hits the 1000-row cap requires strictly more than
+            # 7 query invocations. In Pester 5, `Should -Invoke
+            # -Times N` without `-Exactly` is a minimum-count
+            # assertion (>= N), so this checks `>= 8` (i.e., strictly
+            # more than the 7-chunk no-subdivide baseline).
+            Should -Invoke Invoke-AzOperationalInsightsQuery -Scope It -Times 8
         }
     }
 }

@@ -65,7 +65,7 @@ function Get-ApproximateSilhouetteScore {
     # provided (early-exit edge case).
     # .NOTES
     # Requires Get-SquaredEuclideanDistance to be loaded.
-    # Version: 1.1.20260410.1
+    # Version: 1.1.20260422.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -104,26 +104,26 @@ function Get-ApproximateSilhouetteScore {
             Write-Verbose ("Computing silhouette score for {0} points, K={1}, sample size={2}" -f $intN, $KMeansResult.K, $SampleSize)
 
             # Build cluster membership lists
-            $hashClusters = @{}
+            $hashtableClusters = @{}
             for ($intK = 0; $intK -lt $KMeansResult.K; $intK++) {
-                $hashClusters[$intK] = New-Object System.Collections.Generic.List[int]
+                $hashtableClusters[$intK] = New-Object System.Collections.Generic.List[int]
             }
 
             for ($intI = 0; $intI -lt $intN; $intI++) {
                 $strPrincipalKey = [string]$VectorRows[$intI].PrincipalKey
                 $intClusterId = [int]$KMeansResult.Assignments[$strPrincipalKey]
-                [void]($hashClusters[$intClusterId].Add($intI))
+                [void]($hashtableClusters[$intClusterId].Add($intI))
             }
 
             # Sample indices
             $objRandom = New-Object System.Random($Seed)
             $intSampleCount = [Math]::Min($SampleSize, $intN)
             $listSample = New-Object System.Collections.Generic.List[int]
-            $hashPicked = @{}
+            $hashtablePicked = @{}
             while ($listSample.Count -lt $intSampleCount) {
                 $intIndex = $objRandom.Next(0, $intN)
-                if (-not $hashPicked.ContainsKey($intIndex)) {
-                    $hashPicked[$intIndex] = $true
+                if (-not $hashtablePicked.ContainsKey($intIndex)) {
+                    $hashtablePicked[$intIndex] = $true
                     [void]($listSample.Add($intIndex))
                 }
             }
@@ -137,7 +137,7 @@ function Get-ApproximateSilhouetteScore {
                 $intOwnCluster = [int]$KMeansResult.Assignments[$strPrincipalKey]
 
                 # a: mean distance to own cluster
-                $listOwnMembers = $hashClusters[$intOwnCluster]
+                $listOwnMembers = $hashtableClusters[$intOwnCluster]
                 $dblA = 0.0
                 if ($listOwnMembers.Count -gt 1) {
                     foreach ($intJ in $listOwnMembers) {
@@ -151,11 +151,11 @@ function Get-ApproximateSilhouetteScore {
 
                 # b: minimum mean distance to any other cluster
                 $dblB = [double]::PositiveInfinity
-                foreach ($intK in $hashClusters.Keys) {
+                foreach ($intK in $hashtableClusters.Keys) {
                     if ($intK -eq $intOwnCluster) {
                         continue
                     }
-                    $listMembers = $hashClusters[$intK]
+                    $listMembers = $hashtableClusters[$intK]
                     if ($listMembers.Count -eq 0) {
                         continue
                     }

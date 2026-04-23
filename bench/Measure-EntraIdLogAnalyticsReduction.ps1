@@ -21,7 +21,7 @@
 # Requires the fixture generator from tests/PowerShell/_fixtures/:
 #   New-SyntheticAuditLogFixture.ps1
 #
-# Version: 1.2.20260421.0
+# Version: 1.2.20260422.0
 
 [CmdletBinding()]
 param (
@@ -122,17 +122,17 @@ foreach ($dblDupRatio in $DuplicateRatios) {
         # Time the stage-1 pipeline
         $objStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-        $hashUnmapped = @{}
-        $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId 'bench-workspace' -Start ([datetime]'2025-12-01') -End ([datetime]'2026-01-16') -UnmappedActivityAccumulator $hashUnmapped)
+        $hashtableUnmapped = @{}
+        $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics -WorkspaceId 'bench-workspace' -Start ([datetime]'2025-12-01') -End ([datetime]'2026-01-16') -UnmappedActivityAccumulator $hashtableUnmapped)
         $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
-        $hashDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+        $hashtableDisplayNames = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
         $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
 
         $objStopwatch.Stop()
 
         # Suppress unused variable warnings
-        [void]$hashDisplayNames
-        [void]$hashUnmapped
+        [void]$hashtableDisplayNames
+        [void]$hashtableUnmapped
 
         # WorkingSet64 (not PeakWorkingSet64) gives the current process working
         # set at the end of this iteration. PeakWorkingSet64 is the lifetime

@@ -115,9 +115,9 @@ function Get-EntraIdAuditEvent {
     # # Retrieves only GroupManagement and UserManagement events from
     # # the last 7 days.
     # .EXAMPLE
-    # $hashUnmapped = @{}
-    # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashUnmapped)
-    # # $hashUnmapped now contains entries for each unmapped activity
+    # $hashtableUnmapped = @{}
+    # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -UnmappedActivityAccumulator $hashtableUnmapped)
+    # # $hashtableUnmapped now contains entries for each unmapped activity
     # # with Count, Category, and sample IDs for diagnostics.
     # .EXAMPLE
     # $arrEvents = @(Get-EntraIdAuditEvent -Start (Get-Date).AddDays(-30) -End (Get-Date) -MaxRetries 5 -RetryBaseDelaySeconds 3)
@@ -161,7 +161,7 @@ function Get-EntraIdAuditEvent {
     #   Position 0: Start
     #   Position 1: End
     #
-    # Version: 1.4.20260418.7
+    # Version: 1.4.20260422.0
 
     [CmdletBinding(PositionalBinding = $false)]
     [OutputType([pscustomobject])]
@@ -216,7 +216,7 @@ function Get-EntraIdAuditEvent {
 
             Write-Debug ("OData filter: {0}" -f $strFilter)
 
-            $hashParams = @{
+            $hashtableParams = @{
                 Filter = $strFilter
                 All = $true
                 ErrorAction = 'Stop'
@@ -235,7 +235,7 @@ function Get-EntraIdAuditEvent {
                 $intAttempt++
                 try {
                     $VerbosePreference = [System.Management.Automation.ActionPreference]::SilentlyContinue
-                    $arrRaw = @(Get-MgAuditLogDirectoryAudit @hashParams)
+                    $arrRaw = @(Get-MgAuditLogDirectoryAudit @hashtableParams)
                     $VerbosePreference = $objVerbosePreferenceAtStartOfBlock
                     $boolSucceeded = $true
                     if ($intAttempt -gt 1) {
@@ -339,18 +339,18 @@ function Get-EntraIdAuditEvent {
             # than missing mapping (non-success, no InitiatedBy,
             # unparseable ActivityDateTime) from being miscounted as
             # unmapped activities.
-            $hashConvertParams = @{
+            $hashtableConvertParams = @{
                 Record = $null
             }
             if ($null -ne $UnmappedActivityAccumulator) {
-                $hashConvertParams['UnmappedActivityAccumulator'] = $UnmappedActivityAccumulator
+                $hashtableConvertParams['UnmappedActivityAccumulator'] = $UnmappedActivityAccumulator
             }
 
             $intEmitted = 0
             $intSkipped = 0
             foreach ($objRecord in $arrRaw) {
-                $hashConvertParams['Record'] = $objRecord
-                $objEvent = ConvertFrom-EntraIdAuditRecord @hashConvertParams
+                $hashtableConvertParams['Record'] = $objRecord
+                $objEvent = ConvertFrom-EntraIdAuditRecord @hashtableConvertParams
                 if ($null -eq $objEvent) {
                     $intSkipped++
                     continue

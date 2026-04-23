@@ -49,7 +49,7 @@ function ConvertTo-PrincipalActionCount {
     # If all input events are malformed or the input array is empty, no
     # objects are emitted to the pipeline.
     # .NOTES
-    # Version: 1.2.20260410.1
+    # Version: 1.2.20260422.0
     # Supported PowerShell versions:
     #   - Windows PowerShell 5.1 (.NET Framework 4.6.2+)
     #   - PowerShell 7.4.x
@@ -77,7 +77,7 @@ function ConvertTo-PrincipalActionCount {
 
             Write-Verbose ("Aggregating {0} events into principal-action counts..." -f $Events.Count)
 
-            $hashCounts = @{}
+            $hashtableCounts = @{}
 
             #region Aggregation
             foreach ($objEvent in $Events) {
@@ -93,32 +93,32 @@ function ConvertTo-PrincipalActionCount {
                 # chosen because it does not appear in Azure resource
                 # provider action names.
                 $strKey = [string]$objEvent.PrincipalKey + '|' + [string]$objEvent.Action
-                if ($hashCounts.ContainsKey($strKey)) {
-                    $hashCounts[$strKey] += 1.0
+                if ($hashtableCounts.ContainsKey($strKey)) {
+                    $hashtableCounts[$strKey] += 1.0
                 } else {
                     # Store counts as [double] from the start because
                     # downstream vectorization and TF-IDF calculations
                     # require floating-point arithmetic; this avoids
                     # type-conversion overhead later.
-                    $hashCounts[$strKey] = 1.0
+                    $hashtableCounts[$strKey] = 1.0
                 }
             }
             #endregion Aggregation
 
-            Write-Debug ("Aggregation complete: {0} unique principal-action pairs." -f $hashCounts.Count)
+            Write-Debug ("Aggregation complete: {0} unique principal-action pairs." -f $hashtableCounts.Count)
 
             #region Output
-            foreach ($strKey in $hashCounts.Keys) {
+            foreach ($strKey in $hashtableCounts.Keys) {
                 $arrParts = $strKey.Split('|', 2)
                 [pscustomobject]@{
                     PrincipalKey = $arrParts[0]
                     Action = $arrParts[1]
-                    Count = [double]$hashCounts[$strKey]
+                    Count = [double]$hashtableCounts[$strKey]
                 }
             }
             #endregion Output
 
-            Write-Verbose ("Emitted {0} principal-action count triples." -f $hashCounts.Count)
+            Write-Verbose ("Emitted {0} principal-action count triples." -f $hashtableCounts.Count)
         } catch {
             Write-Debug ("Failed to aggregate events: {0}" -f $_.Exception.Message)
             throw

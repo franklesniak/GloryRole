@@ -91,6 +91,31 @@
 # so the default produces names like "GloryRole-User Manager-0" or
 # "GloryRole-EntraCluster-0".
 #
+# .PARAMETER EntraIdInitialSliceHours
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Initial time-window chunk width in hours used to partition the LA
+# AuditLogs query. Default is 24. Distinct from the Az triad's
+# -InitialSliceHours because the LA Query API's 500 000-row ceiling
+# is two orders of magnitude higher than Get-AzActivityLog's 5 000
+# default, so sharing a parameter name would tempt callers into
+# using Az-appropriate values against the LA path where the
+# sensible defaults differ radically. Silently ignored outside the
+# LA+EntraId branch, consistent with the pipeline's existing
+# convention for mismatched-mode parameters.
+#
+# .PARAMETER EntraIdMinSliceMinutes
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Minimum chunk width (minutes) before adaptive subdivision stops.
+# Default is 15. Silently ignored outside the LA+EntraId branch.
+#
+# .PARAMETER EntraIdMaxRecordHint
+# Optional when InputMode is 'LogAnalytics' with RoleSchema 'EntraId'.
+# Row-count ceiling that triggers adaptive subdivision of a chunk's
+# time window. Default is 450 000 (approximately 90 % of the LA
+# Query API's 500 000-row cap, leaving headroom so a chunk
+# approaching the limit is subdivided before the API can truncate
+# the result). Silently ignored outside the LA+EntraId branch.
+#
 # .PARAMETER UnmappedActivityWarningThreshold
 # Percentage threshold (0-100) for emitting a warning when unmapped
 # Entra ID activities exceed this fraction of total successful audit
@@ -221,7 +246,7 @@
 # must be specified by name (enforced by
 # `[CmdletBinding(PositionalBinding = $false)]`).
 #
-# Version: 2.2.20260418.0
+# Version: 2.3.20260422.1
 
 [CmdletBinding(PositionalBinding = $false)]
 [OutputType([pscustomobject])]
@@ -250,6 +275,15 @@ param (
 
     [string[]]$EntraIdFilterCategory,
     [string]$EntraIdRoleNamePrefix = 'GloryRole',
+
+    [ValidateRange(1, 168)]
+    [int]$EntraIdInitialSliceHours = 24,
+
+    [ValidateRange(1, 1440)]
+    [int]$EntraIdMinSliceMinutes = 15,
+
+    [ValidateRange(1000, 500000)]
+    [int]$EntraIdMaxRecordHint = 450000,
 
     [ValidateRange(0, 100)]
     [double]$UnmappedActivityWarningThreshold = 15,
@@ -390,13 +424,13 @@ try {
     # PrincipalKey (GUID / AppId) to a human-readable name (UPN for
     # users, or the key itself for apps). Populated only for modes
     # that produce canonical events with PrincipalUPN metadata.
-    $hashPrincipalDisplayName = @{}
+    $hashtablePrincipalDisplayName = @{}
 
     # Accumulator for unmapped Entra ID activities. Populated by
     # Get-EntraIdAuditEvent / Get-EntraIdAuditEventFromLogAnalytics
     # when the Entra ID ingestion path is active. Each entry contains
     # ActivityDisplayName, Category, Count, and sample IDs.
-    $hashUnmappedActivities = @{}
+    $hashtableUnmappedActivities = @{}
 
     #region Stage 1: Ingest
     Write-Verbose "Stage 1: Ingesting data (mode: ${InputMode})..."
@@ -418,7 +452,7 @@ try {
                 throw "Start and End are required when InputMode is ActivityLog."
             }
 
-            $hashActivityLogParams = @{
+            $hashtableActivityLogParams = @{
                 Start = $Start
                 End = $End
                 SubscriptionIds = $SubscriptionIds
@@ -427,7 +461,7 @@ try {
                 MaxRecordHint = $MaxRecordHint
                 DetailedOutput = $true
             }
-            $arrEvents = @(Get-AzActivityAdminEvent @hashActivityLogParams)
+            $arrEvents = @(Get-AzActivityAdminEvent @hashtableActivityLogParams)
 
             Write-Verbose ("  Raw events collected: {0}" -f $arrEvents.Count)
 
@@ -438,8 +472,8 @@ try {
             # Helper centralizes the UPN-preferred / PrincipalKey-fallback
             # precedence so both ActivityLog and EntraId branches stay in
             # lockstep if those rules change.
-            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
-            Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+            $hashtablePrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+            Write-Verbose ("  Principal display names resolved: {0}" -f $hashtablePrincipalDisplayName.Count)
 
             $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
         }
@@ -458,35 +492,38 @@ try {
                 # PowerShell-side (preserves camelCase), then feed
                 # canonical events through the same dedup -> display-
                 # name -> count pipeline as the direct EntraId InputMode.
-                $hashLogAnalyticsEntraParams = @{
+                $hashtableLogAnalyticsEntraParams = @{
                     WorkspaceId = $WorkspaceId
                     Start = $Start
                     End = $End
-                    UnmappedActivityAccumulator = $hashUnmappedActivities
+                    UnmappedActivityAccumulator = $hashtableUnmappedActivities
+                    EntraIdInitialSliceHours = $EntraIdInitialSliceHours
+                    EntraIdMinSliceMinutes = $EntraIdMinSliceMinutes
+                    EntraIdMaxRecordHint = $EntraIdMaxRecordHint
                 }
                 if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
-                    $hashLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory
+                    $hashtableLogAnalyticsEntraParams['FilterCategory'] = $EntraIdFilterCategory
                 }
-                $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics @hashLogAnalyticsEntraParams)
+                $arrEvents = @(Get-EntraIdAuditEventFromLogAnalytics @hashtableLogAnalyticsEntraParams)
 
                 Write-Verbose ("  Raw Entra ID events from Log Analytics: {0}" -f $arrEvents.Count)
 
                 $arrDeduped = @(Remove-DuplicateCanonicalEvent -Events $arrEvents)
                 Write-Verbose ("  After deduplication: {0}" -f $arrDeduped.Count)
 
-                $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
-                Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+                $hashtablePrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+                Write-Verbose ("  Principal display names resolved: {0}" -f $hashtablePrincipalDisplayName.Count)
 
                 $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
             } else {
                 # Azure RBAC path: query the AzureActivity table with
                 # pre-aggregation and lowercasing in KQL.
-                $hashLogAnalyticsParams = @{
+                $hashtableLogAnalyticsParams = @{
                     WorkspaceId = $WorkspaceId
                     Start = $Start
                     End = $End
                 }
-                $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashLogAnalyticsParams)
+                $arrCounts = @(Import-PrincipalActionCountFromLogAnalytics @hashtableLogAnalyticsParams)
             }
         }
 
@@ -495,15 +532,15 @@ try {
                 throw "Start and End are required when InputMode is EntraId."
             }
 
-            $hashEntraIdParams = @{
+            $hashtableEntraIdParams = @{
                 Start = $Start
                 End = $End
-                UnmappedActivityAccumulator = $hashUnmappedActivities
+                UnmappedActivityAccumulator = $hashtableUnmappedActivities
             }
             if ($null -ne $EntraIdFilterCategory -and $EntraIdFilterCategory.Count -gt 0) {
-                $hashEntraIdParams['FilterCategory'] = $EntraIdFilterCategory
+                $hashtableEntraIdParams['FilterCategory'] = $EntraIdFilterCategory
             }
-            $arrEvents = @(Get-EntraIdAuditEvent @hashEntraIdParams)
+            $arrEvents = @(Get-EntraIdAuditEvent @hashtableEntraIdParams)
 
             Write-Verbose ("  Raw Entra ID events collected: {0}" -f $arrEvents.Count)
 
@@ -513,8 +550,8 @@ try {
             # Build principal display-name map from Entra ID events.
             # Shares the same helper as the ActivityLog branch so
             # display-name precedence rules cannot drift between modes.
-            $hashPrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
-            Write-Verbose ("  Principal display names resolved: {0}" -f $hashPrincipalDisplayName.Count)
+            $hashtablePrincipalDisplayName = ConvertTo-PrincipalDisplayNameMap -Events $arrDeduped
+            Write-Verbose ("  Principal display names resolved: {0}" -f $hashtablePrincipalDisplayName.Count)
 
             $arrCounts = @(ConvertTo-PrincipalActionCount -Events $arrDeduped)
         }
@@ -572,8 +609,8 @@ try {
     # Process the unmapped-activity accumulator populated during Entra ID
     # ingestion. This block runs for EntraId and LogAnalytics+EntraId paths.
     $intTotalUnmappedCount = 0
-    $intDistinctUnmappedActivities = $hashUnmappedActivities.Count
-    foreach ($objUnmappedEntry in $hashUnmappedActivities.Values) {
+    $intDistinctUnmappedActivities = $hashtableUnmappedActivities.Count
+    foreach ($objUnmappedEntry in $hashtableUnmappedActivities.Values) {
         $intTotalUnmappedCount += $objUnmappedEntry.Count
     }
 
@@ -584,7 +621,7 @@ try {
         # (emitted events + unmapped occurrences). Note: $arrEvents
         # contains only the successfully mapped events at this point,
         # and $intTotalUnmappedCount is the count of unmapped records.
-        # For CSV mode, $hashUnmappedActivities is empty so this block
+        # For CSV mode, $hashtableUnmappedActivities is empty so this block
         # is skipped.
         $intTotalAuditRecords = 0
         switch ($InputMode) {
@@ -632,12 +669,12 @@ try {
 
     $intInputTripleCount = $arrCounts.Count
 
-    $hashPruneParams = @{
+    $hashtablePruneParams = @{
         Counts = $arrCounts
         MinDistinctPrincipals = $MinDistinctPrincipals
         MinTotalCount = $MinTotalCount
     }
-    $objPruneResult = Remove-RareAction @hashPruneParams
+    $objPruneResult = Remove-RareAction @hashtablePruneParams
 
     $arrCounts = $objPruneResult.Kept
     $arrDropped = $objPruneResult.Dropped
@@ -715,13 +752,13 @@ try {
     #region Stage 8: Auto-K Clustering
     Write-Verbose "Stage 8: Running Auto-K selection..."
 
-    $hashAutoKParams = @{
+    $hashtableAutoKParams = @{
         VectorRows = $arrVectorRows
         MinK = $MinK
         MaxK = $MaxK
         Seed = $Seed
     }
-    $objAutoK = Invoke-AutoKSelection @hashAutoKParams
+    $objAutoK = Invoke-AutoKSelection @hashtableAutoKParams
 
     Write-Verbose ("  Recommended K: {0}" -f $objAutoK.RecommendedK)
     Write-Debug ("Auto-K result: RecommendedK={0}, CandidateCount={1}" -f $objAutoK.RecommendedK, $objAutoK.Candidates.Count)
@@ -739,14 +776,14 @@ try {
     # Edit-ReadActionCount to the pruned set if TF-IDF was used. Since we
     # overwrote $arrCounts, use the cluster assignments against the current
     # counts which still have the correct PrincipalKey->Action mapping.
-    $hashClusterActionParams = @{
+    $hashtableClusterActionParams = @{
         Counts = $arrCounts
         AssignmentsMap = $objAutoK.BestModel.Assignments
     }
-    if ($hashPrincipalDisplayName.Count -gt 0) {
-        $hashClusterActionParams['PrincipalDisplayNameMap'] = $hashPrincipalDisplayName
+    if ($hashtablePrincipalDisplayName.Count -gt 0) {
+        $hashtableClusterActionParams['PrincipalDisplayNameMap'] = $hashtablePrincipalDisplayName
     }
-    $arrClusterActions = @(Get-ClusterActionSet @hashClusterActionParams)
+    $arrClusterActions = @(Get-ClusterActionSet @hashtableClusterActionParams)
     #endregion Stage 9: Generate cluster action sets
 
     #region Stage 10: Export artifacts
@@ -775,17 +812,17 @@ try {
 
     # quality.json -- include unmapped Entra ID activity stats when available
     $strQualityPath = Join-Path -Path $OutputPath -ChildPath 'quality.json'
-    $hashQualityExport = [ordered]@{
+    $hashtableQualityExport = [ordered]@{
         Principals = $objQuality.Principals
         Actions = $objQuality.Actions
         NonZeroEntries = $objQuality.NonZeroEntries
         Density = $objQuality.Density
     }
     if ($intTotalUnmappedCount -gt 0) {
-        $hashQualityExport['EntraUnmappedActivityCount'] = $intTotalUnmappedCount
-        $hashQualityExport['EntraUnmappedDistinctActivities'] = $intDistinctUnmappedActivities
+        $hashtableQualityExport['EntraUnmappedActivityCount'] = $intTotalUnmappedCount
+        $hashtableQualityExport['EntraUnmappedDistinctActivities'] = $intDistinctUnmappedActivities
     }
-    $strQualityJson = [pscustomobject]$hashQualityExport | ConvertTo-Json -Depth 4
+    $strQualityJson = [pscustomobject]$hashtableQualityExport | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText($strQualityPath, [string]$strQualityJson, $objUtf8NoBomEncoding)
     Write-Verbose ("  Exported: {0}" -f $strQualityPath)
 
@@ -806,7 +843,7 @@ try {
     # by descending Count so the most frequent gaps appear first.
     if ($intTotalUnmappedCount -gt 0) {
         $strUnmappedPath = Join-Path -Path $OutputPath -ChildPath 'entra_unmapped_activities.csv'
-        $arrUnmappedSorted = @($hashUnmappedActivities.Values |
+        $arrUnmappedSorted = @($hashtableUnmappedActivities.Values |
                 Sort-Object -Property Count -Descending)
         $arrUnmappedCsvLines = @($arrUnmappedSorted | ConvertTo-Csv -NoTypeInformation)
         [System.IO.File]::WriteAllLines($strUnmappedPath, [string[]]$arrUnmappedCsvLines, $objUtf8NoBomEncoding)
@@ -823,12 +860,12 @@ try {
             $strRoleName = Get-EntraIdRoleDisplayName -ResourceActions $objCluster.Actions -ClusterId $objCluster.ClusterId -Prefix $EntraIdRoleNamePrefix
             $strDescription = ("Auto-generated least-privilege Entra ID role from cluster {0} with {1} resource actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
 
-            $hashRoleParams = @{
+            $hashtableRoleParams = @{
                 RoleName = $strRoleName
                 Description = $strDescription
                 ResourceActions = $objCluster.Actions
             }
-            $strRoleJson = New-EntraIdRoleDefinitionJson @hashRoleParams
+            $strRoleJson = New-EntraIdRoleDefinitionJson @hashtableRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("entra_role_cluster_{0}.json" -f $objCluster.ClusterId)
             [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)
@@ -840,13 +877,13 @@ try {
             $strRoleName = ("{0}-{1}" -f $RoleNamePrefix, $objCluster.ClusterId)
             $strDescription = ("Auto-generated least-privilege role from cluster {0} with {1} actions." -f $objCluster.ClusterId, $objCluster.Actions.Count)
 
-            $hashRoleParams = @{
+            $hashtableRoleParams = @{
                 RoleName = $strRoleName
                 Description = $strDescription
                 Actions = $objCluster.Actions
                 AssignableScopes = $AssignableScopes
             }
-            $strRoleJson = New-AzureRoleDefinitionJson @hashRoleParams
+            $strRoleJson = New-AzureRoleDefinitionJson @hashtableRoleParams
 
             $strRolePath = Join-Path -Path $OutputPath -ChildPath ("role_cluster_{0}.json" -f $objCluster.ClusterId)
             [System.IO.File]::WriteAllText($strRolePath, $strRoleJson, $objUtf8NoBomEncoding)

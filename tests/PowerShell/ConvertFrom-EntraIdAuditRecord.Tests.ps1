@@ -392,7 +392,7 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
     Context "When UnmappedActivityAccumulator is provided" {
         It "Populates the accumulator when the mapping returns null" {
             # Arrange
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             $objRecord = [pscustomobject]@{
                 Result = 'success'
                 ActivityDisplayName = 'Self-service password reset flow activity progress'
@@ -410,21 +410,21 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
             }
 
             # Act
-            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashUnmapped
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashtableUnmapped
 
             # Assert
             $objResult | Should -Be $null
-            $hashUnmapped.Count | Should -Be 1
+            $hashtableUnmapped.Count | Should -Be 1
             $strExpectedKey = 'Self-service password reset flow activity progress|UserManagement'
-            $hashUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
-            $hashUnmapped[$strExpectedKey].Count | Should -Be 1
-            $hashUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-1'
-            $hashUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'id-1'
+            $hashtableUnmapped.ContainsKey($strExpectedKey) | Should -BeTrue
+            $hashtableUnmapped[$strExpectedKey].Count | Should -Be 1
+            $hashtableUnmapped[$strExpectedKey].SampleCorrelationId | Should -Be 'corr-1'
+            $hashtableUnmapped[$strExpectedKey].SampleRecordId | Should -Be 'id-1'
         }
 
         It "Does not populate accumulator when result is not success" {
             # Arrange
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             $objRecord = [pscustomobject]@{
                 Result = 'failure'
                 ActivityDisplayName = 'Self-service password reset flow activity progress'
@@ -442,18 +442,18 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
             }
 
             # Act
-            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashUnmapped
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashtableUnmapped
 
             # Assert
             $objResult | Should -Be $null
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not populate accumulator when principal cannot be resolved" {
             # Arrange - success + unmapped activity, but InitiatedBy is
             # null. Record is dropped for principal failure, not for a
             # mapping gap, so the accumulator MUST NOT be touched.
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             $objRecord = [pscustomobject]@{
                 Result = 'success'
                 ActivityDisplayName = 'Self-service password reset flow activity progress'
@@ -465,18 +465,18 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
             }
 
             # Act
-            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashUnmapped
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashtableUnmapped
 
             # Assert
             $objResult | Should -Be $null
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not populate accumulator when ActivityDateTime is unparseable" {
             # Arrange - success + principal + unmapped activity, but
             # ActivityDateTime is not parseable. Record is dropped for
             # date failure, not mapping gap.
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             $objRecord = [pscustomobject]@{
                 Result = 'success'
                 ActivityDisplayName = 'Self-service password reset flow activity progress'
@@ -494,16 +494,16 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
             }
 
             # Act
-            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashUnmapped
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashtableUnmapped
 
             # Assert
             $objResult | Should -Be $null
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
 
         It "Does not populate accumulator when the activity maps successfully" {
             # Arrange - a mapped activity should not touch accumulator
-            $hashUnmapped = @{}
+            $hashtableUnmapped = @{}
             $objRecord = [pscustomobject]@{
                 Result = 'success'
                 ActivityDisplayName = 'Add member to group'
@@ -521,11 +521,11 @@ Describe "ConvertFrom-EntraIdAuditRecord" {
             }
 
             # Act
-            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashUnmapped
+            $objResult = ConvertFrom-EntraIdAuditRecord -Record $objRecord -UnmappedActivityAccumulator $hashtableUnmapped
 
             # Assert
             $objResult | Should -Not -Be $null
-            $hashUnmapped.Count | Should -Be 0
+            $hashtableUnmapped.Count | Should -Be 0
         }
     }
 
