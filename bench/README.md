@@ -99,9 +99,21 @@ Parameters:
 - `-OutputPath`: Directory for CSV output (default `bench/results/`).
 - `-Label`: Label prefix for the output CSV filename (default `'baseline'`).
 - `-Seed`: RNG seed (default 42).
+- `-Mode`: Opt-in mode selector. One of `Legacy` (default; pre-existing
+  behaviour preserved byte-exactly), `Baseline` (no server-side collapse;
+  mock filters by chunk time window only), `OptionA` (global `arg_min`
+  collapse simulating a single-query Option A path), or `OptionAPlusB`
+  (per-chunk `arg_min` collapse; matches current production).
 
 Results are written to `bench/results/{Label}-{yyyymmdd-HHmmss}.csv` and a
 Markdown summary table is printed to stdout.
+
+## Reports
+
+- [`docs/benchmarks/issue-23-entra-reduction.md`](../docs/benchmarks/issue-23-entra-reduction.md)
+  — retroactive baseline and post-reduction metrics for issue
+  [#23](https://github.com/franklesniak/GloryRole/issues/23) with the OQ1
+  Pass/Fail table.
 
 ## How to produce baseline numbers for issue #23
 

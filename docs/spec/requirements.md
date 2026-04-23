@@ -229,6 +229,13 @@ Used when ingesting Entra ID directory audit logs via Microsoft Graph API. A
     `tests/PowerShell/Export-UnmappedActivityReport.Contract.Tests.ps1`,
     which is the authoritative definition of the artifact's header,
     column order, and per-row invariants.
+  - **Measured metrics.** Baseline (pre-Option-A) and post-reduction row
+    counts, wall-clock times, and working-set figures for the locked
+    synthetic fixture (`Count=10000, Seed=42, DuplicateRatio ∈ {0.0, 0.25,
+    0.5}`), evaluated against the OQ1 reduction gate defined above, are
+    recorded in `docs/benchmarks/issue-23-entra-reduction.md`. That report
+    is the single source of truth for the numbers; to avoid drift this
+    spec does not restate them inline.
   - **Option C deferral:** Server-side activity-to-action mapping
     (embedding the `ConvertTo-EntraIdResourceAction` mapping table
     inside the KQL query as a `datatable` literal) was evaluated and
