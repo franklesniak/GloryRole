@@ -21,7 +21,7 @@
 # Requires the fixture generator from tests/PowerShell/_fixtures/:
 #   New-SyntheticAuditLogFixture.ps1
 #
-# Version: 1.2.20260422.0
+# Version: 1.3.20260423.0
 
 [CmdletBinding()]
 param (
@@ -38,7 +38,31 @@ param (
 
     [string]$Label = 'baseline',
 
-    [int]$Seed = 42
+    [int]$Seed = 42,
+
+    # Mode selector (opt-in, additive).
+    # - Legacy (default): preserves the pre-existing benchmark behaviour. The
+    #   mock Invoke-AzOperationalInsightsQuery returns the entire fixture to
+    #   every chunk without time-window filtering and without any server-side
+    #   collapse. This is retained for byte-exact backward compatibility with
+    #   earlier invocations of this script.
+    # - Baseline: simulates the pre-Option-A path. The mock filters by the
+    #   chunk's KQL time window but applies no server-side retry collapse;
+    #   emitted row counts reflect what the ingestion function would see if
+    #   the KQL omitted the arg_min summarize block.
+    # - OptionA: simulates the current production KQL's server-side
+    #   retry-collapse applied GLOBALLY across [Start, End] (i.e., as if the
+    #   whole range were a single chunk). The collapse is performed once on
+    #   the entire fixture up front; the mock then filters the collapsed
+    #   rows by each chunk's time window. This isolates the Option A gain
+    #   from the Option B chunking contribution.
+    # - OptionAPlusB: matches the current production behaviour. The mock
+    #   filters raw fixture rows by each chunk's time window first, then
+    #   applies the Option A collapse PER CHUNK. Retry duplicates whose
+    #   timestamps straddle an internal chunk boundary survive the per-chunk
+    #   collapse and are removed downstream by Remove-DuplicateCanonicalEvent.
+    [ValidateSet('Legacy', 'Baseline', 'OptionA', 'OptionAPlusB')]
+    [string]$Mode = 'Legacy'
 )
 
 Set-StrictMode -Version Latest
@@ -65,6 +89,122 @@ function Invoke-AzOperationalInsightsQuery {
         Justification = 'Parameters exist to mirror the stubbed cmdlet signature.')]
     [CmdletBinding()]
     param ($WorkspaceId, $Query)
+}
+
+# Mode helper: filter a fixture set by the KQL chunk time window. Mirrors
+# Select-MockRowByKqlTimeWindow in the equivalence tests: parses the first
+# two datetime(...) tokens from the query, detects the half-open vs. closed
+# upper bound, and returns only rows whose TimeGenerated falls in that
+# window. Rows with unparseable TimeGenerated are treated the same way as
+# the equivalence tests: included only on terminal (closed-upper) chunks.
+function Select-BenchRowByKqlTimeWindow {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseSingularNouns', '',
+        Justification = 'Function returns a collection of mock rows; plural "Row" matches repository convention for collection-returning helpers (e.g., Select-MockRowByKqlTimeWindow in the equivalence suite).')]
+    [CmdletBinding()]
+    [OutputType([object])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Query,
+        [object[]]$Rows
+    )
+
+    if ($null -eq $Rows -or $Rows.Count -eq 0) {
+        return @()
+    }
+
+    $regexDt = [regex]'datetime\(([^)]+)\)'
+    $objMatches = $regexDt.Matches($Query)
+    if ($objMatches.Count -lt 2) {
+        return @($Rows)
+    }
+
+    $dtStyles = [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
+    $objCulture = [System.Globalization.CultureInfo]::InvariantCulture
+    $dtLower = [datetime]::Parse($objMatches[0].Groups[1].Value, $objCulture, $dtStyles)
+    $dtUpper = [datetime]::Parse($objMatches[1].Groups[1].Value, $objCulture, $dtStyles)
+
+    $boolClosedUpper = $false
+    if ($Query -match '<=\s*datetime\(') {
+        $boolClosedUpper = $true
+    }
+
+    $listFiltered = New-Object System.Collections.Generic.List[object]
+    foreach ($objRow in $Rows) {
+        $strTg = [string]$objRow.TimeGenerated
+        if ([string]::IsNullOrWhiteSpace($strTg)) {
+            if ($boolClosedUpper) {
+                [void]($listFiltered.Add($objRow))
+            }
+            continue
+        }
+        $dtRowParsed = [datetime]::MinValue
+        $boolRowParsed = [datetime]::TryParse($strTg, $objCulture, $dtStyles, [ref]$dtRowParsed)
+        if (-not $boolRowParsed) {
+            if ($boolClosedUpper) {
+                [void]($listFiltered.Add($objRow))
+            }
+            continue
+        }
+        if ($dtRowParsed -lt $dtLower) { continue }
+        if ($boolClosedUpper) {
+            if ($dtRowParsed -gt $dtUpper) { continue }
+        } else {
+            if ($dtRowParsed -ge $dtUpper) { continue }
+        }
+        [void]($listFiltered.Add($objRow))
+    }
+    return $listFiltered.ToArray()
+}
+
+# Mode helper: simulate the Option A server-side retry-collapse on an
+# already-time-filtered set of fixture rows. Rows with a whitespace-only,
+# empty, or null CorrelationId bypass the collapse (union branch); other
+# rows are reduced per (PrincipalKey, OperationName, CorrelationId) to the
+# earliest TimeGenerated (arg_min semantics). Mirrors the KQL in
+# Get-EntraIdAuditEventFromLogAnalytics.ps1 and the
+# Invoke-OptionAServerSideCollapse helper in the equivalence tests.
+function Invoke-BenchOptionACollapse {
+    [CmdletBinding()]
+    [OutputType([object])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [object[]]$Rows
+    )
+
+    if ($null -eq $Rows -or $Rows.Count -eq 0) {
+        return @()
+    }
+
+    $hashtableSeen = @{}
+    $arrSorted = @($Rows | Sort-Object TimeGenerated)
+    $listOut = New-Object System.Collections.Generic.List[object]
+
+    foreach ($objRow in $arrSorted) {
+        $strCorrelationId = ''
+        if ($null -ne $objRow.CorrelationId) {
+            $strCorrelationId = [string]$objRow.CorrelationId
+        }
+
+        if ([string]::IsNullOrWhiteSpace($strCorrelationId)) {
+            [void]($listOut.Add($objRow))
+            continue
+        }
+
+        $strKey = (
+            '{0}|{1}|{2}' -f
+            [string]$objRow.PrincipalKey,
+            [string]$objRow.OperationName,
+            $strCorrelationId
+        )
+
+        if (-not $hashtableSeen.ContainsKey($strKey)) {
+            $hashtableSeen[$strKey] = $true
+            [void]($listOut.Add($objRow))
+        }
+    }
+
+    return $listOut.ToArray()
 }
 #endregion Load dependencies
 
@@ -108,15 +248,53 @@ foreach ($dblDupRatio in $DuplicateRatios) {
         # Generate fixture
         $arrFixture = @(New-SyntheticAuditLogFixture -Count $FixtureSize -DuplicateRatio $dblDupRatio -Seed $Seed)
 
-        # Mock Invoke-AzOperationalInsightsQuery to return the fixture
+        # Mock Invoke-AzOperationalInsightsQuery to return the fixture.
+        # The behaviour varies by -Mode:
+        #   Legacy       -> return the full fixture to every chunk (no time
+        #                   filter, no collapse). Preserves pre-existing
+        #                   benchmark output byte-exactly.
+        #   Baseline     -> filter by the chunk's KQL time window only (no
+        #                   server-side collapse). Measures pre-Option-A
+        #                   emitted row counts.
+        #   OptionA      -> apply the Option A collapse once to the whole
+        #                   fixture, then filter by the chunk's time window.
+        #                   Approximates a single-query Option A path.
+        #   OptionAPlusB -> filter by the chunk's time window, then apply
+        #                   the Option A collapse per chunk. Matches the
+        #                   current production KQL path.
         $script:arrBenchFixture = $arrFixture
+        $script:arrBenchCollapsedGlobal = $null
+        if ($Mode -eq 'OptionA') {
+            $script:arrBenchCollapsedGlobal = @(Invoke-BenchOptionACollapse -Rows $arrFixture)
+        }
+        $script:strBenchMode = $Mode
         function Invoke-AzOperationalInsightsQuery {
             [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
                 'PSReviewUnusedParameter', '',
                 Justification = 'Parameters exist to mirror the stubbed cmdlet signature.')]
             [CmdletBinding()]
             param ($WorkspaceId, $Query)
-            return [pscustomobject]@{ Results = $script:arrBenchFixture }
+            switch ($script:strBenchMode) {
+                'Legacy' {
+                    return [pscustomobject]@{ Results = $script:arrBenchFixture }
+                }
+                'Baseline' {
+                    $arrFiltered = @(Select-BenchRowByKqlTimeWindow -Query $Query -Rows $script:arrBenchFixture)
+                    return [pscustomobject]@{ Results = $arrFiltered }
+                }
+                'OptionA' {
+                    $arrFiltered = @(Select-BenchRowByKqlTimeWindow -Query $Query -Rows $script:arrBenchCollapsedGlobal)
+                    return [pscustomobject]@{ Results = $arrFiltered }
+                }
+                'OptionAPlusB' {
+                    $arrFiltered = @(Select-BenchRowByKqlTimeWindow -Query $Query -Rows $script:arrBenchFixture)
+                    if ($arrFiltered.Count -eq 0) {
+                        return [pscustomobject]@{ Results = @() }
+                    }
+                    $arrCollapsed = @(Invoke-BenchOptionACollapse -Rows $arrFiltered)
+                    return [pscustomobject]@{ Results = $arrCollapsed }
+                }
+            }
         }
 
         # Time the stage-1 pipeline
