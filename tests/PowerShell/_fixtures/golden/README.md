@@ -1,9 +1,10 @@
 # Stage-1 golden fixtures
 
 This folder holds JSON snapshots of the stage-1 output of the Entra ID Log
-Analytics ingestion pipeline (`src/Get-EntraIdAuditEventFromLogAnalytics.ps1`)
+Analytics ingestion pipeline
+([`src/Get-EntraIdAuditEventFromLogAnalytics.ps1`](../../../../src/Get-EntraIdAuditEventFromLogAnalytics.ps1))
 run against the deterministic synthetic fixture from
-`../New-SyntheticAuditLogFixture.ps1` (`Count = 500`, `Seed = 42`) at three
+[`New-SyntheticAuditLogFixture.ps1`](../New-SyntheticAuditLogFixture.ps1) (`Count = 500`, `Seed = 42`) at three
 duplicate ratios.
 
 | File pattern | Stage-1 output captured |
@@ -17,7 +18,7 @@ duplicate ratios.
 Per Open Question 2 in #23 (which defines the valid-sample relaxation for
 sample IDs), the equivalence contract that the runtime equivalence tests enforce
 (via `Test-StageOneEquivalence` in
-`../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`) is:
+[`Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`](../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1)) is:
 
 | Field | Check |
 | --- | --- |
@@ -36,7 +37,7 @@ they just don't pick the same valid sample row.
 ## How to regenerate
 
 These goldens are produced by the regeneration tests in
-`../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1` inside the
+[`Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`](../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1) inside the
 `Context "Golden file regeneration"` block, which is tagged `Golden`. Default
 CI runs with `-ExcludeTag Golden`, so the regen does **not** run automatically.
 
