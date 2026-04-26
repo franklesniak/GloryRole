@@ -7,26 +7,28 @@ run against the deterministic synthetic fixture from
 duplicate ratios.
 
 | File pattern | Stage-1 output captured |
-|---|---|
+| --- | --- |
 | `dup<ratio>-triples.json` | Sparse `(PrincipalKey, Action, Count)` triples. |
 | `dup<ratio>-displaynames.json` | `PrincipalKey` → display-name map. |
 | `dup<ratio>-unmapped.json` | Unmapped-activity accumulator (one entry per `(ActivityDisplayName, Category)` group, with `Count`, `SampleCorrelationId`, `SampleRecordId`). |
 
 ## Equivalence contract
 
-Per Open Question 2 in #23, the equivalence contract that the runtime
-equivalence tests enforce (via `Test-StageOneEquivalence` in
+Per Open Question 2 in #23 (which defines the valid-sample relaxation for
+sample IDs), the equivalence contract that the runtime equivalence tests enforce
+(via `Test-StageOneEquivalence` in
 `../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`) is:
 
 | Field | Check |
-|---|---|
+| --- | --- |
 | Triples (`PrincipalKey`, `Action`, `Count`) | **Strict equality** |
 | Display-name map | **Strict equality** |
 | Unmapped accumulator `Count` and activity/category keys | **Strict equality** |
 | Unmapped accumulator `SampleCorrelationId`, `SampleRecordId` | **Valid-sample**: ID must exist on a fixture row that maps to the same `(ActivityDisplayName, Category)` group. |
 
-The valid-sample relaxation exists because Options A and B (#35, #37) collapse
-duplicate audit rows on the server using `arg_min(TimeGenerated, ...)`, which
+The valid-sample relaxation exists because Options A and B (#35, #37 —
+server-side deduplication strategies) collapse duplicate audit rows on the
+server using `arg_min(TimeGenerated, ...)`, which
 deterministically picks a row that is *different from but equivalent to* the
 row the legacy per-record path would have picked. Both pick valid sample rows;
 they just don't pick the same valid sample row.
