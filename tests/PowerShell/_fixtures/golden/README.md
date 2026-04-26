@@ -1,5 +1,24 @@
 # Stage-1 golden fixtures
 
+## Metadata
+
+- **Status:** Active
+- **Owner:** Repository Maintainers
+- **Last Updated:** 2026-04-26
+- **Scope:** Documents the on-disk stage-1 golden snapshots under
+  `tests/PowerShell/_fixtures/golden/`, the `Golden`-tagged regeneration
+  workflow, and the equivalence contract these snapshots support. Does not
+  cover the production stage-1 pipeline behavior or the
+  `Test-StageOneEquivalence` helper itself.
+- **Related:**
+  [#23](https://github.com/franklesniak/GloryRole/issues/23),
+  [#35](https://github.com/franklesniak/GloryRole/issues/35),
+  [#37](https://github.com/franklesniak/GloryRole/issues/37),
+  [#39](https://github.com/franklesniak/GloryRole/issues/39),
+  [Documentation Writing Style](../../../../.github/instructions/docs.instructions.md)
+
+## Purpose
+
 This folder holds JSON snapshots of the stage-1 output of the Entra ID Log
 Analytics ingestion pipeline
 ([`src/Get-EntraIdAuditEventFromLogAnalytics.ps1`](../../../../src/Get-EntraIdAuditEventFromLogAnalytics.ps1))
@@ -68,14 +87,33 @@ nothing else), and commit them.
   changed unexpectedly. Those are part of the strict-equality contract and
   must not drift silently.
 
-## Why these files are excluded from default CI
+## What runs in default CI vs. what is opt-in
 
-The strict byte-for-byte form of these snapshots intentionally captures the
-`SampleCorrelationId` / `SampleRecordId` values that the equivalence contract
-treats as nondeterministic. A strict diff would produce false-positive failures
-on every legitimate change to the chunking parameters or the `arg_min` shape.
-The runtime equivalence tests under default CI use the looser `Test-StageOneEquivalence`
-contract, which is what should fail (or pass) on real regressions.
+The strict byte-for-byte comparison against these snapshots **does** run in
+default CI: the
+`Equivalence comparison against goldens for DuplicateRatio …` contexts in
+[`Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1`](../../Get-EntraIdAuditEventFromLogAnalytics.Equivalence.Tests.ps1)
+read each on-disk JSON file and assert it matches a freshly generated stage-1
+output via `Should -Be` (full string equality).
+
+What is excluded from default CI is the **regeneration** that overwrites
+these files in place. That work lives inside
+`Context "Golden file regeneration" -Tag 'Golden'` and runs only when the
+`Golden` tag is selected explicitly (default CI invokes Pester with
+`-ExcludeTag Golden`).
+
+The split is deliberate:
+
+- The strict comparison includes `SampleCorrelationId` / `SampleRecordId`. Any
+  change to chunking parameters or `arg_min` shape that shifts those values
+  surfaces here loudly, so a contributor sees the drift in CI and decides
+  whether to accept it via a deliberate regeneration rather than silently
+  relax the contract.
+- The looser valid-sample relaxation lives in `Test-StageOneEquivalence` and
+  is exercised by the runtime-only equivalence contexts (chunked-wrapping,
+  adaptive-subdivision, OQ2), which compare two runtime outputs directly
+  without the on-disk JSON intermediary. Those tests are what catch real
+  regressions when sample IDs shift for a benign reason.
 
 ## Related issues / PRs
 
