@@ -1,6 +1,13 @@
 <!-- markdownlint-disable MD013 -->
 # GloryRole Parity Gap Analysis: Azure RBAC vs. Entra ID
 
+- **Status:** Active
+- **Owner:** Repository Maintainers
+- **Last Updated:** 2026-04-27
+- **Scope:** Analyzes Azure RBAC vs. Entra ID parity gaps across source code, tests, documentation, artifacts, and contributor guidance. This document is an engineering analysis artifact and does not define normative product requirements; normative requirements live in [`docs/spec/requirements.md`](../spec/requirements.md).
+- **Related:** [`docs/spec/requirements.md`](../spec/requirements.md), [`.github/instructions/docs.instructions.md`](../../.github/instructions/docs.instructions.md), [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
+- **Taxonomy:** Developer docs (`docs/`). This file is classified under the existing `docs/` documentation bucket; `docs/analysis/` is used as an organizational subdirectory for analysis documents and is not intended to define a separate top-level taxonomy category.
+
 ## Executive Summary
 
 **Breaking changes are absolutely acceptable for this work.** Backward compatibility, deprecation shims, alias periods, and preservation of legacy names are **not** constraints. The repository should prefer the cleanest, most internally consistent design that treats **Azure RBAC** and **Entra ID** as equal first-class peers across source code, tests, documentation, artifacts, public API shape, and contributor guidance.
@@ -133,7 +140,9 @@ Each entry lists the decision to make, why the answer is not obvious from static
 
 This is conceptually inconsistent and subtly privileges Azure by leaving Azure's direct path transport-named while Entra's direct path is platform-named.
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L255
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (line 255)](../../src/Invoke-RoleMiningPipeline.ps1#L255).
+
+```powershell
 [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics', 'EntraId')]
 [string]$InputMode,
 ```
@@ -225,7 +234,9 @@ Rename Azure explicitly and keep **two sibling provider-specific concrete contra
 
 **Why this is open:** `Get-EntraIdAuditEvent.ps1` implements explicit retry/backoff with exponential backoff, jitter, retry-status classification, and configurable `-MaxRetries` (default 3) / `-RetryBaseDelaySeconds` (default 2). `Get-AzActivityAdminEvent.ps1` does not currently expose an equivalent retry model — failed time segments are skipped with `Write-Warning`, and subscription context-switch failures are skipped with `Write-Error`:
 
-```powershell name=src/Get-AzActivityAdminEvent.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Get-AzActivityAdminEvent.ps1#L145-L151
+Source: [`src/Get-AzActivityAdminEvent.ps1` (lines 145-151)](../../src/Get-AzActivityAdminEvent.ps1#L145-L151).
+
+```powershell
 } catch {
     Write-Debug ("Get-AzActivityLog query failed: {0}" -f $_.Exception.Message)
     Write-Warning ("Failed to query activity log for segment {0} to {1}: {2}" -f $objSegment.S, $objSegment.E, $_.Exception.Message)
@@ -411,7 +422,9 @@ In the near term, document that current tooling asymmetry is **issue-driven** an
 
 **File:** `src/Import-PrincipalActionCountFromCsv.ps1:81–82`
 
-```powershell name=src/Import-PrincipalActionCountFromCsv.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Import-PrincipalActionCountFromCsv.ps1#L81-L82
+Source: [`src/Import-PrincipalActionCountFromCsv.ps1` (lines 81-82)](../../src/Import-PrincipalActionCountFromCsv.ps1#L81-L82).
+
+```powershell
 [ValidateSet('AzureRbac', 'EntraId')]
 [string]$RoleSchema = 'AzureRbac'
 ```
@@ -430,7 +443,9 @@ The test file `tests/PowerShell/Import-PrincipalActionCountFromCsv.Tests.ps1:152
 
 **File:** `src/Invoke-RoleMiningPipeline.ps1:270–272` vs `279–286`
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L270-L286
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (lines 270-286)](../../src/Invoke-RoleMiningPipeline.ps1#L270-L286).
+
+```powershell
 # Azure (no validation)
 [int]$InitialSliceHours = 24,
 [int]$MinSliceMinutes = 15,
@@ -461,7 +476,9 @@ Callers can pass `$InitialSliceHours = 0` or `$MaxRecordHint = -1` for the Azure
 
 Azure RBAC role files take the unmarked filename; Entra files are namespaced:
 
-```text name=README.md (excerpt) url=https://github.com/franklesniak/GloryRole/blob/main/README.md#L138-L139
+Source: [`README.md` (lines 138-139, excerpt)](../../README.md#L138-L139).
+
+```text
 | `role_cluster_<id>.json`        | One Azure custom role definition per cluster (when `-RoleSchema AzureRbac`) |
 | `entra_role_cluster_<id>.json`  | One Entra ID custom role definition per cluster (when `-RoleSchema EntraId`) |
 ```
@@ -497,7 +514,9 @@ The RBAC sample is unqualified; the Entra sample is explicitly qualified. Same p
 
 Two distinct asymmetries:
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L267-L305
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (lines 267-305)](../../src/Invoke-RoleMiningPipeline.ps1#L267-L305).
+
+```powershell
 # Azure adaptive-slicing triad — UNPREFIXED
 [int]$InitialSliceHours = 24,
 [int]$MinSliceMinutes = 15,
@@ -536,7 +555,9 @@ Harmonize defaults so both produce the same naming shape; per-platform suffix lo
 
 `ConvertTo-NormalizedAction` carries an explicit warning *"Azure RBAC only: …MUST NOT be used for Entra ID `microsoft.directory/*` actions"* — yet its public name claims to be **the** action normalizer:
 
-```powershell name=src/ConvertTo-NormalizedAction.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/ConvertTo-NormalizedAction.ps1#L13-L22
+Source: [`src/ConvertTo-NormalizedAction.ps1` (lines 13-22)](../../src/ConvertTo-NormalizedAction.ps1#L13-L22).
+
+```powershell
 # WARNING - Azure RBAC only: This function applies culture-invariant
 # lowercasing and MUST NOT be used for Entra ID
 # microsoft.directory/* actions. Entra ID resource action strings
@@ -608,7 +629,9 @@ The header documents Azure AD object-id semantics (`"The object identifier claim
 
 **File:** `src/Invoke-RoleMiningPipeline.ps1:489–528`
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L489-L528
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (lines 489-528)](../../src/Invoke-RoleMiningPipeline.ps1#L489-L528).
+
+```powershell
 if ($RoleSchema -eq 'EntraId') {
     # ...Entra branch...
 } else {
@@ -691,7 +714,9 @@ Defensible alphabetically (AzureRbac < EntraId), but combined with DG-1 framing,
 
 **File:** `src/Invoke-RoleMiningPipeline.ps1:255`
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L255
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (line 255)](../../src/Invoke-RoleMiningPipeline.ps1#L255).
+
+```powershell
 [ValidateSet('CSV', 'ActivityLog', 'LogAnalytics', 'EntraId')]
 ```
 
@@ -759,7 +784,9 @@ If P1 fixes are implemented but the agent docs are silent on the convention, the
 
 **Fix:** Add the following identical paragraph to all four files:
 
-````markdown name=parity-rule.md
+Suggested snippet (paste into each of the four agent-instruction files):
+
+````markdown
 ## Azure RBAC and Entra ID parity rule
 
 Azure RBAC and Entra ID are peers, not primary-and-variant. When writing or modifying code, documentation, tests, parameters, function names, file names, output artifact names, type names, or examples:
@@ -792,7 +819,9 @@ This is **not evidence that Entra is favored overall**; it reflects where recent
 
 **Files:** `package.json:4, 10–17`; `src/GloryRole.psd1:8, 57`
 
-```json name=package.json url=https://github.com/franklesniak/GloryRole/blob/main/package.json#L4-L17
+Source: [`package.json` (lines 4-17)](../../package.json#L4-L17).
+
+```json
 "description": "Unsupervised role mining engine for cloud RBAC — derives least-privilege custom role definitions from activity logs",
 ...
 "keywords": ["powershell","rbac","role-mining","azure","security","least-privilege"]
@@ -800,7 +829,9 @@ This is **not evidence that Entra is favored overall**; it reflects where recent
 
 `"description"` says *cloud RBAC* — no Entra mention. `"keywords"` lists `rbac` and `azure` but not `entra-id`, `entra`, or `microsoft-graph`.
 
-```powershell name=src/GloryRole.psd1 url=https://github.com/franklesniak/GloryRole/blob/main/src/GloryRole.psd1#L52
+Source: [`src/GloryRole.psd1` (line 52)](../../src/GloryRole.psd1#L52).
+
+```powershell
 Tags = @('Azure', 'RBAC', 'RoleMining', 'KMeans', 'Clustering', 'LeastPrivilege', 'Security', 'IAM', 'EntraID', 'MicrosoftGraph')
 ```
 
@@ -829,7 +860,9 @@ All four bullets reference Azure or RBAC. A Microsoft 365 admin, identity archit
 
 **Files:** `src/Get-ClusterActionSet.ps1:11`; `src/Invoke-RoleMiningPipeline.ps1:774–775`
 
-```powershell name=src/Invoke-RoleMiningPipeline.ps1 url=https://github.com/franklesniak/GloryRole/blob/main/src/Invoke-RoleMiningPipeline.ps1#L774
+Source: [`src/Invoke-RoleMiningPipeline.ps1` (line 774)](../../src/Invoke-RoleMiningPipeline.ps1#L774).
+
+```powershell
 # Use original (pre-TF-IDF) counts for action extraction to maintain RBAC fidelity.
 ```
 
