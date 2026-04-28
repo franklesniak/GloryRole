@@ -3,9 +3,11 @@ applyTo: "**/*.md"
 description: "Documentation standards:  contract-first, traceable, drift-resistant Markdown."
 ---
 
+<!-- markdownlint-disable MD013 -->
+
 # Documentation Writing Style
 
-**Version:** 1.2.20260428.1
+**Version:** 1.2.20260428.4
 
 ## Metadata
 
@@ -89,6 +91,16 @@ For any document longer than ~30 lines or intended as a durable reference (specs
 - Avoid trailing whitespace; keep blank lines truly blank.
 - Prefer relative links within the repo (e.g., `docs/spec/requirements.md`).
 - Avoid raw URLs in prose; use descriptive link text when possible.
+- Markdown files in this repository SHOULD include `<!-- markdownlint-disable MD013 -->` immediately after any YAML front matter (or at the very top of the file if there is no front matter), and **before any other content**, including badges, links, the H1 heading, and any prose.
+  - Placement matters: markdownlint's inline `<!-- markdownlint-disable RULE -->` directive only suppresses the rule for content that follows it. Placing the directive after badges or other long lines leaves those lines unprotected when the file is processed with default markdownlint settings outside this repo.
+  - This intentionally duplicates the repo-wide `"MD013": false` setting in `.markdownlint.jsonc`.
+  - This is a deliberate **portability convention** for cases where a file is read or processed outside this repository, for example:
+    - sent to an external LLM for analysis or editing
+    - viewed by a tool that applies default markdownlint settings
+    - imported into another project
+  - The per-file directive helps ensure the file is interpreted with the same expectation that long lines (URLs, code samples, single-line paragraphs, tables) are acceptable.
+  - Per-file `<!-- markdownlint-disable RULE -->` directives MUST NOT contradict the configuration in `.markdownlint.jsonc`; their purpose is portability, not local override.
+  - When a contributor wants an additional rule disabled, update `.markdownlint.jsonc` first. Per-file directives are only for mirroring repo-wide configuration where default enforcement would harm portability.
 - Code-fence info strings MUST contain only a single language tag (e.g., `powershell`, `text`, `json`, `bash`). Do NOT embed file paths, URLs, or other metadata in the info string (for example, `powershell name=src/Foo.ps1 url=https://...#L1-L9` is not allowed). To cite the source of a code excerpt, place a line of the form ``Source: [`relative/path` (lines <start>-<end>)](relative/path#L<start>-L<end>).`` in prose immediately above the fence (for example, ``Source: [`src/Foo.ps1` (lines 1-9)](src/Foo.ps1#L1-L9).``). This keeps the language tag standard, preserves syntax highlighting across Markdown renderers, and reinforces the existing rule to avoid raw URLs in prose.
 
 ## ADR Standards
