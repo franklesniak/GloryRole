@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # GloryRole Parity Gap Analysis: Azure RBAC vs. Entra ID
 
 - **Status:** Active

@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # GloryRole Specification
 
 - **Status:** Active

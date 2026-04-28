@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Benchmark Tools for Entra ID Log Analytics Ingestion
 
 - **Status:** Active

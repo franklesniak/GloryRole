@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Entra ID Log Analytics ingestion — baseline and post-reduction metrics
 
 - **Status:** Active
