@@ -5,13 +5,13 @@ description: "Documentation standards:  contract-first, traceable, drift-resista
 
 # Documentation Writing Style
 
-**Version:** 1.1.20260112.1
+**Version:** 1.2.20260428.1
 
 ## Metadata
 
 - **Status:** Active
 - **Owner:** Repository Maintainers
-- **Last Updated:** 2026-01-12
+- **Last Updated:** 2026-04-28
 - **Scope:** Defines documentation standards for all Markdown files in this repository, including specs, design docs, runbooks, ADRs, and developer documentation. Does not cover code comments or inline documentation in source files.
 - **Related:** [Repository Copilot Instructions](../copilot-instructions.md)
 
@@ -40,7 +40,7 @@ This file governs all Markdown documentation (including `README.md`, `docs/**`, 
 - **Operational docs / runbooks:** `docs/runbooks/` (diagnosis, remediation, safe operations)
 - **Architecture Decision Records (ADRs):** `docs/adr/` (durable decisions)
 
-If you introduce new doc categories, they MUST be added to this taxonomy section.
+If you introduce a new **top-level documentation category** (a bucket that represents a distinct kind of doc, such as specs vs. runbooks vs. ADRs), it MUST be added to this taxonomy section. Purely **organizational subdirectories under an existing category** (for example, grouping related developer docs under `docs/<topic>/`) are a filing convention, MUST NOT be treated as new top-level categories, and MUST NOT trigger an update to this section. When in doubt, prefer treating a new directory as a subdirectory of an existing category unless it represents a fundamentally different kind of document.
 
 > **Customize for your project:** The taxonomy categories shown above are recommendations, not requirements. Projects SHOULD update this taxonomy to reflect their actual documentation structure. Categories MAY be added, removed, or renamed as appropriate for the project's needs.
 
@@ -89,6 +89,7 @@ For any document longer than ~30 lines or intended as a durable reference (specs
 - Avoid trailing whitespace; keep blank lines truly blank.
 - Prefer relative links within the repo (e.g., `docs/spec/requirements.md`).
 - Avoid raw URLs in prose; use descriptive link text when possible.
+- Code-fence info strings MUST contain only a single language tag (e.g., `powershell`, `text`, `json`, `bash`). Do NOT embed file paths, URLs, or other metadata in the info string (for example, `powershell name=src/Foo.ps1 url=https://...#L1-L9` is not allowed). To cite the source of a code excerpt, place a line of the form ``Source: [`relative/path` (lines <start>-<end>)](relative/path#L<start>-L<end>).`` in prose immediately above the fence (for example, ``Source: [`src/Foo.ps1` (lines 1-9)](src/Foo.ps1#L1-L9).``). This keeps the language tag standard, preserves syntax highlighting across Markdown renderers, and reinforces the existing rule to avoid raw URLs in prose.
 
 ## ADR Standards
 
