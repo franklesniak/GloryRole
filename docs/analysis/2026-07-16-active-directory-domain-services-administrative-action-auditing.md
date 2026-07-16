@@ -701,10 +701,10 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 # $hashtableAuditParameter = @{
 #     Server = 'dc01.domain.test'
 #     AdministrativeChangeAuditTrustee = @(
-#         'DOMAIN\Directory Administrative Change Audit Subjects'
+#         'DOMAIN\Dir-Audit-Change'
 #     )
 #     AdministrativeControlAuditTrustee = @(
-#         'DOMAIN\Directory Administrative Control Audit Subjects'
+#         'DOMAIN\Dir-Audit-Control'
 #     )
 # }
 #
@@ -716,10 +716,10 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 # $hashtableAuditParameter = @{
 #     Server = 'dc01.domain.test'
 #     AdministrativeChangeAuditTrustee = @(
-#         'DOMAIN\Directory Administrative Change Audit Subjects'
+#         'DOMAIN\Dir-Audit-Change'
 #     )
 #     AdministrativeControlAuditTrustee = @(
-#         'DOMAIN\Directory Administrative Control Audit Subjects'
+#         'DOMAIN\Dir-Audit-Control'
 #     )
 #     ProtectedContainerDistinguishedName = @(
 #         'OU=Tier 0,DC=domain,DC=test'
@@ -742,7 +742,7 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 #
 # .NOTES
 # This script does not support positional parameters.
-# Version: 2.0.20260716.0
+# Version: 2.0.20260716.1
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
@@ -1398,58 +1398,525 @@ Do not flatten all nested administrative groups into individual user memberships
 
 ## Discover protected SACL boundaries
 
-Inventory SACL protection state by using the ActiveDirectory module and its provider drive; no tooling beyond the prerequisites already required by the deployment script is needed. The commands below connect a dedicated provider drive to the selected domain controller, walk every object in each naming context, and report each object whose SACL is protected from inheritance. Reading SACLs requires the Manage auditing and security log privilege (`SeSecurityPrivilege`). A full walk of every naming context can take significant time in a large environment; narrow `SearchBase` to a scoped subtree when a full inventory is not required.
+Use the SACL-only inventory function below. It binds directly over LDAP with signing and sealing, requests only the SACL portion of `nTSecurityDescriptor` through the LDAP security-descriptor-flags control (the same SACL-only read approach the deployment script uses), and pages through every object in each hosted naming context. Because it never builds ActiveDirectory provider drive paths, distinguished names containing escaped characters cannot break path parsing during the walk. Reading SACLs requires an effective security context permitted to request SACL information. A full walk of every naming context can take significant time in a large environment.
+
+Save it as:
+
+```text
+C:\Tools\Get-AdRawSaclByPartition.ps1
+```
 
 ```powershell
-$strDomainControllerServer = 'dc01.domain.test'
-$objSecurityIdentifierType = [System.Security.Principal.SecurityIdentifier]
-$objAuditSectionFlag = [System.Security.AccessControl.AccessControlSections]::Audit
+function Get-AdRawSaclByPartition {
+    # .SYNOPSIS
+    # Retrieves raw SACL information from Active Directory naming contexts.
+    #
+    # .DESCRIPTION
+    # Queries the naming contexts hosted by the specified domain controller and requests only the
+    # SACL portion of nTSecurityDescriptor by using SecurityDescriptorFlagControl with
+    # SecurityMasks.Sacl. The function does not request owner, group, or DACL information.
+    #
+    # By default, the function reads only each naming-context root. Use AllObjects to search every
+    # object in every hosted naming context with LDAP paging. When AllObjects is used, objects that
+    # have no SACL are omitted.
+    #
+    # Each result contains the SACL-only SDDL, the exact raw ACL bytes encoded as Base64, summary
+    # counts, SACL inheritance state, and parsed ACE details. Each parsed ACE also includes its exact
+    # binary representation encoded as Base64.
+    #
+    # .PARAMETER Server
+    # Specifies the DNS name or host name of the domain controller to query. The current security
+    # context is used with negotiated authentication, LDAP signing, and LDAP sealing.
+    #
+    # .PARAMETER AllObjects
+    # Searches every object in each naming context hosted by the selected domain controller. When
+    # omitted, only each naming-context root is read.
+    #
+    # .PARAMETER PageSize
+    # Specifies the LDAP page size used with AllObjects. The default is 500, and the supported range
+    # is 1 through 1000. This parameter has no effect unless AllObjects is specified.
+    #
+    # .EXAMPLE
+    # $arrPartitionSystemAccessControlLists = @(Get-AdRawSaclByPartition -Server 'dc01.domain.test')
+    #
+    # # Returns one result for each naming-context root hosted by the selected domain controller.
+    #
+    # .EXAMPLE
+    # $arrObjectSystemAccessControlLists = @(
+    #     Get-AdRawSaclByPartition -Server 'dc01.domain.test' -AllObjects -PageSize 500
+    # )
+    #
+    # # Returns objects with SACLs from every hosted naming context and guarantees an array result.
+    #
+    # .EXAMPLE
+    # $arrPartitionSystemAccessControlLists = @(Get-AdRawSaclByPartition -Server 'dc01.domain.test')
+    # $arrPartitionSystemAccessControlLists |
+    #     Select-Object -Property Partition, ObjectDn, SaclState, ExplicitAceCount, DaclReturned
+    #
+    # # Displays a concise partition-root summary. DaclReturned should be False for every result.
+    #
+    # .INPUTS
+    # None. You cannot pipe objects to this function.
+    #
+    # .OUTPUTS
+    # [pscustomobject]. One object is streamed for each naming-context root by default, or for each
+    # object with a SACL when AllObjects is specified. Each object contains these properties:
+    #
+    # Server [string]: Queried server name.
+    # Partition [string]: Naming-context distinguished name.
+    # ObjectDn [string]: Object distinguished name.
+    # SaclState [string]: NotPresent, PresentNull, PresentEmpty, or Present.
+    # SaclProtected [bool]: Whether SystemAclProtected is set.
+    # TotalAceCount [int]: Total number of SACL ACEs.
+    # ExplicitAceCount [int]: Number of noninherited SACL ACEs.
+    # InheritedAceCount [int]: Number of inherited SACL ACEs.
+    # SaclSddl [string] or $null: SACL-only SDDL.
+    # RawSaclBase64 [string] or $null: Exact binary RawAcl encoded as Base64.
+    # DaclReturned [bool]: Whether a DACL was unexpectedly returned.
+    # Aces [pscustomobject[]]: Parsed SACL ACEs.
+    #
+    # Each object in Aces contains AceIndex [int], AceType [string], AceFlags [string], AuditFlags
+    # [string], AceQualifier [string] or $null, IsInherited [bool], IsCallback [bool], AccessMaskHex
+    # [string] or $null, Sid [string] or $null, ObjectAceFlags [string] or $null, ObjectTypeGuid
+    # [string] or $null, InheritedObjectTypeGuid [string] or $null, BinaryLength [int], and
+    # RawAceBase64 [string]. The function emits no object for an AllObjects search result that has no
+    # SACL.
+    #
+    # .NOTES
+    # This function does not support positional parameters.
+    # Requires Windows and PowerShell 5.1 or later.
+    # Reading SACLs requires an effective security context permitted to request SACL information.
+    # Version: 1.0.20260716.0
+    [CmdletBinding(PositionalBinding = $false)]
+    [OutputType([pscustomobject])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Server,
 
-$hashtableSaclInventoryDriveParameter = @{
-    Name = 'AdSaclInventory'
-    PSProvider = 'ActiveDirectory'
-    Root = ''
-    Server = $strDomainControllerServer
-}
-[void](New-PSDrive @hashtableSaclInventoryDriveParameter)
+        [Parameter()]
+        [switch]$AllObjects,
 
-$arrNamingContextDistinguishedName = @(
-    (Get-ADRootDSE -Server $strDomainControllerServer).namingContexts
-)
+        [Parameter()]
+        [ValidateRange(1, 1000)]
+        [int]$PageSize = 500
+    )
 
-$arrSaclProtectedObjects = @(
-    foreach ($strNamingContextDistinguishedName in $arrNamingContextDistinguishedName) {
-        $hashtableObjectSearchParameter = @{
-            Server = $strDomainControllerServer
-            SearchBase = $strNamingContextDistinguishedName
-            SearchScope = 'Subtree'
-            Filter = '*'
+    Set-StrictMode -Version Latest
+
+    $objLightweightDirectoryAccessProtocolConnection = $null
+
+    try {
+        #region Platform and connection setup
+
+        $boolIsWindows =
+            [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+
+        if (-not $boolIsWindows) {
+            throw [System.PlatformNotSupportedException]::new(
+                'Get-AdRawSaclByPartition requires Windows.'
+            )
         }
-        $arrPartitionObject = @(Get-ADObject @hashtableObjectSearchParameter)
-        foreach ($objPartitionObject in $arrPartitionObject) {
-            $strObjectAuditPath = 'AdSaclInventory:\' + $objPartitionObject.DistinguishedName
-            $objAuditSecurityDescriptor = Get-Acl -LiteralPath $strObjectAuditPath -Audit
-            if ($objAuditSecurityDescriptor.AreAuditRulesProtected) {
-                $arrExplicitAuditRule = @(
-                    $objAuditSecurityDescriptor.GetAuditRules($true, $false, $objSecurityIdentifierType)
-                )
-                [pscustomobject]@{
-                    Partition = $strNamingContextDistinguishedName
-                    ObjectDN = $objPartitionObject.DistinguishedName
-                    ObjectClass = $objPartitionObject.ObjectClass
-                    ExplicitAuditRuleCount = $arrExplicitAuditRule.Count
-                    SaclSddl = $objAuditSecurityDescriptor.GetSecurityDescriptorSddlForm($objAuditSectionFlag)
+
+        if ($PSVersionTable.PSVersion -lt [version]'5.1') {
+            throw [System.NotSupportedException]::new(
+                'Get-AdRawSaclByPartition requires PowerShell 5.1 or later.'
+            )
+        }
+
+        Add-Type -AssemblyName System.DirectoryServices.Protocols -ErrorAction Stop
+
+        Write-Verbose -Message 'Binding to the specified LDAP server.'
+
+        $objDirectoryIdentifier =
+            [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                $Server,
+                389,
+                $false,
+                $false
+            )
+        $objLightweightDirectoryAccessProtocolConnection =
+            [System.DirectoryServices.Protocols.LdapConnection]::new(
+                $objDirectoryIdentifier
+            )
+        $objLightweightDirectoryAccessProtocolConnection.AuthType =
+            [System.DirectoryServices.Protocols.AuthType]::Negotiate
+        $objLightweightDirectoryAccessProtocolConnection.SessionOptions.ProtocolVersion = 3
+        $objLightweightDirectoryAccessProtocolConnection.SessionOptions.Signing = $true
+        $objLightweightDirectoryAccessProtocolConnection.SessionOptions.Sealing = $true
+        $objLightweightDirectoryAccessProtocolConnection.Timeout = [TimeSpan]::FromMinutes(2)
+        [void]($objLightweightDirectoryAccessProtocolConnection.Bind())
+
+        #endregion Platform and connection setup
+
+        #region Naming-context discovery
+
+        # RootDSE provides the naming-context replicas hosted by the selected server.
+        $objRootSearchRequest =
+            [System.DirectoryServices.Protocols.SearchRequest]::new(
+                '',
+                '(objectClass=*)',
+                [System.DirectoryServices.Protocols.SearchScope]::Base,
+                [string[]]@('namingContexts')
+            )
+        $objRootSearchResponse =
+            [System.DirectoryServices.Protocols.SearchResponse](
+                $objLightweightDirectoryAccessProtocolConnection.SendRequest($objRootSearchRequest)
+            )
+
+        if ($objRootSearchResponse.Entries.Count -ne 1) {
+            throw [System.InvalidOperationException]::new(
+                ('The RootDSE query returned {0} entries; expected one.' -f
+                    $objRootSearchResponse.Entries.Count)
+            )
+        }
+
+        $objNamingContextsAttribute =
+            $objRootSearchResponse.Entries[0].Attributes['namingContexts']
+
+        if ($null -eq $objNamingContextsAttribute -or
+            $objNamingContextsAttribute.Count -eq 0) {
+            throw [System.InvalidOperationException]::new(
+                'The LDAP server did not return the namingContexts RootDSE attribute.'
+            )
+        }
+
+        [string[]]$arrNamingContexts =
+            $objNamingContextsAttribute.GetValues([string])
+
+        Write-Verbose -Message (
+            'Discovered {0} naming contexts.' -f $arrNamingContexts.Count
+        )
+
+        if ($AllObjects.IsPresent) {
+            $objSearchScope =
+                [System.DirectoryServices.Protocols.SearchScope]::Subtree
+        } else {
+            $objSearchScope =
+                [System.DirectoryServices.Protocols.SearchScope]::Base
+        }
+
+        $objObjectAccessControlEntryTypePresentFlag =
+            [System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent
+        $objInheritedObjectAccessControlEntryTypePresentFlag =
+            [System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent
+
+        #endregion Naming-context discovery
+
+        #region SACL enumeration
+
+        foreach ($strNamingContext in $arrNamingContexts) {
+            [byte[]]$arrPageCookie = @()
+
+            do {
+                $objSearchRequest =
+                    [System.DirectoryServices.Protocols.SearchRequest]::new(
+                        $strNamingContext,
+                        '(objectClass=*)',
+                        $objSearchScope,
+                        [string[]]@('nTSecurityDescriptor')
+                    )
+
+                # The SD Flags control prevents the server from returning owner, group, or DACL data.
+                $objSystemAccessControlListOnlyControl =
+                    [System.DirectoryServices.Protocols.SecurityDescriptorFlagControl]::new(
+                        [System.DirectoryServices.Protocols.SecurityMasks]::Sacl
+                    )
+                [void]($objSearchRequest.Controls.Add($objSystemAccessControlListOnlyControl))
+
+                if ($AllObjects.IsPresent) {
+                    $objPageRequestControl =
+                        [System.DirectoryServices.Protocols.PageResultRequestControl]::new(
+                            $PageSize
+                        )
+                    $objPageRequestControl.Cookie = $arrPageCookie
+                    [void]($objSearchRequest.Controls.Add($objPageRequestControl))
                 }
-            }
+
+                $objSearchResponse =
+                    [System.DirectoryServices.Protocols.SearchResponse](
+                        $objLightweightDirectoryAccessProtocolConnection.SendRequest(
+                            $objSearchRequest
+                        )
+                    )
+
+                foreach ($objSearchEntry in $objSearchResponse.Entries) {
+                    $strObjectDistinguishedName =
+                        [string]$objSearchEntry.DistinguishedName
+                    $objSecurityDescriptorAttribute =
+                        $objSearchEntry.Attributes['nTSecurityDescriptor']
+
+                    if ($null -eq $objSecurityDescriptorAttribute -or
+                        $objSecurityDescriptorAttribute.Count -eq 0) {
+                        throw [System.InvalidOperationException]::new(
+                            ('The server omitted nTSecurityDescriptor for {0}.' -f
+                                $strObjectDistinguishedName)
+                        )
+                    }
+
+                    [byte[]]$arrSecurityDescriptorBytes =
+                        $objSecurityDescriptorAttribute[0]
+                    $objSecurityDescriptor =
+                        [System.Security.AccessControl.RawSecurityDescriptor]::new(
+                            $arrSecurityDescriptorBytes,
+                            0
+                        )
+                    $objSystemAccessControlList = $objSecurityDescriptor.SystemAcl
+                    $boolSystemAccessControlListPresent = (
+                        $objSecurityDescriptor.ControlFlags.HasFlag(
+                            [System.Security.AccessControl.ControlFlags]::SystemAclPresent
+                        ) -or
+                        $null -ne $objSystemAccessControlList
+                    )
+                    $boolSystemAccessControlListProtected =
+                        $objSecurityDescriptor.ControlFlags.HasFlag(
+                            [System.Security.AccessControl.ControlFlags]::SystemAclProtected
+                        )
+                    $strSystemAccessControlListState = 'Present'
+
+                    if (-not $boolSystemAccessControlListPresent) {
+                        $strSystemAccessControlListState = 'NotPresent'
+                    } elseif ($null -eq $objSystemAccessControlList) {
+                        $strSystemAccessControlListState = 'PresentNull'
+                    } elseif ($objSystemAccessControlList.Count -eq 0) {
+                        $strSystemAccessControlListState = 'PresentEmpty'
+                    }
+
+                    $strSystemAccessControlListSecurityDescriptorDefinitionLanguage = $null
+                    $strRawSystemAccessControlListBase64 = $null
+                    [pscustomobject[]]$arrParsedAccessControlEntries = @()
+
+                    if ($boolSystemAccessControlListPresent) {
+                        $strSystemAccessControlListSecurityDescriptorDefinitionLanguage =
+                            $objSecurityDescriptor.GetSddlForm(
+                                [System.Security.AccessControl.AccessControlSections]::Audit
+                            )
+                    }
+
+                    if ($null -ne $objSystemAccessControlList) {
+                        [byte[]]$arrSystemAccessControlListBytes =
+                            [System.Array]::CreateInstance(
+                                [byte],
+                                $objSystemAccessControlList.BinaryLength
+                            )
+                        [void](
+                            $objSystemAccessControlList.GetBinaryForm(
+                                $arrSystemAccessControlListBytes,
+                                0
+                            )
+                        )
+                        $strRawSystemAccessControlListBase64 =
+                            [Convert]::ToBase64String(
+                                $arrSystemAccessControlListBytes
+                            )
+
+                        $arrParsedAccessControlEntries = @(
+                            for (
+                                $intAccessControlEntryIndex = 0;
+                                $intAccessControlEntryIndex -lt
+                                    $objSystemAccessControlList.Count;
+                                $intAccessControlEntryIndex++
+                            ) {
+                                $objAccessControlEntry =
+                                    $objSystemAccessControlList[$intAccessControlEntryIndex]
+                                $objKnownAccessControlEntry =
+                                    $objAccessControlEntry -as
+                                    [System.Security.AccessControl.KnownAce]
+                                $objQualifiedAccessControlEntry =
+                                    $objAccessControlEntry -as
+                                    [System.Security.AccessControl.QualifiedAce]
+                                $objObjectAccessControlEntry =
+                                    $objAccessControlEntry -as
+                                    [System.Security.AccessControl.ObjectAce]
+                                $boolIsInherited = $objAccessControlEntry.IsInherited
+                                $strAccessMaskHexadecimal = $null
+                                $strSecurityIdentifier = $null
+                                $strAccessControlEntryQualifier = $null
+                                $boolIsCallback = $false
+                                $strObjectAccessControlEntryFlags = $null
+                                $strObjectTypeGloballyUniqueIdentifier = $null
+                                $strInheritedObjectTypeGloballyUniqueIdentifier = $null
+
+                                if ($null -ne $objKnownAccessControlEntry) {
+                                    $strAccessMaskHexadecimal = (
+                                        '0x{0:X8}' -f
+                                            $objKnownAccessControlEntry.AccessMask
+                                    )
+
+                                    if ($null -ne
+                                        $objKnownAccessControlEntry.SecurityIdentifier) {
+                                        $strSecurityIdentifier =
+                                            $objKnownAccessControlEntry.
+                                                SecurityIdentifier.Value
+                                    }
+                                }
+
+                                if ($null -ne $objQualifiedAccessControlEntry) {
+                                    $strAccessControlEntryQualifier =
+                                        [string]$objQualifiedAccessControlEntry.AceQualifier
+                                    $boolIsCallback =
+                                        $objQualifiedAccessControlEntry.IsCallback
+                                }
+
+                                if ($null -ne $objObjectAccessControlEntry) {
+                                    $strObjectAccessControlEntryFlags =
+                                        [string]$objObjectAccessControlEntry.ObjectAceFlags
+
+                                    if (
+                                        $objObjectAccessControlEntry.
+                                            ObjectAceFlags.HasFlag(
+                                                $objObjectAccessControlEntryTypePresentFlag
+                                            )
+                                    ) {
+                                        $strObjectTypeGloballyUniqueIdentifier =
+                                            [string]$objObjectAccessControlEntry.
+                                                ObjectAceType
+                                    }
+
+                                    if (
+                                        $objObjectAccessControlEntry.
+                                            ObjectAceFlags.HasFlag(
+                                                $objInheritedObjectAccessControlEntryTypePresentFlag
+                                            )
+                                    ) {
+                                        $strInheritedObjectTypeGloballyUniqueIdentifier =
+                                            [string]$objObjectAccessControlEntry.
+                                                InheritedObjectAceType
+                                    }
+                                }
+
+                                [byte[]]$arrAccessControlEntryBytes =
+                                    [System.Array]::CreateInstance(
+                                        [byte],
+                                        $objAccessControlEntry.BinaryLength
+                                    )
+                                [void](
+                                    $objAccessControlEntry.GetBinaryForm(
+                                        $arrAccessControlEntryBytes,
+                                        0
+                                    )
+                                )
+
+                                [pscustomobject]@{
+                                    AceIndex = $intAccessControlEntryIndex
+                                    AceType = [string]$objAccessControlEntry.AceType
+                                    AceFlags = [string]$objAccessControlEntry.AceFlags
+                                    AuditFlags = [string]$objAccessControlEntry.AuditFlags
+                                    AceQualifier = $strAccessControlEntryQualifier
+                                    IsInherited = $boolIsInherited
+                                    IsCallback = $boolIsCallback
+                                    AccessMaskHex = $strAccessMaskHexadecimal
+                                    Sid = $strSecurityIdentifier
+                                    ObjectAceFlags = $strObjectAccessControlEntryFlags
+                                    ObjectTypeGuid =
+                                        $strObjectTypeGloballyUniqueIdentifier
+                                    InheritedObjectTypeGuid =
+                                        $strInheritedObjectTypeGloballyUniqueIdentifier
+                                    BinaryLength = $objAccessControlEntry.BinaryLength
+                                    RawAceBase64 =
+                                        [Convert]::ToBase64String(
+                                            $arrAccessControlEntryBytes
+                                        )
+                                }
+                            }
+                        )
+                    }
+
+                    if ($AllObjects.IsPresent -and
+                        -not $boolSystemAccessControlListPresent) {
+                        continue
+                    }
+
+                    $intExplicitAccessControlEntryCount = 0
+
+                    foreach (
+                        $objParsedAccessControlEntry in
+                        $arrParsedAccessControlEntries
+                    ) {
+                        if (-not $objParsedAccessControlEntry.IsInherited) {
+                            $intExplicitAccessControlEntryCount++
+                        }
+                    }
+
+                    [pscustomobject]@{
+                        Server = $Server
+                        Partition = $strNamingContext
+                        ObjectDn = $strObjectDistinguishedName
+                        SaclState = $strSystemAccessControlListState
+                        SaclProtected = $boolSystemAccessControlListProtected
+                        TotalAceCount = $arrParsedAccessControlEntries.Count
+                        ExplicitAceCount = $intExplicitAccessControlEntryCount
+                        InheritedAceCount = (
+                            $arrParsedAccessControlEntries.Count -
+                                $intExplicitAccessControlEntryCount
+                        )
+                        SaclSddl =
+                            $strSystemAccessControlListSecurityDescriptorDefinitionLanguage
+                        RawSaclBase64 = $strRawSystemAccessControlListBase64
+                        DaclReturned = (
+                            $null -ne $objSecurityDescriptor.DiscretionaryAcl
+                        )
+                        Aces = $arrParsedAccessControlEntries
+                    }
+                }
+
+                if ($AllObjects.IsPresent) {
+                    $objPageResponseControl = $null
+
+                    foreach ($objResponseControl in $objSearchResponse.Controls) {
+                        if (
+                            $objResponseControl -is
+                            [System.DirectoryServices.Protocols.PageResultResponseControl]
+                        ) {
+                            $objPageResponseControl = $objResponseControl
+                            break
+                        }
+                    }
+
+                    if ($null -eq $objPageResponseControl) {
+                        throw [System.InvalidOperationException]::new(
+                            'The server did not return an LDAP paging response control.'
+                        )
+                    }
+
+                    if ($null -eq $objPageResponseControl.Cookie) {
+                        $arrPageCookie = [byte[]]@()
+                    } else {
+                        $arrPageCookie = [byte[]]$objPageResponseControl.Cookie
+                    }
+                } else {
+                    $arrPageCookie = [byte[]]@()
+                }
+            } while ($arrPageCookie.Length -gt 0)
+        }
+
+        #endregion SACL enumeration
+    } catch {
+        Write-Debug -Message (
+            'The Active Directory SACL query did not complete. Rethrowing the original error.'
+        )
+        throw
+    } finally {
+        if ($null -ne $objLightweightDirectoryAccessProtocolConnection) {
+            [void]($objLightweightDirectoryAccessProtocolConnection.Dispose())
         }
     }
+}
+```
+
+Dot-source the function, then inventory the protected SACL boundaries:
+
+```powershell
+. 'C:\Tools\Get-AdRawSaclByPartition.ps1'
+
+$arrSaclProtectedObjects = @(
+    Get-AdRawSaclByPartition -Server 'dc01.domain.test' -AllObjects |
+        Where-Object -FilterScript { $_.SaclProtected }
 )
 
 $arrSaclProtectedObjects |
-    Select-Object -Property Partition, ObjectDN, ObjectClass, ExplicitAuditRuleCount, SaclSddl |
+    Select-Object -Property Partition, ObjectDn, ExplicitAceCount, SaclSddl |
     Format-List
-
-Remove-PSDrive -Name 'AdSaclInventory'
 ```
 
 Classify each result as:
@@ -1464,17 +1931,19 @@ Do not automatically submit every protected object to the same parameter without
 
 ## Preview the SACL deployment
 
+Non-SID trustee strings resolve through `DOMAIN\sAMAccountName` lookup, so the examples reference the audit groups by the `SamAccountName` values assigned at group creation, not by their display names.
+
 ```powershell
 $hashtableAuditParameter = @{
     Server = 'dc01.domain.test'
     AdministrativeChangeAuditTrustee = @(
-        'DOMAIN\Directory Administrative Change Audit Subjects'
+        'DOMAIN\Dir-Audit-Change'
         'BUILTIN\Account Operators'
         'DOMAIN\HRIS User Provisioning'
         'DOMAIN\Identity Governance Service'
     )
     AdministrativeControlAuditTrustee = @(
-        'DOMAIN\Directory Administrative Control Audit Subjects'
+        'DOMAIN\Dir-Audit-Control'
     )
     ProtectedContainerDistinguishedName = @(
         'OU=Tier 0,DC=domain,DC=test'
@@ -1524,10 +1993,10 @@ Use a deployment and SACL-inventory identity that is not in the administrative-c
 $hashtableSaclAccessAuditParameter = @{
     Server = 'dc01.domain.test'
     AdministrativeChangeAuditTrustee = @(
-        'DOMAIN\Directory Administrative Change Audit Subjects'
+        'DOMAIN\Dir-Audit-Change'
     )
     AdministrativeControlAuditTrustee = @(
-        'DOMAIN\Directory Administrative Control Audit Subjects'
+        'DOMAIN\Dir-Audit-Control'
     )
     AuditSaclAccess = $true
 }
@@ -1553,10 +2022,10 @@ $arrSaclAccessAuditRules = @(
 $hashtableAdminSdHolderAuditParameter = @{
     Server = 'dc01.domain.test'
     AdministrativeChangeAuditTrustee = @(
-        'DOMAIN\Directory Administrative Change Audit Subjects'
+        'DOMAIN\Dir-Audit-Change'
     )
     AdministrativeControlAuditTrustee = @(
-        'DOMAIN\Directory Administrative Control Audit Subjects'
+        'DOMAIN\Dir-Audit-Control'
     )
     ConfigureAdminSdHolderTemplate = $true
 }
