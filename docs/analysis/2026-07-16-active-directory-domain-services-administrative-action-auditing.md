@@ -1,4 +1,12 @@
+<!-- markdownlint-disable MD013 -->
 # Active Directory Administrative Activity Audit Design
+
+- **Status:** Active
+- **Owner:** Repository Maintainers
+- **Last Updated:** 2026-07-16
+- **Scope:** Defines a success-only auditing design that captures Active Directory Domain Services administrative activity across all object classes and attributes, covering domain controller audit policy, a complete SACL model (object lifecycle, property writes, validated writes, extended rights, DACL/owner changes, and optional SACL access), and an operational deployment and reconciliation workflow. This document is an engineering analysis artifact and does not define normative product requirements; normative requirements live in [`docs/spec/requirements.md`](../spec/requirements.md).
+- **Related:** [`docs/spec/requirements.md`](../spec/requirements.md), [`.github/instructions/docs.instructions.md`](../../.github/instructions/docs.instructions.md), [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
+- **Taxonomy:** Developer docs (`docs/`). This file is classified under the existing `docs/` documentation bucket; `docs/analysis/` is used as an organizational subdirectory for analysis documents and is not intended to define a separate top-level taxonomy category.
 
 ## Objective
 
@@ -1390,17 +1398,58 @@ Do not flatten all nested administrative groups into individual user memberships
 
 ## Discover protected SACL boundaries
 
-Use the existing SACL-only inventory function:
+Inventory SACL protection state by using the ActiveDirectory module and its provider drive; no tooling beyond the prerequisites already required by the deployment script is needed. The commands below connect a dedicated provider drive to the selected domain controller, walk every object in each naming context, and report each object whose SACL is protected from inheritance. Reading SACLs requires the Manage auditing and security log privilege (`SeSecurityPrivilege`). A full walk of every naming context can take significant time in a large environment; narrow `SearchBase` to a scoped subtree when a full inventory is not required.
 
 ```powershell
+$strDomainControllerServer = 'dc01.domain.test'
+$objSecurityIdentifierType = [System.Security.Principal.SecurityIdentifier]
+$objAuditSectionFlag = [System.Security.AccessControl.AccessControlSections]::Audit
+
+$hashtableSaclInventoryDriveParameter = @{
+    Name = 'AdSaclInventory'
+    PSProvider = 'ActiveDirectory'
+    Root = ''
+    Server = $strDomainControllerServer
+}
+[void](New-PSDrive @hashtableSaclInventoryDriveParameter)
+
+$arrNamingContextDistinguishedName = @(
+    (Get-ADRootDSE -Server $strDomainControllerServer).namingContexts
+)
+
 $arrSaclProtectedObjects = @(
-    Get-AdRawSaclByPartition -Server 'dc01.domain.test' -AllObjects |
-        Where-Object -FilterScript { $_.SaclProtected }
+    foreach ($strNamingContextDistinguishedName in $arrNamingContextDistinguishedName) {
+        $hashtableObjectSearchParameter = @{
+            Server = $strDomainControllerServer
+            SearchBase = $strNamingContextDistinguishedName
+            SearchScope = 'Subtree'
+            Filter = '*'
+        }
+        $arrPartitionObject = @(Get-ADObject @hashtableObjectSearchParameter)
+        foreach ($objPartitionObject in $arrPartitionObject) {
+            $strObjectAuditPath = 'AdSaclInventory:\' + $objPartitionObject.DistinguishedName
+            $objAuditSecurityDescriptor = Get-Acl -LiteralPath $strObjectAuditPath -Audit
+            if ($objAuditSecurityDescriptor.AreAuditRulesProtected) {
+                $arrExplicitAuditRule = @(
+                    $objAuditSecurityDescriptor.GetAuditRules($true, $false, $objSecurityIdentifierType)
+                )
+                [pscustomobject]@{
+                    Partition = $strNamingContextDistinguishedName
+                    ObjectDN = $objPartitionObject.DistinguishedName
+                    ObjectClass = $objPartitionObject.ObjectClass
+                    ExplicitAuditRuleCount = $arrExplicitAuditRule.Count
+                    SaclSddl = $objAuditSecurityDescriptor.GetSecurityDescriptorSddlForm($objAuditSectionFlag)
+                }
+            }
+        }
+    }
 )
 
 $arrSaclProtectedObjects |
-    Select-Object -Property Partition, ObjectDN, ExplicitAceCount, SaclSddl |
+    Select-Object -Property Partition, ObjectDN, ObjectClass, ExplicitAuditRuleCount, SaclSddl |
     Format-List
+
+Remove-PSDrive -Name 'AdSaclInventory'
 ```
 
 Classify each result as:
