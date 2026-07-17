@@ -2089,6 +2089,8 @@ Test with dedicated laboratory objects.
 
 ## Event validation query
 
+Run the query on each writable domain controller. Reading the Security log requires the Manage auditing and security log privilege (`SeSecurityPrivilege`), which local Administrators hold by default, or membership in the built-in Event Log Readers group. The event identifiers are supplied as multiple filter hash tables because Windows Event Log limits each XPath query to 32 expressions and `Get-WinEvent` supports at most 23; `Get-WinEvent` combines an array of filter hash tables into one query and returns a single merged result stream.
+
 ```powershell
 [int[]]$arrEventIds = @(
     4662,
@@ -2150,19 +2152,39 @@ Test with dedicated laboratory objects.
     5141
 )
 
-$hashtableEventFilter = @{
-    LogName = 'Security'
-    Id = $arrEventIds
-    StartTime = (Get-Date).AddHours(-2)
-}
+# 20 identifiers per filter keeps each generated query safely under the limits.
+$intEventIdBatchSize = 20
+$datetimeQueryStartTime = (Get-Date).AddHours(-2)
 
-Get-WinEvent -FilterHashtable $hashtableEventFilter |
+$arrEventFilterBatches = @(
+    $intBatchStartIndex = 0
+    while ($intBatchStartIndex -lt $arrEventIds.Count) {
+        $intBatchEndIndex = [Math]::Min(
+            $intBatchStartIndex + $intEventIdBatchSize - 1,
+            $arrEventIds.Count - 1
+        )
+        @{
+            LogName = 'Security'
+            Id = [int[]]($arrEventIds[$intBatchStartIndex..$intBatchEndIndex])
+            StartTime = $datetimeQueryStartTime
+        }
+        $intBatchStartIndex += $intEventIdBatchSize
+    }
+)
+
+$arrValidationEvents = @(
+    Get-WinEvent -FilterHashtable $arrEventFilterBatches
+)
+
+$arrValidationEvents |
     Select-Object -Property TimeCreated, Id, MachineName, Message
 ```
 
 ## Role-analysis exclusions
 
-Exclude from the role-engineering activity table, while retaining them in the underlying security records where required:
+Exclude from the role-engineering activity table, while retaining them in the underlying security records where required.
+
+The example below reuses `$arrValidationEvents` captured by the validation query above; run it in the same PowerShell session so the exclusion operates on exactly the events that were retrieved.
 
 ```powershell
 [int[]]$arrRoleAnalysisExcludedEventIds = @(
@@ -2172,7 +2194,7 @@ Exclude from the role-engineering activity table, while retaining them in the un
     4799
 )
 
-Get-WinEvent -FilterHashtable $hashtableEventFilter |
+$arrValidationEvents |
     Where-Object -FilterScript {
         $_.Id -notin $arrRoleAnalysisExcludedEventIds
     } |
@@ -2417,3 +2439,9 @@ Implement the following baseline:
 28. [Microsoft, LDAP session security settings and requirements after ADV190023 is installed](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/ldap-session-security-settings-requirements-adv190023)
 
 29. [Microsoft, LdapSessionOptions.Sealing property](https://learn.microsoft.com/en-us/dotnet/api/system.directoryservices.protocols.ldapsessionoptions.sealing)
+
+30. [Microsoft, Windows Event Log Query Schema](https://learn.microsoft.com/en-us/windows/win32/wes/queryschema-schema)
+
+31. [Microsoft, Collect Windows events with Azure Monitor Agent, XPath query limits](https://learn.microsoft.com/en-us/azure/azure-monitor/vm/data-collection-windows-events#filter-events-using-xpath-queries)
+
+32. [Microsoft, Active Directory security groups, Event Log Readers](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers)
