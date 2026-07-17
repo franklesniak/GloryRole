@@ -710,8 +710,8 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 # }
 #
 # & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter -WhatIf
-# #
-# Emits Proposed or AlreadyPresent objects without changing Active Directory.
+#
+# # Emits Proposed or AlreadyPresent objects without changing Active Directory.
 #
 # .EXAMPLE
 # $hashtableAuditParameter = @{
@@ -731,8 +731,8 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 #
 # & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter
 #
-# Emits Added or AlreadyPresent objects after applying the baseline, an explicit protected-container
-# baseline, and the AdminSDHolder template rules.
+# # Emits Added or AlreadyPresent objects after applying the baseline, an explicit
+# # protected-container baseline, and the AdminSDHolder template rules.
 #
 # .INPUTS
 # None. You cannot pipe objects to this script.
@@ -743,7 +743,7 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 #
 # .NOTES
 # This script does not support positional parameters.
-# Version: 2.1.20260717.0
+# Version: 2.1.20260717.1
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (

@@ -23,10 +23,10 @@ BeforeAll {
 
     foreach ($strDocumentRelativePath in $arrParseValidatedDocumentRelativePath) {
         $strDocumentPath = Join-Path -Path $strRepositoryRootDirectory -ChildPath $strDocumentRelativePath
-        $arrDocumentLines = @(Get-Content -LiteralPath $strDocumentPath)
+        $arrDocumentLines = @(Get-Content -LiteralPath $strDocumentPath -ErrorAction Stop)
 
         $boolInsidePowerShellCodeBlock = $false
-        $intCodeBlockStartLineNumber = 0
+        $intFenceLineNumber = 0
         $listCurrentCodeBlockLines = New-Object System.Collections.Generic.List[string]
 
         for ($intLineIndex = 0; $intLineIndex -lt $arrDocumentLines.Count; $intLineIndex++) {
@@ -35,14 +35,15 @@ BeforeAll {
             if (-not $boolInsidePowerShellCodeBlock) {
                 if ($strCurrentLine -ceq '```powershell') {
                     $boolInsidePowerShellCodeBlock = $true
-                    $intCodeBlockStartLineNumber = $intLineIndex + 1
+                    $intFenceLineNumber = $intLineIndex + 1
                     $listCurrentCodeBlockLines.Clear()
                 }
             } else {
                 if ($strCurrentLine -ceq '```') {
                     [void]($listEmbeddedCodeBlocks.Add([pscustomobject]@{
                                 DocumentRelativePath = $strDocumentRelativePath
-                                StartLineNumber = $intCodeBlockStartLineNumber
+                                FenceLineNumber = $intFenceLineNumber
+                                ContentStartLineNumber = $intFenceLineNumber + 1
                                 Content = ($listCurrentCodeBlockLines -join [System.Environment]::NewLine)
                             }))
                     $boolInsidePowerShellCodeBlock = $false
@@ -56,7 +57,7 @@ BeforeAll {
             $strUnterminatedFenceDescription = (
                 '{0}: the PowerShell code fence opened at line {1} is never closed' -f
                 $strDocumentRelativePath,
-                $intCodeBlockStartLineNumber
+                $intFenceLineNumber
             )
             [void]($listUnterminatedFenceDescriptions.Add($strUnterminatedFenceDescription))
         }
@@ -93,9 +94,9 @@ Describe "Embedded PowerShell code blocks in analysis documents" {
                 if ($null -ne $arrParseErrors -and $arrParseErrors.Count -gt 0) {
                     foreach ($objParseError in $arrParseErrors) {
                         $strParseFailureDescription = (
-                            '{0} (block starting at line {1}): {2}' -f
+                            '{0} (code block content starting at line {1}): {2}' -f
                             $objEmbeddedCodeBlock.DocumentRelativePath,
-                            $objEmbeddedCodeBlock.StartLineNumber,
+                            $objEmbeddedCodeBlock.ContentStartLineNumber,
                             $objParseError.Message
                         )
                         [void]($listParseFailureDescriptions.Add($strParseFailureDescription))
