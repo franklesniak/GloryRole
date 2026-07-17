@@ -19,6 +19,7 @@ BeforeAll {
     )
 
     $listEmbeddedCodeBlocks = New-Object System.Collections.Generic.List[pscustomobject]
+    $listUnterminatedFenceDescriptions = New-Object System.Collections.Generic.List[string]
 
     foreach ($strDocumentRelativePath in $arrParseValidatedDocumentRelativePath) {
         $strDocumentPath = Join-Path -Path $strRepositoryRootDirectory -ChildPath $strDocumentRelativePath
@@ -50,6 +51,15 @@ BeforeAll {
                 }
             }
         }
+
+        if ($boolInsidePowerShellCodeBlock) {
+            $strUnterminatedFenceDescription = (
+                '{0}: the PowerShell code fence opened at line {1} is never closed' -f
+                $strDocumentRelativePath,
+                $intCodeBlockStartLineNumber
+            )
+            [void]($listUnterminatedFenceDescriptions.Add($strUnterminatedFenceDescription))
+        }
     }
 }
 
@@ -58,6 +68,11 @@ Describe "Embedded PowerShell code blocks in analysis documents" {
         It "Discovers at least one embedded PowerShell code block" {
             # Assert
             $listEmbeddedCodeBlocks.Count | Should -BeGreaterThan 0
+        }
+
+        It "Closes every fenced PowerShell code block before the end of the document" {
+            # Assert
+            ($listUnterminatedFenceDescriptions -join [System.Environment]::NewLine) | Should -BeNullOrEmpty
         }
 
         It "Parses every embedded PowerShell code block without syntax errors" {
