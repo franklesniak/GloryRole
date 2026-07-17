@@ -650,7 +650,6 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 ```powershell
 #requires -Version 5.1
 #requires -PSEdition Desktop
-#requires -Modules ActiveDirectory
 
 # .SYNOPSIS
 # Adds success-only SACL entries for comprehensive Active Directory administrative auditing.
@@ -744,7 +743,7 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 #
 # .NOTES
 # This script does not support positional parameters.
-# Version: 2.0.20260717.0
+# Version: 2.1.20260717.0
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
@@ -789,7 +788,6 @@ try {
         throw 'This script requires Windows PowerShell on Windows.'
     }
 
-    Import-Module -Name ActiveDirectory -ErrorAction Stop
     Add-Type -AssemblyName System.DirectoryServices -ErrorAction Stop
     Add-Type -AssemblyName System.DirectoryServices.Protocols -ErrorAction Stop
 
@@ -839,15 +837,6 @@ try {
         $hashtableControlTrusteeSids[$objControlTrusteeSid.Value] = $true
     }
 
-    Write-Verbose -Message 'Discovering naming contexts hosted by the selected domain controller.'
-
-    $objRootDirectoryServiceEntry = Get-ADRootDSE -Server $Server -ErrorAction Stop
-    $strDomainNamingContext = [string]$objRootDirectoryServiceEntry.defaultNamingContext
-    [string[]]$arrNamingContexts = @(
-        $objRootDirectoryServiceEntry.namingContexts |
-            ForEach-Object -Process { [string]$_ }
-    )
-
     $objLdapIdentifier = [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
         $Server,
         389,
@@ -863,6 +852,40 @@ try {
     $objLdapConnection.SessionOptions.Sealing = $true
     $objLdapConnection.Timeout = [TimeSpan]::FromMinutes(2)
     [void]($objLdapConnection.Bind())
+
+    Write-Verbose -Message 'Discovering naming contexts hosted by the selected domain controller.'
+
+    # RootDSE is read over the same signed and sealed LDAP connection used for all
+    # SACL operations, so the script has no Active Directory Web Services dependency.
+    $objRootSearchRequest = [System.DirectoryServices.Protocols.SearchRequest]::new(
+        '',
+        '(objectClass=*)',
+        [System.DirectoryServices.Protocols.SearchScope]::Base,
+        [string[]]@('defaultNamingContext', 'namingContexts')
+    )
+    $objRootSearchResponse = [System.DirectoryServices.Protocols.SearchResponse](
+        $objLdapConnection.SendRequest($objRootSearchRequest)
+    )
+
+    if ($objRootSearchResponse.Entries.Count -ne 1) {
+        throw ('The RootDSE query returned {0} entries; expected one.' -f
+            $objRootSearchResponse.Entries.Count)
+    }
+
+    $objDefaultNamingContextAttribute =
+        $objRootSearchResponse.Entries[0].Attributes['defaultNamingContext']
+    $objNamingContextsAttribute =
+        $objRootSearchResponse.Entries[0].Attributes['namingContexts']
+
+    if ($null -eq $objDefaultNamingContextAttribute -or
+        $objDefaultNamingContextAttribute.Count -eq 0 -or
+        $null -eq $objNamingContextsAttribute -or
+        $objNamingContextsAttribute.Count -eq 0) {
+        throw 'The RootDSE query did not return defaultNamingContext and namingContexts.'
+    }
+
+    $strDomainNamingContext = [string]$objDefaultNamingContextAttribute[0]
+    [string[]]$arrNamingContexts = $objNamingContextsAttribute.GetValues([string])
 
     $objEveryoneSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
     $objSuccessAuditFlag = [System.Security.AccessControl.AuditFlags]::Success
@@ -893,6 +916,40 @@ try {
     $objResetPasswordGuid = [Guid]'00299570-246d-11d0-a768-00aa006e0529'
     $objReanimateTombstonesGuid = [Guid]'45ec5156-db7e-47bb-b53f-dbeb2d03c40f'
     $objCallerCmdlet = $PSCmdlet
+
+    $objTestDomainPartitionTargetScriptBlock = {
+        param (
+            [Parameter(Mandatory = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string]$DistinguishedName
+        )
+
+        # The Configuration, Schema, and DNS application partitions share the domain
+        # naming context's DN suffix, so a suffix test alone misclassifies them.
+        # Resolve the longest naming context containing the target and require an
+        # exact match with the default domain naming context.
+        $strContainingNamingContext = ''
+
+        foreach ($strCandidateNamingContext in $arrNamingContexts) {
+            $boolMatchesCandidate = $DistinguishedName.Equals(
+                $strCandidateNamingContext,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -or $DistinguishedName.EndsWith(
+                (',' + $strCandidateNamingContext),
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+
+            if ($boolMatchesCandidate -and
+                $strCandidateNamingContext.Length -gt $strContainingNamingContext.Length) {
+                $strContainingNamingContext = $strCandidateNamingContext
+            }
+        }
+
+        $strContainingNamingContext.Equals(
+            $strDomainNamingContext,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
+    }
 
     $objAddSuccessAuditRuleScriptBlock = {
         param (
@@ -1262,11 +1319,9 @@ try {
 
     foreach ($strProtectedContainerDistinguishedName in
         $ProtectedContainerDistinguishedName) {
-        $boolIsDomainPartitionTarget =
-            $strProtectedContainerDistinguishedName.EndsWith(
-                $strDomainNamingContext,
-                [System.StringComparison]::OrdinalIgnoreCase
-            )
+        $boolIsDomainPartitionTarget = (
+            & $objTestDomainPartitionTargetScriptBlock -DistinguishedName $strProtectedContainerDistinguishedName
+        )
 
         $hashtableContainerBaselineParameter = @{
             DistinguishedName = $strProtectedContainerDistinguishedName
@@ -1281,11 +1336,9 @@ try {
     #region SACL-protected custom leaf objects
 
     foreach ($strProtectedLeafDistinguishedName in $ProtectedLeafDistinguishedName) {
-        $boolIsDomainPartitionTarget =
-            $strProtectedLeafDistinguishedName.EndsWith(
-                $strDomainNamingContext,
-                [System.StringComparison]::OrdinalIgnoreCase
-            )
+        $boolIsDomainPartitionTarget = (
+            & $objTestDomainPartitionTargetScriptBlock -DistinguishedName $strProtectedLeafDistinguishedName
+        )
 
         $hashtableLeafBaselineParameter = @{
             DistinguishedName = $strProtectedLeafDistinguishedName
