@@ -3,9 +3,9 @@
 
 - **Status:** Active
 - **Owner:** Repository Maintainers
-- **Last Updated:** 2026-07-16
+- **Last Updated:** 2026-07-17
 - **Scope:** Defines a success-only auditing design that captures Active Directory Domain Services administrative activity across all object classes and attributes, covering domain controller audit policy, a complete SACL model (object lifecycle, property writes, validated writes, extended rights, DACL/owner changes, and optional SACL access), and an operational deployment and reconciliation workflow. This document is an engineering analysis artifact and does not define normative product requirements; normative requirements live in [`docs/spec/requirements.md`](../spec/requirements.md).
-- **Related:** [`docs/spec/requirements.md`](../spec/requirements.md), [`.github/instructions/docs.instructions.md`](../../.github/instructions/docs.instructions.md), [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
+- **Related:** [`docs/spec/requirements.md`](../spec/requirements.md), [`.github/instructions/docs.instructions.md`](../../.github/instructions/docs.instructions.md), [`.github/instructions/powershell.instructions.md`](../../.github/instructions/powershell.instructions.md), [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
 - **Taxonomy:** Developer docs (`docs/`). This file is classified under the existing `docs/` documentation bucket; `docs/analysis/` is used as an organizational subdirectory for analysis documents and is not intended to define a separate top-level taxonomy category.
 
 ## Objective
@@ -639,6 +639,8 @@ The following script:
 - Uses type-prefixed local variable names, full comment-based help, `CmdletBinding`,
   `OutputType`, `try`/`catch`, method-output suppression, and lines under 115 characters.
 
+Both PowerShell artifacts in this document intentionally connect over LDAP port 389 using negotiated SASL authentication with signing and sealing enabled. Sealing enables Kerberos encryption of the LDAP session, and Microsoft's post-ADV190023 guidance treats signed or sealed SASL sessions as protected against man-in-the-middle attacks, so LDAPS on port 636, with its server-certificate enrollment requirements, is not required for these operations.
+
 Save it as:
 
 ```text
@@ -742,7 +744,7 @@ C:\Tools\Set-AdAdministrativeAuditSacl.ps1
 #
 # .NOTES
 # This script does not support positional parameters.
-# Version: 2.0.20260716.1
+# Version: 2.0.20260717.0
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', PositionalBinding = $false)]
 [OutputType([pscustomobject])]
 param (
@@ -793,71 +795,48 @@ try {
 
     Write-Verbose -Message 'Resolving audit trustees to security identifiers.'
 
-    $listLifecycleTrusteeSids =
-        [System.Collections.Generic.List[System.Security.Principal.SecurityIdentifier]]::new()
-    $listChangeTrusteeSids =
-        [System.Collections.Generic.List[System.Security.Principal.SecurityIdentifier]]::new()
-    $listControlTrusteeSids =
-        [System.Collections.Generic.List[System.Security.Principal.SecurityIdentifier]]::new()
-    $hashtableLifecycleTrusteeSids = @{}
-    $hashtableChangeTrusteeSids = @{}
+    $objResolveTrusteeSidScriptBlock = {
+        param (
+            [Parameter()]
+            [string[]]$Trustee = @()
+        )
+
+        $hashtableSeenTrusteeSids = @{}
+
+        foreach ($strTrustee in $Trustee) {
+            if ($strTrustee -match '^S-\d(-\d+)+$') {
+                $objTrusteeSid =
+                    [System.Security.Principal.SecurityIdentifier]::new($strTrustee)
+            } else {
+                $objTrusteeAccount = [System.Security.Principal.NTAccount]::new($strTrustee)
+                $objTrusteeSid = [System.Security.Principal.SecurityIdentifier](
+                    $objTrusteeAccount.Translate(
+                        [System.Security.Principal.SecurityIdentifier]
+                    )
+                )
+            }
+
+            if (-not $hashtableSeenTrusteeSids.ContainsKey($objTrusteeSid.Value)) {
+                $hashtableSeenTrusteeSids[$objTrusteeSid.Value] = $true
+                $objTrusteeSid
+            }
+        }
+    }
+
+    $arrLifecycleTrusteeSids = @(
+        & $objResolveTrusteeSidScriptBlock -Trustee $ObjectLifecycleAuditTrustee
+    )
+    $arrChangeTrusteeSids = @(
+        & $objResolveTrusteeSidScriptBlock -Trustee $AdministrativeChangeAuditTrustee
+    )
+    $arrControlTrusteeSids = @(
+        & $objResolveTrusteeSidScriptBlock -Trustee $AdministrativeControlAuditTrustee
+    )
+
     $hashtableControlTrusteeSids = @{}
 
-    foreach ($strTrustee in $ObjectLifecycleAuditTrustee) {
-        if ($strTrustee -match '^S-\d(-\d+)+$') {
-            $objTrusteeSid =
-                [System.Security.Principal.SecurityIdentifier]::new($strTrustee)
-        } else {
-            $objTrusteeAccount = [System.Security.Principal.NTAccount]::new($strTrustee)
-            $objTrusteeSid = [System.Security.Principal.SecurityIdentifier](
-                $objTrusteeAccount.Translate(
-                    [System.Security.Principal.SecurityIdentifier]
-                )
-            )
-        }
-
-        if (-not $hashtableLifecycleTrusteeSids.ContainsKey($objTrusteeSid.Value)) {
-            [void]($listLifecycleTrusteeSids.Add($objTrusteeSid))
-            $hashtableLifecycleTrusteeSids[$objTrusteeSid.Value] = $true
-        }
-    }
-
-    foreach ($strTrustee in $AdministrativeChangeAuditTrustee) {
-        if ($strTrustee -match '^S-\d(-\d+)+$') {
-            $objTrusteeSid =
-                [System.Security.Principal.SecurityIdentifier]::new($strTrustee)
-        } else {
-            $objTrusteeAccount = [System.Security.Principal.NTAccount]::new($strTrustee)
-            $objTrusteeSid = [System.Security.Principal.SecurityIdentifier](
-                $objTrusteeAccount.Translate(
-                    [System.Security.Principal.SecurityIdentifier]
-                )
-            )
-        }
-
-        if (-not $hashtableChangeTrusteeSids.ContainsKey($objTrusteeSid.Value)) {
-            [void]($listChangeTrusteeSids.Add($objTrusteeSid))
-            $hashtableChangeTrusteeSids[$objTrusteeSid.Value] = $true
-        }
-    }
-
-    foreach ($strTrustee in $AdministrativeControlAuditTrustee) {
-        if ($strTrustee -match '^S-\d(-\d+)+$') {
-            $objTrusteeSid =
-                [System.Security.Principal.SecurityIdentifier]::new($strTrustee)
-        } else {
-            $objTrusteeAccount = [System.Security.Principal.NTAccount]::new($strTrustee)
-            $objTrusteeSid = [System.Security.Principal.SecurityIdentifier](
-                $objTrusteeAccount.Translate(
-                    [System.Security.Principal.SecurityIdentifier]
-                )
-            )
-        }
-
-        if (-not $hashtableControlTrusteeSids.ContainsKey($objTrusteeSid.Value)) {
-            [void]($listControlTrusteeSids.Add($objTrusteeSid))
-            $hashtableControlTrusteeSids[$objTrusteeSid.Value] = $true
-        }
+    foreach ($objControlTrusteeSid in $arrControlTrusteeSids) {
+        $hashtableControlTrusteeSids[$objControlTrusteeSid.Value] = $true
     }
 
     Write-Verbose -Message 'Discovering naming contexts hosted by the selected domain controller.'
@@ -1108,7 +1087,7 @@ try {
             [bool]$IncludeReanimateTombstone = $false
         )
 
-        foreach ($objLifecycleTrusteeSid in $listLifecycleTrusteeSids) {
+        foreach ($objLifecycleTrusteeSid in $arrLifecycleTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objLifecycleTrusteeSid
@@ -1124,7 +1103,7 @@ try {
             }
         }
 
-        foreach ($objChangeTrusteeSid in $listChangeTrusteeSids) {
+        foreach ($objChangeTrusteeSid in $arrChangeTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objChangeTrusteeSid
@@ -1162,7 +1141,7 @@ try {
             }
         }
 
-        foreach ($objControlTrusteeSid in $listControlTrusteeSids) {
+        foreach ($objControlTrusteeSid in $arrControlTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objControlTrusteeSid
@@ -1198,7 +1177,7 @@ try {
             [bool]$IncludeResetPassword = $false
         )
 
-        foreach ($objLifecycleTrusteeSid in $listLifecycleTrusteeSids) {
+        foreach ($objLifecycleTrusteeSid in $arrLifecycleTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objLifecycleTrusteeSid
@@ -1207,7 +1186,7 @@ try {
             }
         }
 
-        foreach ($objChangeTrusteeSid in $listChangeTrusteeSids) {
+        foreach ($objChangeTrusteeSid in $arrChangeTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objChangeTrusteeSid
@@ -1234,7 +1213,7 @@ try {
             }
         }
 
-        foreach ($objControlTrusteeSid in $listControlTrusteeSids) {
+        foreach ($objControlTrusteeSid in $arrControlTrusteeSids) {
             & $objAddSuccessAuditRuleScriptBlock -Rule @{
                 DistinguishedName = $DistinguishedName
                 TrusteeSid = $objControlTrusteeSid
@@ -1955,28 +1934,20 @@ $hashtableAuditParameter = @{
 }
 
 $arrProposedAuditRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' `
-        @hashtableAuditParameter `
-        -WhatIf
+    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter -WhatIf
 )
 
 $arrProposedAuditRules |
     Format-Table -Property DistinguishedName, TrusteeSid, Rights, Result -AutoSize
 ```
 
-The invocation above uses backticks only in the calling example for visual presentation. To apply the same style-guide preference used by the implementation script, use a single natural command line:
-
-```powershell
-$arrProposedAuditRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter -WhatIf
-)
-```
-
 ## Apply the SACL deployment
+
+This step reuses `$hashtableAuditParameter` from the preview step; run it in the same PowerShell session so that the applied deployment is exactly what was previewed. The script declares `ConfirmImpact = 'High'`, so a run without `-Confirm:$false` prompts once for every proposed ACE; answering `A` (Yes to All) at the first prompt approves the remainder. Supply `-Confirm:$false`, as shown below, only after the `-WhatIf` preview output has been reviewed and approved.
 
 ```powershell
 $arrAppliedAuditRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter
+    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAuditParameter -Confirm:$false
 )
 
 $arrAppliedAuditRules |
@@ -2002,16 +1973,6 @@ $hashtableSaclAccessAuditParameter = @{
 }
 
 $arrSaclAccessAuditRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' `
-        @hashtableSaclAccessAuditParameter `
-        -WhatIf
-)
-```
-
-A style-guide-preferred invocation without line continuation is:
-
-```powershell
-$arrSaclAccessAuditRules = @(
     & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableSaclAccessAuditParameter -WhatIf
 )
 ```
@@ -2030,26 +1991,6 @@ $hashtableAdminSdHolderAuditParameter = @{
     ConfigureAdminSdHolderTemplate = $true
 }
 
-$arrAdminSdHolderProposedRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' `
-        @hashtableAdminSdHolderAuditParameter `
-        -WhatIf
-)
-```
-
-A style-guide-preferred invocation is:
-
-```powershell
-$arrAdminSdHolderProposedRules = @(
-    & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' `
-        @hashtableAdminSdHolderAuditParameter `
-        -WhatIf
-)
-```
-
-For strict avoidance of backtick continuation:
-
-```powershell
 $arrAdminSdHolderProposedRules = @(
     & 'C:\Tools\Set-AdAdministrativeAuditSacl.ps1' @hashtableAdminSdHolderAuditParameter -WhatIf
 )
@@ -2419,86 +2360,60 @@ Implement the following baseline:
 
 ## References
 
-1. Microsoft, Audit Directory Service Changes
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-directory-service-changes
+1. [Microsoft, Audit Directory Service Changes](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-directory-service-changes)
 
-2. Microsoft, Event 5136
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5136
+2. [Microsoft, Event 5136](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5136)
 
-3. Microsoft, Event 5137
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5137
+3. [Microsoft, Event 5137](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5137)
 
-4. Microsoft, Event 5138
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5138
+4. [Microsoft, Event 5138](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5138)
 
-5. Microsoft, Event 5139
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5139
+5. [Microsoft, Event 5139](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5139)
 
-6. Microsoft, Event 5141
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5141
+6. [Microsoft, Event 5141](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5141)
 
-7. Microsoft, Audit User Account Management
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-user-account-management
+7. [Microsoft, Audit User Account Management](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-user-account-management)
 
-8. Microsoft, Event 4723
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4723
+8. [Microsoft, Event 4723](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4723)
 
-9. Microsoft, Event 4724
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4724
+9. [Microsoft, Event 4724](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4724)
 
-10. Microsoft, Event 4767
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4767
+10. [Microsoft, Event 4767](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4767)
 
-11. Microsoft, Audit Computer Account Management
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-computer-account-management
+11. [Microsoft, Audit Computer Account Management](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-computer-account-management)
 
-12. Microsoft, Audit Security Group Management
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-security-group-management
+12. [Microsoft, Audit Security Group Management](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-security-group-management)
 
-13. Microsoft, Audit Distribution Group Management
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-distribution-group-management
+13. [Microsoft, Audit Distribution Group Management](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-distribution-group-management)
 
-14. Microsoft, Audit Other Account Management Events
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-other-account-management-events
+14. [Microsoft, Audit Other Account Management Events](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-other-account-management-events)
 
-15. Microsoft, Audit Authentication Policy Change
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-authentication-policy-change
+15. [Microsoft, Audit Authentication Policy Change](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/audit-authentication-policy-change)
 
-16. Microsoft, SYSTEM_AUDIT_OBJECT_ACE
-https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-system_audit_object_ace
+16. [Microsoft, SYSTEM_AUDIT_OBJECT_ACE](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-system_audit_object_ace)
 
-17. Microsoft, SACL Access Right
-https://learn.microsoft.com/en-us/windows/win32/secauthz/sacl-access-right
+17. [Microsoft, SACL Access Right](https://learn.microsoft.com/en-us/windows/win32/secauthz/sacl-access-right)
 
-18. Microsoft, Reset Password extended right
-https://learn.microsoft.com/en-us/windows/win32/adschema/r-user-force-change-password
+18. [Microsoft, Reset Password extended right](https://learn.microsoft.com/en-us/windows/win32/adschema/r-user-force-change-password)
 
-19. Microsoft, Reanimate Tombstones extended right
-https://learn.microsoft.com/en-us/windows/win32/adschema/r-reanimate-tombstones
+19. [Microsoft, Reanimate Tombstones extended right](https://learn.microsoft.com/en-us/windows/win32/adschema/r-reanimate-tombstones)
 
-20. Microsoft, DNS dynamic update
-https://learn.microsoft.com/en-us/windows-server/networking/dns/dynamic-update
+20. [Microsoft, DNS dynamic update](https://learn.microsoft.com/en-us/windows-server/networking/dns/dynamic-update)
 
-21. Microsoft, DNS aging and scavenging
-https://learn.microsoft.com/en-us/windows-server/networking/dns/aging-scavenging
+21. [Microsoft, DNS aging and scavenging](https://learn.microsoft.com/en-us/windows-server/networking/dns/aging-scavenging)
 
-22. Microsoft, Active Directory replication concepts and KCC
-https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/replication/active-directory-replication-concepts
+22. [Microsoft, Active Directory replication concepts and KCC](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/replication/active-directory-replication-concepts)
 
-23. Microsoft, Protected accounts, AdminSDHolder, and SDProp
-https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory
+23. [Microsoft, Protected accounts, AdminSDHolder, and SDProp](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory)
 
-24. Microsoft, Event 4780 and inherited SACL behavior
-https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/a-batch-of-event-4780-logged-pdc
+24. [Microsoft, Event 4780 and inherited SACL behavior](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/a-batch-of-event-4780-logged-pdc)
 
-25. Microsoft, LDAP_SERVER_SD_FLAGS_OID
-https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/3888c2b7-35b9-45b7-afeb-b772aa932dd0
+25. [Microsoft, LDAP_SERVER_SD_FLAGS_OID](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/3888c2b7-35b9-45b7-afeb-b772aa932dd0)
 
-26. Microsoft, Active Directory search flags and fNEVERVALUEAUDIT
-https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7c1cdf82-1ecc-4834-827e-d26ff95fb207
+26. [Microsoft, Active Directory search flags and fNEVERVALUEAUDIT](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7c1cdf82-1ecc-4834-827e-d26ff95fb207)
 
-27. Microsoft, Event 4907
-https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4907
+27. [Microsoft, Event 4907](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4907)
 
-28. PowerShell Writing Style, version 2.22.20260629.0
-https://raw.githubusercontent.com/franklesniak/PSStyleGuide/refs/heads/main/STYLE_GUIDE.md
+28. [Microsoft, LDAP session security settings and requirements after ADV190023 is installed](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/ldap-session-security-settings-requirements-adv190023)
+
+29. [Microsoft, LdapSessionOptions.Sealing property](https://learn.microsoft.com/en-us/dotnet/api/system.directoryservices.protocols.ldapsessionoptions.sealing)
